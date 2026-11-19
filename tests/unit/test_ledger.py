@@ -11,10 +11,13 @@ ledger's strictness (a missing file None, a malformed row naming the line and th
 <store> daily <max-age-seconds>` printing `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of the newest row within the
 window against the clock, or `none`; round 5: the window is bounded above by 60 seconds, so a row dated further in
 the future does not count (and is not refused as malformed); round 7: a cell holding a control byte is Malformed to
-both parsers, naming the line and the field; round 8: a carriage return is such a byte wherever it stands, never
-stripped, so a row ends in LF alone; round 9: the daily row has its own grammar, the exact fields `ledger-row.py
-daily` writes (the verifier's seat, run and daily task, the evidence's six fields with the validators' PASS words, the
-two digest prefixes and the recording time), so a row of a unit's sweep shape is Malformed naming the field."""
+both parsers, naming the line and the field; round 8: a carriage return is such a byte wherever it stands in a cell;
+round 10: one row reader for both files, whose carriage-return tolerance is a parameter, so the ledger drops exactly
+one trailing CR per line as the base of U597 did (a CR LF ledger parses, a CR CR LF line is Malformed) and the daily
+file drops none (a CR LF daily row is Malformed); round 9: the daily row has its own grammar, the exact fields
+`ledger-row.py daily` writes (the verifier's seat, run and daily task, the evidence's seven fields with the validators'
+PASS words, the three validator digest prefixes, the two artifact digest prefixes (round 10) and the recording time),
+so a row of a unit's sweep shape is Malformed naming the field."""
 
 import importlib.util
 import os
@@ -288,9 +291,11 @@ C = "c" * 40
 
 
 # The daily row's own grammar (U597 round 9): the fixture rows are the writer's shape, the verifier naming the seat,
-# the run and the task of the ts's day, the evidence its six fields; the two digest prefixes are the manifest's of
-# round 8 (any 8 hex is the reader's; pr-merge.sh compares them with the manifest's pins).
-DAILY_DIGESTS = "e85f232e 2eb280bd"
+# the run and the task of the ts's day, the evidence its seven fields (round 10); the three validator digest prefixes
+# are the manifest's of round 9 (any 8 hex is the reader's; pr-merge.sh compares them with the manifest's pins), the
+# two artifact digest prefixes any 8 hex (the lever holds them by shape alone).
+DAILY_DIGESTS = "e85f232e 2eb280bd 6575c9de"
+DAILY_ARTIFACTS = "0a1b2c3d 4e5f6a7b"
 DAILY_FINDINGS = "sweeps/daily-2026-11-19/findings.json"
 
 
@@ -299,11 +304,13 @@ def daily_verifier(day, seat="sweep-3", run="170"):
     return f"{SKILL} (full audit mode on the srt worker seat {seat}, run-{run}; TASK daily-{day})"
 
 
-def daily_evidence(path=DAILY_FINDINGS, count=0, digests=DAILY_DIGESTS, recorded="2026-11-19T10:05:00Z"):
-    """The evidence of a daily row as ledger-row.py daily writes it: its six `; `-separated fields."""
+def daily_evidence(
+    path=DAILY_FINDINGS, count=0, digests=DAILY_DIGESTS, artifacts=DAILY_ARTIFACTS, recorded="2026-11-19T10:05:00Z"
+):
+    """The evidence of a daily row as ledger-row.py daily writes it: its seven `; `-separated fields (round 10)."""
     return (
         f"{path}; {count} findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
-        f"validators sha256 {digests}; recorded {recorded}"
+        f"validators sha256 {digests}; artifacts sha256 {artifacts}; recorded {recorded}"
     )
 
 
@@ -549,13 +556,18 @@ class LedgerDailyTest(unittest.TestCase):
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
         self.assertIn(f"{name}:3: column 4 (evidence) holds a control character U+0000", run.stderr)
 
-    def test_a_carriage_return_is_a_control_byte_never_stripped_so_a_row_ends_in_lf_alone(self):
+    def test_the_ledger_keeps_one_trailing_carriage_return_and_the_daily_file_none(self):
         """U597 round 8 (verdict U597-a28e4793 P3 at ledger.py:373): round 7's parsers stripped every trailing
         carriage return before the cells were checked, so a row ending in CR CR LF carried an extra control byte
-        before a valid-looking terminator and parsed. A carriage return is a control character wherever it stands:
-        a daily row ending in CR CR LF and one ending in CR LF are each Malformed naming line 2, the evidence column
-        and U+000D, to the parser and to the CLI (exit 2, never `none`), as is a ledger row ending either way; a
-        header ending in CR LF is Malformed at line 1; the same rows ending in LF alone parse."""
+        before a valid-looking terminator and parsed; round 8 then stripped none, and round 10 (verdict U597-67e1eea8
+        P2 at ledger.py:381) found that a CR LF ledger the base of this unit read was now refused, blocking the audit
+        and merge reads of an otherwise valid installed store. One row reader serves both files (`parse_rows`), its
+        carriage-return tolerance a parameter: the ledger drops exactly one trailing CR per line, the header's
+        included, so a CR LF ledger parses as before the unit (to the parser and to the CLI) while a line ending in CR
+        CR LF is Malformed naming the last column and U+000D; the daily file drops none, so a daily row ending in CR
+        LF or CR CR LF is Malformed naming line 2, the evidence column and U+000D, to the parser and to the CLI (exit
+        2, never `none`), and a daily header ending in CR LF is Malformed at line 1; the same rows ending in LF alone
+        parse."""
         ts = "2026-11-19T10:00:00Z"
         name = str(self.daily_file)
         plain = daily(ts, A)
@@ -573,32 +585,56 @@ class LedgerDailyTest(unittest.TestCase):
                 self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
                 self.assertIn(f"{name}:2: column 4 (evidence) holds a control character U+000D", run.stderr)
                 self.assertNotIn("none", run.stdout)
-                # the ledger's parser, the same rule, naming its last column
-                ledger_line = row(ts, "U7", "7", A, "pushed", "coordinator", "x").rstrip("\n") + ending
-                with self.assertRaises(self.reader.Malformed) as caught:
-                    self.reader.parse_ledger("ledger.tsv", HEADER + ledger_line)
-                self.assertEqual(
-                    str(caught.exception),
-                    "ledger.tsv:2: column 7 (evidence) holds a control character U+000D; no cell holds one",
-                )
-        # a header ending in CR LF is Malformed at line 1, before any row
+        # a daily header ending in CR LF is Malformed at line 1, before any row
         with self.assertRaises(self.reader.Malformed) as caught:
             self.reader.parse_daily(name, DAILY_HEADER.rstrip("\n") + "\r\n" + plain)
         self.assertTrue(str(caught.exception).startswith(f"{name}:1: the header is "), caught.exception)
-        # the rows ending in LF alone parse
+        # the daily rows ending in LF alone parse
         self.assertEqual(len(self.reader.parse_daily(name, DAILY_HEADER + plain).rows), 1)
+        # the ledger: a CR LF file, header and rows, parses as the base read it, with the cells as written
+        ledger_rows = row(ts, "U7", "7", A, "pushed", "coordinator", "x") + sweep("2026-11-19T11:00:00Z", A)
+        crlf = (HEADER + ledger_rows).replace("\n", "\r\n")
+        read = self.reader.parse_ledger("ledger.tsv", crlf)
+        self.assertEqual(len(read.rows), 2)
+        self.assertEqual((read.rows[0].verifier, read.rows[0].evidence), ("coordinator", "x"))
+        self.assertEqual(read.rows[1].evidence, f"sweeps/U7-{A[:8]}.json", "the CR is gone from the last cell")
+        self.assertEqual(read.newest_sweep("U7", A).line, 3)
+        ledger_file = self.store / "ledger.tsv"
+        ledger_file.write_text(crlf, newline="")
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, f"2026-11-19T11:00:00Z\tU7\t{SKILL}\tsweeps/U7-{A[:8]}.json\n")
+        # a CR LF header over LF rows, and LF alone, parse too; a ledger line ending in CR CR LF is Malformed
         self.assertEqual(
-            len(
-                self.reader.parse_ledger(
-                    "ledger.tsv", HEADER + row(ts, "U7", "7", A, "pushed", "coordinator", "x")
-                ).rows
-            ),
-            1,
+            len(self.reader.parse_ledger("ledger.tsv", HEADER.rstrip("\n") + "\r\n" + ledger_rows).rows), 2
         )
-        # the parsers strip nothing from a line before the cells are checked
+        self.assertEqual(len(self.reader.parse_ledger("ledger.tsv", HEADER + ledger_rows).rows), 2)
+        ledger_line = row(ts, "U7", "7", A, "pushed", "coordinator", "x").rstrip("\n") + "\r\r\n"
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.parse_ledger("ledger.tsv", HEADER + ledger_line)
+        self.assertEqual(
+            str(caught.exception),
+            "ledger.tsv:2: column 7 (evidence) holds a control character U+000D; no cell holds one",
+        )
+        ledger_file.write_text(HEADER + ledger_line, newline="")
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("ledger.tsv:2: column 7 (evidence) holds a control character U+000D", run.stderr)
+        # a carriage return anywhere but the line's end is a control character of its cell for the ledger too
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.parse_ledger("ledger.tsv", HEADER + row(ts + "\r", "U7", "7", A, "pushed", "c", "x"))
+        self.assertEqual(
+            str(caught.exception), "ledger.tsv:2: column 1 (ts) holds a control character U+000D; no cell holds one"
+        )
+        # one row reader, the difference one parameter, stated where it is used
         source = READER.read_text()
-        self.assertNotIn('rstrip("\\r")', source, "no carriage return is stripped (round 8)")
-        self.assertEqual(source.count('fields = line.split("\\t")'), 2, "both parsers split the line as it is")
+        self.assertNotIn('rstrip("\\r")', source, "no reader strips every carriage return (round 8)")
+        self.assertEqual(source.count('fields = line.split("\\t")'), 1, "one row reader splits the line")
+        self.assertIn("def parse_rows(name, text, header, required, trailing_cr):", source)
+        self.assertIn('        lines = [line[:-1] if line.endswith("\\r") else line for line in lines]', source)
+        self.assertIn("parse_rows(name, text, HEADER, REQUIRED, True)", source)
+        self.assertIn("parse_rows(name, text, DAILY_HEADER, DAILY_REQUIRED, False)", source)
+        self.assertIn("the ledger has installed", source, "the docstring says why the two files differ")
 
     def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
         ts = "2026-11-19T10:00:00Z"
@@ -714,21 +750,23 @@ class LedgerDailyTest(unittest.TestCase):
         alone, so a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing findings path,
         qualified as the day's sweep of main's head with no daily task and no validator result. The daily row has its
         own grammar, the exact fields `ledger-row.py daily` writes: the verifier's seat, run and `TASK
-        daily-<YYYY-MM-DD>` (its day the ts's UTC day or the day before it), and the evidence's six `; `-separated
-        fields, the findings file unpadded, `<n> findings`, the two validators' PASS words, `validators sha256 <8 hex>
-        <8 hex>` and `recorded <ts>`. A `TASK U9` row, the pinned skill alone, a note after the pin, a seat of two
-        words, a task day two days before or after the ts or no calendar day, two or seven evidence fields, a padded
-        path, a count that is no number, another word than PASS, the two validators swapped, the round-8 `validators
-        pass` word, a digest of seven, upper-case or one hex, and a recorded time off the form are each Malformed
-        naming the line and the field, to the parser and to the CLI (exit 2, never `none` and never the row beside
-        it); the writer's row parses and exposes its fields, under the ts's day and under the day before."""
+        daily-<YYYY-MM-DD>` (its day the ts's UTC day or the day before it), and the evidence's seven `; `-separated
+        fields (round 10), the findings file unpadded, `<n> findings`, the two validators' PASS words, `validators
+        sha256 <8 hex> <8 hex> <8 hex>` (round 10: the schema's third), `artifacts sha256 <8 hex> <8 hex>` (round 10)
+        and `recorded <ts>`. A `TASK U9` row, the pinned skill alone, a note after the pin, a seat of two words, a
+        task day two days before or after the ts or no calendar day, two, six or eight evidence fields, a padded path,
+        a count that is no number, another word than PASS, the two validators swapped, the round-8 `validators pass`
+        word, a digest of seven, upper-case or one hex, the round-9 two digests, an artifacts field of another word,
+        of one digest or of seven hex, and a recorded time off the form are each Malformed naming the line and the
+        field, to the parser and to the CLI (exit 2, never `none` and never the row beside it); the writer's row
+        parses and exposes its fields, under the ts's day and under the day before."""
         name = str(self.daily_file)
         ts = "2026-11-19T10:00:00Z"
         verifier_form = "security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)"
         unit_shaped = f"{SKILL} (full audit mode on the srt worker seat sweep-3, run-170; TASK U9)"
         evidence_form = (
             "sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
-            "validators sha256 <8 hex> <8 hex>; recorded <ts>"
+            "validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>"
         )
         good = daily_evidence()
         for case, text, message in (
@@ -772,13 +810,18 @@ class LedgerDailyTest(unittest.TestCase):
             (
                 "two evidence fields",
                 daily(ts, A, evidence=f"{DAILY_FINDINGS}; 0 findings"),
-                f"{name}:2: the evidence of a daily sweep row has 2 '; '-separated fields, not 6 ({evidence_form!r}):"
+                f"{name}:2: the evidence of a daily sweep row has 2 '; '-separated fields, not 7 ({evidence_form!r}):"
                 f" '{DAILY_FINDINGS}; 0 findings'",
             ),
             (
-                "seven evidence fields",
+                "the round-9 six fields, no artifacts",
+                daily(ts, A, evidence=good.replace(f"; artifacts sha256 {DAILY_ARTIFACTS}", "")),
+                f"{name}:2: the evidence of a daily sweep row has 6 '; '-separated fields, not 7",
+            ),
+            (
+                "eight evidence fields",
                 daily(ts, A, evidence=good + "; note"),
-                f"{name}:2: the evidence of a daily sweep row has 7 '; '-separated fields, not 6",
+                f"{name}:2: the evidence of a daily sweep row has 8 '; '-separated fields, not 7",
             ),
             (
                 "a padded path",
@@ -827,16 +870,16 @@ class LedgerDailyTest(unittest.TestCase):
             (
                 "the round-8 validators pass word",
                 daily(ts, A, evidence=good.replace(f"validators sha256 {DAILY_DIGESTS}", "validators pass")),
-                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>'",
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'",
             ),
             (
                 "a digest of seven hex",
-                daily(ts, A, evidence=daily_evidence(digests="e85f232 2eb280bd")),
-                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>'",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232 2eb280bd 6575c9de")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'",
             ),
             (
                 "a digest of upper-case hex",
-                daily(ts, A, evidence=daily_evidence(digests="E85F232E 2eb280bd")),
+                daily(ts, A, evidence=daily_evidence(digests="E85F232E 2eb280bd 6575c9de")),
                 f"{name}:2: field 5 of the evidence of a daily sweep row is not",
             ),
             (
@@ -845,20 +888,49 @@ class LedgerDailyTest(unittest.TestCase):
                 f"{name}:2: field 5 of the evidence of a daily sweep row is not",
             ),
             (
+                "the round-9 two digests, no schema digest",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232e 2eb280bd")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'"
+                " (the first 8 hex of the three pins the writer held its copies of validate-findings.cjs,"
+                " validate-coverage-ledger.cjs and report-schema.json to): 'validators sha256 e85f232e 2eb280bd'",
+            ),
+            (
+                "an artifacts field of another word",
+                daily(ts, A, evidence=good.replace("artifacts sha256", "files sha256")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>' (the"
+                " first 8 hex of the sha256 of the writer's copies of the findings file and the coverage ledger it"
+                f" validated): 'files sha256 {DAILY_ARTIFACTS}'",
+            ),
+            (
+                "one artifact digest",
+                daily(ts, A, evidence=daily_evidence(artifacts="0a1b2c3d")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>'",
+            ),
+            (
+                "an artifact digest of seven hex",
+                daily(ts, A, evidence=daily_evidence(artifacts="0a1b2c3 4e5f6a7b")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>'",
+            ),
+            (
+                "an artifact digest of upper-case hex",
+                daily(ts, A, evidence=daily_evidence(artifacts="0A1B2C3D 4e5f6a7b")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not",
+            ),
+            (
                 "a recorded time off the form",
                 daily(ts, A, evidence=daily_evidence(recorded="2026-11-19 10:05:00")),
-                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
+                f"{name}:2: field 7 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
                 " 'recorded 2026-11-19 10:05:00'",
             ),
             (
                 "a recorded time of hour 25",
                 daily(ts, A, evidence=daily_evidence(recorded="2026-11-19T25:00:00Z")),
-                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>'",
+                f"{name}:2: field 7 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>'",
             ),
             (
                 "another word than recorded",
                 daily(ts, A, evidence=good.replace("recorded 2026-11-19T10:05:00Z", "written 2026-11-19T10:05:00Z")),
-                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
+                f"{name}:2: field 7 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
                 " 'written 2026-11-19T10:05:00Z'",
             ),
             (
@@ -891,14 +963,17 @@ class LedgerDailyTest(unittest.TestCase):
                 row = read.rows[0]
                 self.assertEqual((row.sweep_pin, row.sweep_evidence_path), ("c1c8a8c1", DAILY_FINDINGS))
                 self.assertEqual((row.seat, row.run, row.task_day), ("sweep-3", "170", day))
-                self.assertEqual(row.validator_digests, ("e85f232e", "2eb280bd"))
+                self.assertEqual(row.validator_digests, ("e85f232e", "2eb280bd", "6575c9de"))
+                self.assertEqual(row.artifact_digests, ("0a1b2c3d", "4e5f6a7b"))
                 self.assertEqual(row.recorded, datetime(2026, 11, 19, 10, 7, 0))
                 self.assertEqual(read.newest_within(datetime(2026, 11, 19, 12, 0, 0), 86400).line, 2)
         # a row of another shape exposes None for the fields it lacks, so no caller reads a field that is not there
         row = self.reader.DailyRow(datetime(2026, 11, 19, 10, 0, 0), A, SKILL, "sweeps/x.json", 2, ts)
-        self.assertEqual((row.seat, row.run, row.task_day, row.validator_digests, row.recorded), (None,) * 5)
+        self.assertEqual(
+            (row.seat, row.run, row.task_day, row.validator_digests, row.artifact_digests, row.recorded), (None,) * 6
+        )
         # the grammar is stated once in the reader
-        self.assertEqual(self.reader.DAILY_FIELDS, 6)
+        self.assertEqual(self.reader.DAILY_FIELDS, 7)
         self.assertEqual(self.reader.DAILY_SEPARATOR, "; ")
         self.assertEqual(self.reader.DAILY_PASSES, ("validate-findings.cjs PASS", "validate-coverage-ledger.cjs PASS"))
         self.assertEqual(
@@ -906,7 +981,10 @@ class LedgerDailyTest(unittest.TestCase):
             r"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "
             r"TASK daily-([0-9]{4}-[0-9]{2}-[0-9]{2})\)$",
         )
-        self.assertEqual(self.reader.DAILY_DIGESTS.pattern, r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+        self.assertEqual(
+            self.reader.DAILY_DIGESTS.pattern, r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}) ([0-9a-f]{8})$"
+        )
+        self.assertEqual(self.reader.DAILY_ARTIFACTS.pattern, r"^artifacts sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
         source = READER.read_text()
         self.assertIn("            fault = daily_fields_fault(fields[2], fields[3], at)\n", source)
 

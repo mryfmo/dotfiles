@@ -16,11 +16,15 @@ is still a field; U119 round 3), must have the header's column count, a ts of th
 (`TS_SHAPE`: four digits, then two in every other field; U597 round 6, where `strptime` alone read `2026-11-9T4:5:6Z`
 under a form that spells two digits) that `datetime.strptime` then reads under `%Y-%m-%dT%H:%M:%SZ` (hour 25 is a
 ValueError, so a malformed row), no cell holding a control character (`CONTROL`, `\\x00` to `\\x1f` and `\\x7f`; U597
-round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `$(...)`; round
-8: a carriage return is one of them wherever it stands, never stripped, so a row ends in LF alone and a row ending in
-CR LF or CR CR LF is Malformed naming the line and the last field, where round 7 stripped every trailing CR first), and
+round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `$(...)`), and
 no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request and read as
-"no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every
+"no row"). The rows are split on the line feed; the ledger's reader then drops exactly one trailing carriage return
+from each line, the header's included, before the cells are checked (`parse_rows(..., trailing_cr=True)`; U597 round
+10, verdict U597-67e1eea8 P2 at :381: the base of this unit read a CR LF ledger, and installed stores written that way
+must keep reading, so a CR LF ledger parses as before the unit, while a second carriage return, CR CR LF, is a control
+character in the last cell and Malformed naming the line and the field as round 8 made it), where the daily file's
+reader drops none (the file is new to this unit, so no store holds a CR LF one; a daily row ends in LF alone). A `Row`
+carries its ts parsed (`ts`, a datetime, the order every
 choice of a newest row is made in) and as written (`ts_text`, for the lines that name the row), its seven cells and
 its line number.
 
@@ -58,26 +62,30 @@ exists at the path (the day's first sweep is not yet recorded: `none` to the lev
 Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts of the one
 shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where
 round 5's `strptime` alone read it), no cell holding a control character (round 7; a carriage return included and
-never stripped, round 8, so a row ends in LF alone), no empty cell, a `head_sha` of 40
-hex, the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
+never stripped from a daily row, round 8 and round 10, so a daily row ends in LF alone), no empty cell, a `head_sha`
+of 40 hex, the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
 file `sweeps/<path>.json`), and, since round 9 (verdict U597-c37800e3 P2 at :393, where the daily reader applied the
 sweep row's grammar alone and a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing
 findings path, read back as the day's sweep of main's head), the daily row's own grammar, the exact fields
 `ledger-row.py daily` writes: the verifier `security-audit-skill <pin> (full audit mode on the srt worker seat <seat>,
 run-<n>; TASK daily-<YYYY-MM-DD>)` (`DAILY_VERIFIER`, the task the daily dispatch's id alone, its day the ts's UTC day
-or the day before, a sweep that crosses midnight) and the evidence's six `; `-separated fields in the writer's order,
+or the day before, a sweep that crosses midnight) and the evidence's seven `; `-separated fields in the writer's order,
 `<findings>; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>
-<8 hex>; recorded <ts>` (`daily_fields_fault`: the count, the two validators' PASS words, the first 8 hex of the two
-validator pins the writer held the installed files to, and the recording time under the one ts form), each fault
-naming the line and the field, so a row shaped like a unit's sweep row is Malformed, never a daily row. `DailyRow`
-exposes the parsed fields (`seat`, `run`, `task_day`, `validator_digests`, `recorded`). `Daily.newest_within(now,
-max_age)` is the newest row by `(ts, line)` whose ts lies within the window `now - max_age <= ts <= now +
-DAILY_FUTURE_SLACK` (60 seconds, the reader's allowance for a row another host's clock wrote; the writer refuses a ts
-after its own clock, round 7; round 5: a row dated further in the future is not within the window, so it does not
-count and is not refused as malformed, where round 4's floor alone let a future-dated row waive per-head sweeps until
-a day after its ts). `ledger.py <store> daily <max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of
-that row against the clock (UTC), or `none` (no file, or no row within the window); `pr-merge.sh` asks it with 86400
-and skips a head's own sweep row only on a row, so the exemption of rule C is bound to the control it rests on.
+<8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>` (`daily_fields_fault`: the count, the two
+validators' PASS words, the first 8 hex of the three pins the writer held its private copies of validate-findings.cjs,
+validate-coverage-ledger.cjs and report-schema.json to (round 10: the schema's pin too, verdict U597-67e1eea8 P2 at
+ledger-row.py:575), the first 8 hex of the sha256 of the writer's private copies of the findings file and the coverage
+ledger beside it, the bytes the count and the PASS words were earned over (round 10, the P2 at ledger-row.py:574), and
+the recording time under the one ts form), each fault naming the line and the field, so a row shaped like a unit's
+sweep row is Malformed, never a daily row. `DailyRow` exposes the parsed fields (`seat`, `run`, `task_day`,
+`validator_digests`, `artifact_digests`, `recorded`). `Daily.newest_within(now, max_age)` is the newest row by `(ts,
+line)` whose ts lies within the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60 seconds, the reader's
+allowance for a row another host's clock wrote; the writer refuses a ts after its own clock, round 7; round 5: a row
+dated further in the future is not within the window, so it does not count and is not refused as malformed, where
+round 4's floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily
+<max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none`
+(no file, or no row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a
+row, so the exemption of rule C is bound to the control it rests on.
 """
 
 from __future__ import annotations
@@ -99,10 +107,10 @@ TS_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$
 # No cell of either file holds a control character (U597 round 7: `\x00` to `\x1f` and `\x7f`; a tab is the separator
 # and a line feed the row's end, so neither is in a cell, and a NUL in an evidence path is dropped by bash's `$(...)`
 # when pr-merge.sh captures the row, so the lever would check another file than the one the row names). A cell that
-# holds one is Malformed naming the line and the field. A carriage return is one of them wherever it stands (round 8,
-# verdict U597-a28e4793 P3 at :373: the parsers stripped every trailing CR before the cells were checked, so a row
-# ending in CR CR LF carried an extra control byte and passed): a row ends in LF alone, and a file written with CR LF
-# ends is Malformed at its first line.
+# holds one is Malformed naming the line and the field. A carriage return is one of them wherever it stands in a cell
+# (round 8, verdict U597-a28e4793 P3 at :373: the parsers stripped every trailing CR before the cells were checked, so
+# a row ending in CR CR LF carried an extra control byte and passed); which reader drops one trailing CR from a line
+# before the cells are read is parse_rows's `trailing_cr` (round 10: the ledger's does, the daily file's does not).
 CONTROL = re.compile(r"[\x00-\x1f\x7f]")
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
@@ -134,10 +142,14 @@ MAX_AGE = re.compile(r"^[1-9][0-9]*$")
 # composes it, the skill, its pin word (8 or more lowercase hex, SWEEP_VERIFIER's group), the seat (one word), the run
 # and the task `daily-<YYYY-MM-DD>`, the daily dispatch's id alone (a unit id is a `sweep` row's task, never a daily
 # row's), whose day is the ts's UTC day or the day before it (the writer's rule: a sweep that crosses midnight keeps
-# the id it was dispatched under); and the evidence's six `; `-separated fields in the writer's order: the findings
+# the id it was dispatched under); and the evidence's seven `; `-separated fields in the writer's order: the findings
 # file (the sweep rule's field, no whitespace around it), `<n> findings`, the two validators' PASS words, `validators
-# sha256 <8 hex> <8 hex>` (the first 8 hex of the pins the writer held validate-findings.cjs and
-# validate-coverage-ledger.cjs to; pr-merge.sh compares them with the manifest's `validators_sha256` pins) and
+# sha256 <8 hex> <8 hex> <8 hex>` (the first 8 hex of the pins the writer held its private copies of
+# validate-findings.cjs, validate-coverage-ledger.cjs and report-schema.json to, in that order; round 10 added the
+# schema's, verdict U597-67e1eea8 P2 at ledger-row.py:575; pr-merge.sh compares each with the manifest's
+# `validators_sha256` pins), `artifacts sha256 <8 hex> <8 hex>` (the first 8 hex of the sha256 of the writer's private
+# copies of the findings file and the coverage ledger beside it, the one set of bytes the count and the PASS words
+# attest; round 10, the P2 at ledger-row.py:574; pr-merge.sh requires the field by shape and never opens the files) and
 # `recorded <ts>` (the clock at the write, the one ts form). A row of another shape is Malformed naming the field.
 DAILY_VERIFIER = re.compile(
     r"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "
@@ -148,13 +160,16 @@ DAILY_VERIFIER_FORM = (
 )
 DAILY_EVIDENCE_FORM = (
     "sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
-    "validators sha256 <8 hex> <8 hex>; recorded <ts>"
+    "validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>"
 )
 DAILY_SEPARATOR = "; "
-DAILY_FIELDS = 6
+DAILY_FIELDS = 7
 DAILY_COUNT = re.compile(r"^(0|[1-9][0-9]*) findings$")
 DAILY_PASSES = ("validate-findings.cjs PASS", "validate-coverage-ledger.cjs PASS")
-DAILY_DIGESTS = re.compile(r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+DAILY_DIGESTS = re.compile(r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}) ([0-9a-f]{8})$")
+DAILY_DIGESTS_FORM = "validators sha256 <8 hex> <8 hex> <8 hex>"
+DAILY_ARTIFACTS = re.compile(r"^artifacts sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+DAILY_ARTIFACTS_FORM = "artifacts sha256 <8 hex> <8 hex>"
 DAILY_RECORDED = "recorded "
 DAY_FORMAT = "%Y-%m-%d"
 
@@ -200,7 +215,8 @@ def daily_fields_fault(verifier, evidence, at):
     naming the field, or None, after sweep_fields_fault held the fields the sweep rule's rows share: the verifier
     matches DAILY_VERIFIER with a task day that is the ts `at`'s UTC day or the day before it, and the evidence has
     exactly DAILY_FIELDS `; `-separated fields, the findings file unpadded, `<n> findings`, the two PASS words, the
-    two 8-hex digests and `recorded <ts>` under the one ts form."""
+    three 8-hex validator digests, the two 8-hex artifact digests (round 10) and `recorded <ts>` under the one ts
+    form."""
     match = DAILY_VERIFIER.match(verifier)
     if match is None:
         return (
@@ -232,11 +248,17 @@ def daily_fields_fault(verifier, evidence, at):
             return f"field {number} of the evidence of a daily sweep row is not {expected!r}: {fields[number - 1]!r}"
     if DAILY_DIGESTS.match(fields[4]) is None:
         return (
-            f"field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>' (the first 8 hex "
-            f"of the two validator pins the writer held the installed files to): {fields[4]!r}"
+            f"field 5 of the evidence of a daily sweep row is not {DAILY_DIGESTS_FORM!r} (the first 8 hex of the "
+            "three pins the writer held its copies of validate-findings.cjs, validate-coverage-ledger.cjs and "
+            f"report-schema.json to): {fields[4]!r}"
         )
-    if not fields[5].startswith(DAILY_RECORDED) or timestamp(fields[5][len(DAILY_RECORDED) :]) is None:
-        return f"field 6 of the evidence of a daily sweep row is not 'recorded <{TS_FORM}>': {fields[5]!r}"
+    if DAILY_ARTIFACTS.match(fields[5]) is None:
+        return (
+            f"field 6 of the evidence of a daily sweep row is not {DAILY_ARTIFACTS_FORM!r} (the first 8 hex of the "
+            f"sha256 of the writer's copies of the findings file and the coverage ledger it validated): {fields[5]!r}"
+        )
+    if not fields[6].startswith(DAILY_RECORDED) or timestamp(fields[6][len(DAILY_RECORDED) :]) is None:
+        return f"field 7 of the evidence of a daily sweep row is not 'recorded <{TS_FORM}>': {fields[6]!r}"
     return None
 
 
@@ -371,29 +393,49 @@ def control_check(name, number, header, fields):
             )
 
 
-def parse_ledger(name, text):
-    """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line. The rows are split on the line
-    feed alone: a carriage return is a control character in its cell, never a line's end (round 8)."""
+def parse_rows(name, text, header, required, trailing_cr):
+    """The data rows of one tab-separated store file as `(number, ts, fields)` tuples, or Malformed naming `name` and
+    the line: the one row reader of `ledger.tsv` and `daily-sweeps.tsv` (U597 round 10), stating once how a line
+    becomes cells. The text is split on the line feed (a trailing one closes the last row); when `trailing_cr` is
+    true exactly one carriage return is dropped from the end of each line, the header's included, before anything is
+    read, else none. Why the two files differ (round 10, verdict U597-67e1eea8 P2 at :381): the ledger has installed
+    stores to keep reading, and the base of this unit read a CR LF `ledger.tsv` (its readers stripped the trailing
+    carriage returns), so a CR LF ledger must parse as before the unit; the daily file is new to this unit, no store
+    holds a CR LF one, and its rows end in LF alone. Either way the cells are then held to CONTROL (round 7), so a
+    second carriage return, CR CR LF (round 8, the P3 at :373), is a control character in the last cell and
+    Malformed naming the line and the field. Then the header must be `header` exactly, every other line must split
+    on the tab into `header`'s column count, hold no control character in a cell, carry a ts of the one form in its
+    first cell and no empty cell among `required` (1-based column numbers)."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
-    expected = "\t".join(HEADER)
+    if trailing_cr:
+        lines = [line[:-1] if line.endswith("\r") else line for line in lines]
+    expected = "\t".join(header)
     if not lines or lines[0] != expected:
         found = lines[0] if lines else ""
         raise Malformed(f"{name}:1: the header is {found!r}, not {expected!r}")
-    rows = []
     for number, line in enumerate(lines[1:], 2):
         fields = line.split("\t")
-        if len(fields) != len(HEADER):
-            raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(HEADER)}")
-        control_check(name, number, HEADER, fields)
+        if len(fields) != len(header):
+            raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(header)}")
+        control_check(name, number, header, fields)
         at = timestamp(fields[0])
         if at is None:
             raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}")
-        for column in REQUIRED:
+        for column in required:
             if fields[column - 1] == "":
-                raise Malformed(f"{name}:{number}: column {column} ({HEADER[column - 1]}) is empty")
-        rows.append(Row(at, *fields[1:], number, fields[0]))
+                raise Malformed(f"{name}:{number}: column {column} ({header[column - 1]}) is empty")
+        yield number, at, fields
+
+
+def parse_ledger(name, text):
+    """The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line (parse_rows with the ledger's
+    header and required cells, one trailing carriage return per line dropped: the base's tolerance of a CR LF ledger,
+    kept for the installed stores; round 10)."""
+    rows = [
+        Row(at, *fields[1:], number, fields[0]) for number, at, fields in parse_rows(name, text, HEADER, REQUIRED, True)
+    ]
     return Ledger(name, tuple(rows))
 
 
@@ -451,19 +493,27 @@ class DailyRow:
 
     @property
     def validator_digests(self):
-        """The two 8-hex digest prefixes of the evidence's `validators sha256` field (validate-findings.cjs,
-        validate-coverage-ledger.cjs), or None."""
+        """The three 8-hex digest prefixes of the evidence's `validators sha256` field (validate-findings.cjs,
+        validate-coverage-ledger.cjs, report-schema.json; round 10 added the schema's), or None."""
         fields = self.evidence.split(DAILY_SEPARATOR)
         match = DAILY_DIGESTS.match(fields[4]) if len(fields) == DAILY_FIELDS else None
+        return None if match is None else (match.group(1), match.group(2), match.group(3))
+
+    @property
+    def artifact_digests(self):
+        """The two 8-hex digest prefixes of the evidence's `artifacts sha256` field (the findings file, the coverage
+        ledger; round 10), or None."""
+        fields = self.evidence.split(DAILY_SEPARATOR)
+        match = DAILY_ARTIFACTS.match(fields[5]) if len(fields) == DAILY_FIELDS else None
         return None if match is None else (match.group(1), match.group(2))
 
     @property
     def recorded(self):
         """The recording time of the evidence's `recorded <ts>` field as a datetime, or None."""
         fields = self.evidence.split(DAILY_SEPARATOR)
-        if len(fields) != DAILY_FIELDS or not fields[5].startswith(DAILY_RECORDED):
+        if len(fields) != DAILY_FIELDS or not fields[6].startswith(DAILY_RECORDED):
             return None
-        return timestamp(fields[5][len(DAILY_RECORDED) :])
+        return timestamp(fields[6][len(DAILY_RECORDED) :])
 
 
 @dataclass(frozen=True)
@@ -482,29 +532,12 @@ class Daily:
 
 def parse_daily(name, text):
     """The Daily of one `daily-sweeps.tsv` text, or Malformed naming `name`, the line and the field, with the
-    ledger's strictness: the header exact, four cells split on the tab alone, a ts under the one form, no empty cell,
-    no control character in a cell (a carriage return included: a row ends in LF alone, round 8), a 40-hex head, the
-    verifier and the evidence the exact fields of the sweep rule (U597 round 4) and the daily row's own grammar
-    (round 9: daily_fields_fault, so a row of a unit's sweep shape is Malformed, never a daily row)."""
-    lines = text.split("\n")
-    if lines and lines[-1] == "":
-        lines.pop()
-    expected = "\t".join(DAILY_HEADER)
-    if not lines or lines[0] != expected:
-        found = lines[0] if lines else ""
-        raise Malformed(f"{name}:1: the header is {found!r}, not {expected!r}")
+    ledger's strictness (parse_rows with the daily header, every cell required and no trailing carriage return
+    dropped: a daily row ends in LF alone, round 8 and round 10), a 40-hex head, the verifier and the evidence the
+    exact fields of the sweep rule (U597 round 4) and the daily row's own grammar (round 9: daily_fields_fault, so a
+    row of a unit's sweep shape is Malformed, never a daily row)."""
     rows = []
-    for number, line in enumerate(lines[1:], 2):
-        fields = line.split("\t")
-        if len(fields) != len(DAILY_HEADER):
-            raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(DAILY_HEADER)}")
-        control_check(name, number, DAILY_HEADER, fields)
-        at = timestamp(fields[0])
-        if at is None:
-            raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}")
-        for column in DAILY_REQUIRED:
-            if fields[column - 1] == "":
-                raise Malformed(f"{name}:{number}: column {column} ({DAILY_HEADER[column - 1]}) is empty")
+    for number, at, fields in parse_rows(name, text, DAILY_HEADER, DAILY_REQUIRED, False):
         if not SHA.match(fields[1]):
             raise Malformed(f"{name}:{number}: the head_sha of a daily sweep row is not 40 hex: {fields[1]!r}")
         fault = sweep_fields_fault(fields[2], fields[3], "a daily sweep row")

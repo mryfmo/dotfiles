@@ -730,11 +730,21 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("grants no exemption while it is false", line)
         self.assertIn("U613", line)
         self.assertIn("or the day before it", line)
-        self.assertIn(
-            "`validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex>`", line
-        )
-        self.assertIn("reads the daily row again right before the merge write", line)
         self.assertNotIn("`validators pass`", line, "the round-6 word is gone from the rule (round 9)")
+        # round 10: GitHub's own matching of a ruleset to main, the seven fields with the schema's digest and the
+        # artifacts, the window measured at the lever's last read before the merge request
+        self.assertIn("`~DEFAULT_BRANCH`, `~ALL` or a glob such as `refs/heads/ma*`, and no exclude pattern does", line)
+        self.assertIn(
+            "`validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex> <8 hex>;"
+            " artifacts sha256 <8 hex> <8 hex>`",
+            line,
+        )
+        self.assertNotIn("validators sha256 <8 hex> <8 hex>`", line, "the round-9 two-digest field is gone")
+        self.assertIn("the evidence's seven fields", line)
+        self.assertIn("within 24 hours at the lever's last read before the merge request", line)
+        self.assertIn("reads the daily row again right before the merge request, its last read", line)
+        self.assertNotIn("right before the merge write", line, "the window closes at the read, not at the write")
+        self.assertNotIn("within the last 24 hours", line, "the window is named at the lever's last read")
 
     def test_the_skill_s_step_four_names_the_four_classes_and_the_module(self):
         text = SKILL.read_text()
@@ -774,8 +784,16 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         # round 9: the policy read before the listing, no exemption while it is false, the daily row's grammar
         self.assertIn("grants no exemption while it is false", row)
         self.assertIn("U613", row)
-        self.assertIn("`validators sha256 <8 hex> <8 hex>`", row)
-        self.assertIn("read again right before the merge write", row)
+        # round 10: GitHub's matching, the three digests and the artifacts, the window at the lever's last read
+        # (prettier drops the spaces around inline code in the table, so the words are asserted apart)
+        self.assertIn("`~DEFAULT_BRANCH`, `~ALL`", row)
+        self.assertIn("`refs/heads/ma*`", row)
+        self.assertIn("no exclude pattern matching it", row)
+        self.assertIn("`validators sha256 <8 hex> <8 hex> <8 hex>`", row)
+        self.assertIn("`artifacts sha256 <8 hex> <8 hex>`", row)
+        self.assertIn("read again right before the merge request", row)
+        self.assertIn("within 24 hours at the lever's last read before the merge request", row)
+        self.assertNotIn("within the last 24 hours", row)
 
     def test_the_lever_s_comments_describe_the_listing_as_it_is(self):
         """The lever's header and the three functions' descriptions name the jq form, the reader's form, the one
@@ -814,6 +832,14 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("recheck_daily_sweep", text)
         self.assertIn("daily_row_fields", text)
         self.assertIn("validators_pin_probe", text)
+        # round 10: GitHub's matching named with its function, the seven fields, the window at the last read
+        self.assertIn("ref_pattern_matches", text)
+        self.assertIn("`~DEFAULT_BRANCH` matching the default branch, `~ALL` every", text)
+        self.assertIn("within 24 hours at the lever's last read before the merge request", text)
+        self.assertIn(
+            "validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>", text
+        )
+        self.assertNotIn("validators sha256 <8 hex> <8 hex>; recorded", text, "the round-9 six-field form is gone")
         self.assertIn("`required cap`", text)
         self.assertIn("`daily-sweeps.tsv`", text)
         self.assertIn("`ledger-row.py daily`", text)

@@ -496,7 +496,7 @@
       "target": ".local/bin/common/ledger-row.py",
       "kind": "file",
       "executable": true,
-      "sha256": "7b6ea0adbef381e2ff8a33e3fe5ccbf922f21c08ff44c87d2de65f34df3ba9c6"
+      "sha256": "91a0522d3ee9a35217368e59b773eed7c13119cc6ddf46f3808168256cb1b5ae"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -531,7 +531,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "ad24e691d60ba09636d01f879abe352bae4bac22e934167b89a8b33366f2b1db"
+      "sha256": "63a420dd45b2132232f2f1dd6e8a6a1c6d80718221801ffbbe7d76f8ccaf27ce"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -713,7 +713,7 @@
       "target": ".local/bin/common/ledger.py",
       "kind": "file",
       "executable": false,
-      "sha256": "ae502dc19a36a3743b984a6ac4c40c4c9826c7cc32e12dc076f5ffc6d931f027"
+      "sha256": "f7fd0eec1441f7267af67ecb9825cc9f5cf8163904f2e5c871a6317d8f197a54"
     },
     {
       "source": "home/dot_local/bin/common/sweep-scope.py",

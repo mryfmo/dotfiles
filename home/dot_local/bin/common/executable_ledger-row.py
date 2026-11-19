@@ -49,15 +49,22 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so a delayed
   recording granted a fresh window), head main's head the sweep ran at, verifier as the `sweep` kind composes it
   (`security-audit-skill <pin8> (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`), evidence the
-  daily row's own six fields in this order (round 9, the grammar `ledger.parse_daily` requires field by field, so a
-  row of a unit's sweep shape is a malformed store, never a daily row): `<findings>; <count> findings;
-  validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex>; recorded <ts>`,
-  with the findings path a regular file of this user under the store that the writer opens itself (round 6:
-  `O_NOFOLLOW`, `fstat` a regular file of this uid, strict UTF-8, JSON, a list whose every element is an object, else
-  a refusal naming the file; `<count>` is that list's length and `--count` is gone from this kind), the two PASS words
-  earned (round 7) by running the installed skill's two validators itself, `validate-findings.cjs` over the findings
-  file and `validate-coverage-ledger.cjs` over the `coverage-ledger.json` beside it: since round 9 each validator and
-  the `report-schema.json` that `validate-findings.cjs` loads from its own directory is read from the manifest's
+  daily row's own seven fields in this order (round 9, the grammar `ledger.parse_daily` requires field by field, so a
+  row of a unit's sweep shape is a malformed store, never a daily row; round 10 added the schema's digest and the
+  artifacts field): `<findings>; <count> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS;
+  validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>`, with the findings path
+  a regular file of this user under the store and the `coverage-ledger.json` beside it the same, both of which the
+  writer opens itself (round 6: `O_NOFOLLOW`, `fstat` a regular file of this uid; round 10, verdict U597-67e1eea8 P2
+  at :574: round 9 counted the findings from one read, then had node reopen the two files by pathname and recorded no
+  digest of them, so a concurrent replacement left the count and the PASS words attesting other bytes than the
+  evidence named) and copies into the same private directory as the validators, hashes each copy (sha256), counts the
+  findings from the copy (strict UTF-8, JSON, a list whose every element is an object, else a refusal naming the
+  file; `<count>` is that list's length and `--count` is gone from this kind) and runs the validators over the
+  copies, so the count, the PASS words and `artifacts sha256 <8 hex> <8 hex>` (the first 8 hex of the findings copy's
+  and the coverage ledger copy's digests, in that order) attest one set of bytes; the two PASS words earned (round 7)
+  by running the installed skill's two validators itself, `validate-findings.cjs` over the findings copy and
+  `validate-coverage-ledger.cjs` over the coverage ledger copy: since round 9 each validator and the
+  `report-schema.json` that `validate-findings.cjs` loads from its own directory is read from the manifest's
   `assets.security-audit-skill` install `~/.agents/skills/security-audit` alone (round 8: `--skill-dir` is gone; each
   file is reached from `HOME` through real directories, no component a symlink, opened with no link followed, a
   regular file of this user), copied into a private directory the writer makes under TMPDIR (`tempfile.mkdtemp`,
@@ -70,10 +77,12 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   cannot be made or hashed is a refusal naming the file and, for a digest, both digests, with nothing written; each
   validator runs from `/` with the environment reduced to PATH, stdin closed and a timeout, its status read, and no
   `node` on PATH, a missing coverage ledger or a validator exiting non-zero is a refusal naming the validator's first
-  stderr line with nothing written; `validators sha256 <8 hex> <8 hex>` the first 8 hex of the two validator pins
-  the copies were held to, in the order validate-findings.cjs, validate-coverage-ledger.cjs (round 9: `pr-merge.sh`
-  compares them with the manifest's pins, so a row whose validators were checked against other digests admits no
-  exemption); `recorded <ts>` the clock at the write). The task is the coordinator's daily dispatch id alone,
+  stderr line with nothing written; `validators sha256 <8 hex> <8 hex> <8 hex>` the first 8 hex of the three pins the
+  copies were held to, in the order validate-findings.cjs, validate-coverage-ledger.cjs, report-schema.json (round 9:
+  `pr-merge.sh` compares them with the manifest's pins, so a row whose validators were checked against other digests
+  admits no exemption; round 10, verdict U597-67e1eea8 P2 at :575: the schema's pin too, since a row validated under
+  another schema still authorised an exemption while the validator scripts were unchanged); `recorded <ts>` the
+  clock at the write). The task is the coordinator's daily dispatch id alone,
   `daily-<YYYY-MM-DD>` (round 8, verdict U597-a28e4793 P2 at :468: a unit id was accepted, so an ordinary unit's sweep
   could stand as the day's full sweep of main's head; a unit's sweep is a `sweep` row of the ledger, never a daily
   row), whose day is the UTC day `--swept-at` falls on or the day before it (round 9, verdict U597-c37800e3 P2 at
@@ -242,7 +251,10 @@ SWEPT_AT_MAX_AGE = 86400
 # validators `require` node's builtins alone besides), are each copied into a private directory of this writer,
 # hashed as the copy against the manifest pin `assets.security-audit-skill.validators_sha256.<file>`, and node runs
 # the copies, so what is hashed is what runs. VALIDATOR_FILES names the pinned set; VALIDATORS pairs each validator
-# with the file it runs over, the findings file the row names and the coverage ledger beside it.
+# with the file it runs over, the findings file the row names and the coverage ledger beside it; ARTIFACTS names those
+# two in the order the row's `artifacts sha256` field spells them (round 10, verdict U597-67e1eea8 P2 at :574: the
+# writer copies them into the same private directory, hashes the copies, counts from the findings copy and runs the
+# validators over the copies, so the count, the PASS words and the digests attest one set of bytes).
 SKILL_DIR = "~/.agents/skills/security-audit"
 SKILL_PARTS = (".agents", "skills", "security-audit")
 VALIDATORS_KEY = "validators_sha256"
@@ -250,6 +262,7 @@ COVERAGE_LEDGER = "coverage-ledger.json"
 SCHEMA = "report-schema.json"
 VALIDATORS = (("validate-findings.cjs", "findings.json"), ("validate-coverage-ledger.cjs", COVERAGE_LEDGER))
 VALIDATOR_FILES = ("validate-findings.cjs", "validate-coverage-ledger.cjs", SCHEMA)
+ARTIFACTS = (("findings.json", "the findings file"), (COVERAGE_LEDGER, "the coverage ledger"))
 # A sibling a validator loads from its own directory (round 9): a relative `require("./x")` or a `path.join(__dirname,
 # "x")`; every such file must be one of VALIDATOR_FILES, pinned and copied beside the validator, else the copy would
 # load a file no pin holds (or find none) and the writer refuses by name.
@@ -544,14 +557,15 @@ def sweep_verifier(args):
 
 def daily_row(args, store):
     """`daily` (U597 round 4): the one row of `daily-sweeps.tsv`, main's head the sweep ran at, the verifier of the
-    `sweep` kind, the evidence the daily row's own six fields (round 9; `ledger.parse_daily` requires each): the
-    findings file (a regular file under the store, read for the count; round 6), the count, the two validators' PASS
-    words earned by running the installed skill's two validators from private copies held to their manifest pins
-    (round 7, round 8, round 9) over the findings file and the coverage ledger beside it, the first 8 hex of the two
-    validator pins the copies were held to, and the recording time; the ts the sweep's own, `--swept-at` (round 6);
-    the task the coordinator's daily id `daily-<YYYY-MM-DD>` alone, its day the UTC day `--swept-at` falls on or the
-    day before it (round 8: a unit id is refused naming the grammar; round 9: the id is fixed at dispatch and a sweep
-    that crosses midnight keeps it, so another day is refused naming both days)."""
+    `sweep` kind, the evidence the daily row's own seven fields (round 9, round 10; `ledger.parse_daily` requires
+    each): the findings file (a regular file under the store), the count read from the writer's private copy of it
+    (round 6, round 10), the two validators' PASS words earned by running the installed skill's two validators from
+    private copies held to their manifest pins (round 7, round 8, round 9) over the private copies of the findings
+    file and the coverage ledger beside it (round 10), the first 8 hex of the three pins the validator copies were
+    held to, the first 8 hex of the two artifact copies' digests, and the recording time; the ts the sweep's own,
+    `--swept-at` (round 6); the task the coordinator's daily id `daily-<YYYY-MM-DD>` alone, its day the UTC day
+    `--swept-at` falls on or the day before it (round 8: a unit id is refused naming the grammar; round 9: the id is
+    fixed at dispatch and a sweep that crosses midnight keeps it, so another day is refused naming both days)."""
     check_head(args.head)
     match = DAILY_TASK.match(args.task)
     if match is None:
@@ -570,11 +584,18 @@ def daily_row(args, store):
         )
     verifier = sweep_verifier(args)
     findings_path = store_file(store, args.findings, "findings path")
-    count = findings_count(findings_path, args.findings)
-    pins = run_validators(args, store, findings_path)
-    digests = " ".join(pins[validator][:8] for validator, _ in VALIDATORS)
+    count, pins, artifacts = run_validators(args, store, findings_path)
+    validator_digests = " ".join(pins[name][:8] for name in VALIDATOR_FILES)
+    artifact_digests = " ".join(artifacts[name][:8] for name, _ in ARTIFACTS)
     evidence = ledger.DAILY_SEPARATOR.join(
-        (args.findings, f"{count} findings", *ledger.DAILY_PASSES, f"validators sha256 {digests}", f"recorded {now()}")
+        (
+            args.findings,
+            f"{count} findings",
+            *ledger.DAILY_PASSES,
+            f"validators sha256 {validator_digests}",
+            f"artifacts sha256 {artifact_digests}",
+            f"recorded {now()}",
+        )
     )
     return ledger.DailyRow(swept_at, args.head, verifier, evidence, 0, args.swept_at)
 
@@ -630,10 +651,11 @@ def skill_file(home, name):
 
 
 def private_directory():
-    """A private directory for the validators' copies (round 9): `tempfile.mkdtemp` under `TMPDIR` (`/tmp` when
-    unset or empty, as pr-merge.sh's reader_copies_make chooses it; the directory is named, so tempfile probes no
-    candidate of its own), mode 0700 (mkdtemp's own, set again), a directory of this user; a failure is a refusal
-    naming the place, and the caller removes the directory on every exit."""
+    """A private directory for the validators' copies (round 9) and the artifacts' (round 10): `tempfile.mkdtemp`
+    under `TMPDIR` (the system temporary directory when unset or empty, as pr-merge.sh's reader_copies_make chooses
+    it; the directory is named, so tempfile probes no candidate of its own), mode 0700 (mkdtemp's own, set again), a
+    directory of this user; a failure is a refusal naming the place, and the caller removes the directory on every
+    exit."""
     base = os.environ.get("TMPDIR") or "/tmp"
     try:
         directory = tempfile.mkdtemp(prefix=PRIVATE_PREFIX, dir=base)
@@ -646,12 +668,11 @@ def private_directory():
     return directory
 
 
-def pinned_copy(home, name, pins, manifest, directory):
-    """The installed skill file `name` (skill_file) copied into the private `directory` as a new file of mode 0600,
-    the copy read back and hashed, and its sha256 held to the manifest pin `validators_sha256.<name>` (round 9): what
-    is hashed is what node runs. A copy that cannot be made, written whole or hashed is a refusal naming the file;
-    a differing digest is a refusal naming the file and both digests. Returns (copy, bytes)."""
-    path, data = skill_file(home, name)
+def private_copy(directory, name, data, what, why):
+    """`data` written into the private `directory` as the new file `name` of mode 0600 (`O_EXCL`, no link followed),
+    whole, then read back: the bytes read back are what is hashed and what node reads (round 9; round 10 for the
+    artifacts). A copy that cannot be made, written whole or read back is a refusal naming `what` (the file as the
+    refusals name it) and ending in `why`, with nothing written. Returns (copy, bytes read back)."""
     copy = os.path.join(directory, name)
     try:
         descriptor = os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
@@ -668,10 +689,23 @@ def pinned_copy(home, name, pins, manifest, directory):
         with open(copy, "rb") as handle:
             copied = handle.read()
     except OSError as error:
-        refuse(
-            f"cannot copy the validator file {path} into {directory}: {error.strerror or error}; the validators run "
-            "from copies held to their pins alone, so nothing is written"
-        )
+        refuse(f"cannot copy {what} into {directory}: {error.strerror or error}; {why}")
+    return copy, copied
+
+
+def pinned_copy(home, name, pins, manifest, directory):
+    """The installed skill file `name` (skill_file) copied into the private `directory` (private_copy), the copy
+    hashed, and its sha256 held to the manifest pin `validators_sha256.<name>` (round 9): what is hashed is what node
+    runs. A copy that cannot be made, written whole or hashed is a refusal naming the file; a differing digest is a
+    refusal naming the file and both digests. Returns (copy, bytes)."""
+    path, data = skill_file(home, name)
+    copy, copied = private_copy(
+        directory,
+        name,
+        data,
+        f"the validator file {path}",
+        "the validators run from copies held to their pins alone, so nothing is written",
+    )
     digest = hashlib.sha256(copied).hexdigest()
     if digest != pins[name]:
         refuse(
@@ -680,6 +714,23 @@ def pinned_copy(home, name, pins, manifest, directory):
             "not the pinned one, so nothing is written"
         )
     return copy, copied
+
+
+def artifact_copy(path, relative, label, directory, name):
+    """The findings file or the coverage ledger `relative` (`path` under the store, already held by store_file's path
+    rule; `label` names it in the refusals) read whole as artifact_bytes reads it, copied into the private
+    `directory` as `name` (private_copy) and the copy hashed (round 10, verdict U597-67e1eea8 P2 at :574: the count,
+    the PASS words and the digests the row records are all of the copy's bytes, so a file replaced under the store
+    after the read changes nothing the row attests). Returns (copy, bytes read back, sha256 hex)."""
+    data = artifact_bytes(path, relative, label)
+    copy, copied = private_copy(
+        directory,
+        name,
+        data,
+        f"{label} {relative}",
+        "the row attests the bytes of the copies alone, so nothing is written",
+    )
+    return copy, copied, hashlib.sha256(copied).hexdigest()
 
 
 def sibling_check(path, data):
@@ -700,18 +751,25 @@ def run_validators(args, store, findings_path):
     at daily_row: the statement was the coordinator's word after a JSON-shape check, so a findings set without the
     skill's required fields backed a daily exemption), each held to its pin first (round 8; the round-7 P2 at :489:
     `--skill-dir` took the validators from any directory, so a passing exit established nothing of the pinned
-    validators), and since round 9 run from private copies (the round-8 P2 at :654: node reopened the installed path
+    validators), since round 9 run from private copies (the round-8 P2 at :654: node reopened the installed path
     after the hash and loaded `report-schema.json` from the installation directory unhashed, so a concurrent skill
-    update could make the writer record a pass for bytes outside the checked installation). The manifest's three
-    `assets.security-audit-skill.validators_sha256` pins are read (manifest_validator_pins); `node` is the first on
-    PATH (`shutil.which`); the coverage ledger is `coverage-ledger.json` beside the findings file, under the store's
-    path rule; then, in a private directory of this writer (private_directory, removed on every exit), each file of
-    VALIDATOR_FILES is read from the installed skill alone (skill_file), copied, and the copy hashed against its pin
-    (pinned_copy), each validator copy is scanned for a sibling it loads that has no pin (sibling_check), and each
-    validator then runs as `node <copy> <file>` from VALIDATOR_CWD with the environment reduced to PATH, stdin closed
-    and a VALIDATOR_TIMEOUT, its status read: a node that cannot run, a run that expires, or an exit other than 0 is a
-    refusal naming the validator, the file and the validator's first stderr line, and nothing is written. Returns
-    the pins the copies were held to, `{validator: digest}`, which the row records as `validators sha256 <8> <8>`."""
+    update could make the writer record a pass for bytes outside the checked installation), and since round 10 over
+    private copies of the files they validate (the round-9 P2 at :574: the count came from one read and node reopened
+    the two files by pathname, so a concurrent replacement left the count and the PASS words attesting other bytes
+    than the evidence named). The manifest's three `assets.security-audit-skill.validators_sha256` pins are read
+    (manifest_validator_pins); `node` is the first on PATH (`shutil.which`); the coverage ledger is
+    `coverage-ledger.json` beside the findings file, under the store's path rule; then, in a private directory of this
+    writer (private_directory, removed on every exit), the findings file and the coverage ledger are each read,
+    copied and the copy hashed (artifact_copy), the findings are counted from the findings copy (findings_count),
+    each file of VALIDATOR_FILES is read from the installed skill alone (skill_file), copied, and the copy hashed
+    against its pin (pinned_copy), each validator copy is scanned for a sibling it loads that has no pin
+    (sibling_check), and each validator then runs as `node <validator copy> <artifact copy>` from VALIDATOR_CWD with
+    the environment reduced to PATH, stdin closed and a VALIDATOR_TIMEOUT, its status read: a node that cannot run, a
+    run that expires, or an exit other than 0 is a refusal naming the validator, the file (by its store path) and the
+    validator's first stderr line, and nothing is written. Returns (the count, the pins the validator copies were
+    held to as `{file: digest}` over VALIDATOR_FILES, the artifact copies' digests as `{name: digest}` over
+    ARTIFACTS), which the row records as `<n> findings`, `validators sha256 <8> <8> <8>` and `artifacts sha256 <8>
+    <8>`."""
     manifest, lines = manifest_lines()
     pins = manifest_validator_pins(manifest, lines)
     home = os.environ.get("HOME", "")
@@ -721,7 +779,7 @@ def run_validators(args, store, findings_path):
             "no node on PATH; the skill's validators run under it, and the daily row states a validator's PASS only after it ran"
         )
     directory = args.findings.rsplit("/", 1)[0]
-    targets = {
+    sources = {
         "findings.json": (findings_path, args.findings),
         COVERAGE_LEDGER: (
             store_file(store, f"{directory}/{COVERAGE_LEDGER}", "coverage ledger path"),
@@ -730,14 +788,16 @@ def run_validators(args, store, findings_path):
     }
     private = private_directory()
     try:
+        artifacts = {name: artifact_copy(*sources[name], label, private, name) for name, label in ARTIFACTS}
+        count = findings_count(artifacts["findings.json"][1], args.findings)
         copies = {name: pinned_copy(home, name, pins, manifest, private) for name in VALIDATOR_FILES}
         for validator, _ in VALIDATORS:
             sibling_check(os.path.join(home, *SKILL_PARTS, validator), copies[validator][1])
         for validator, target in VALIDATORS:
-            path, relative = targets[target]
+            relative = sources[target][1]
             try:
                 run = subprocess.run(
-                    [node, copies[validator][0], path],
+                    [node, copies[validator][0], artifacts[target][0]],
                     cwd=VALIDATOR_CWD,
                     env={"PATH": os.environ.get("PATH", "")},
                     stdin=subprocess.DEVNULL,
@@ -755,7 +815,7 @@ def run_validators(args, store, findings_path):
                 refuse(f"{validator} exited {run.returncode} on {relative}: {reason}; nothing is written")
     finally:
         shutil.rmtree(private, ignore_errors=True)
-    return {validator: pins[validator] for validator, _ in VALIDATORS}
+    return count, {name: pins[name] for name in VALIDATOR_FILES}, {name: artifacts[name][2] for name, _ in ARTIFACTS}
 
 
 def check_swept_at(text):
@@ -802,39 +862,47 @@ def json_kind(value):
     return "an object"
 
 
-def findings_count(path, relative):
-    """The count of the findings file a daily row names (round 6; the round-5 P2 at daily_row: the writer stated
-    `<count> findings` and two validator passes after checking that the file existed, so invalid or truncated JSON
-    backed a daily exemption): `path`, already held by store_file's path rule, is opened `O_RDONLY | O_NOFOLLOW`
-    (the open itself follows no link at the end), its descriptor `fstat`ed a regular file of this user, read whole,
-    decoded as strict UTF-8, parsed as JSON, and held to a list whose every element is an object (the skill's
-    findings set); the list's length is the count the evidence states. Any other outcome is a refusal naming the
-    file: the writer states no count it did not read."""
+def artifact_bytes(path, relative, label):
+    """The bytes of the findings file or the coverage ledger a daily row names (round 6 for the findings file; round
+    10 for both, the copies): `path`, already held by store_file's path rule, is opened `O_RDONLY | O_NOFOLLOW` (the
+    open itself follows no link at the end), its descriptor `fstat`ed a regular file of this user, and read whole.
+    Any other outcome is a refusal naming the file by `label` and `relative`: the writer states nothing of bytes it
+    did not read."""
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError as error:
-        refuse(f"cannot open the findings file {relative}: {error.strerror}")
+        refuse(f"cannot open {label} {relative}: {error.strerror}")
     chunks = []
     try:
         status = os.fstat(descriptor)
         if not stat.S_ISREG(status.st_mode):
-            refuse(f"the findings file {relative} is not a regular file")
+            refuse(f"{label} {relative} is not a regular file")
         if status.st_uid != os.geteuid():
-            refuse(f"the findings file {relative} is not this user's (owned by uid {status.st_uid}); it is not read")
+            refuse(f"{label} {relative} is not this user's (owned by uid {status.st_uid}); it is not read")
         while True:
             chunk = os.read(descriptor, 1 << 16)
             if not chunk:
                 break
             chunks.append(chunk)
     except OSError as error:
-        refuse(f"cannot read the findings file {relative}: {error.strerror}")
+        refuse(f"cannot read {label} {relative}: {error.strerror}")
     finally:
         try:
             os.close(descriptor)
         except OSError:
             pass
+    return b"".join(chunks)
+
+
+def findings_count(data, relative):
+    """The count of the findings file a daily row names, from the bytes of the writer's copy of it (round 6; the
+    round-5 P2 at daily_row: the writer stated `<count> findings` and two validator passes after checking that the
+    file existed, so invalid or truncated JSON backed a daily exemption; round 10: the bytes are the copy's, the same
+    the validators read): decoded as strict UTF-8, parsed as JSON, and held to a list whose every element is an
+    object (the skill's findings set); the list's length is the count the evidence states. Any other outcome is a
+    refusal naming the file: the writer states no count it did not read."""
     try:
-        text = b"".join(chunks).decode("utf-8")
+        text = data.decode("utf-8")
     except UnicodeDecodeError as error:
         refuse(f"the findings file {relative} is not UTF-8: {error.reason}")
     try:
@@ -913,11 +981,12 @@ def parser():
     sweep.add_argument("--pr", help="the pull request swept; the pr cell stays '-'")
     daily = kind(
         "daily",
-        "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger; its ts is --swept-at, its "
-        "count is read from the findings file, and the installed skill's validators and report-schema.json "
-        "(~/.agents/skills/security-audit, each copied into a private directory and the copy hashed against its "
-        "assets.security-audit-skill.validators_sha256 pin of ~/.agents/agent-config.yaml) must pass over the file "
-        "and the coverage ledger beside it; the row records the two validator digests",
+        "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger; its ts is --swept-at; the "
+        "findings file and the coverage ledger beside it are copied into a private directory, the copies hashed and "
+        "the count read from the findings copy, and the installed skill's validators and report-schema.json "
+        "(~/.agents/skills/security-audit, each copied beside them and the copy hashed against its "
+        "assets.security-audit-skill.validators_sha256 pin of ~/.agents/agent-config.yaml) must pass over the two "
+        "copies; the row records the three validator digests and the two artifact digests",
         pr=False,
         unit=False,
     )

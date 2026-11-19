@@ -137,12 +137,19 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         self.assertNotIn("--manifest", text, "the writer reads the deployed manifest alone (round 9)")
         acceptance = text[text.index("\nACCEPTANCE\n") : text.index("\nVERIFY\n")]
         self.assertIn(porcelain, acceptance)
-        self.assertIn("then runs the installed skill's two validators itself over the two copies", text)
         self.assertIn(
-            "so the row's `validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>"
-            " <8 hex>` fields are the writer's own result, not this RESULT's word",
+            "the writer copies the two files into a private directory of its own and hashes the copies, reads the"
+            " findings copy for the count (a JSON list of objects, else refused), then runs the installed skill's two"
+            " validators itself over those copies",
             text,
         )
+        self.assertIn(
+            "so the row's `validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>"
+            " <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>` fields are the writer's own result over the bytes it"
+            " copied, not this RESULT's word",
+            text,
+        )
+        self.assertNotIn("validators sha256 <8 hex> <8 hex>`", text, "the round-9 two-digest field is gone (round 10)")
         self.assertNotIn("`validators pass`", text, "the round-6 word is gone from the template (round 9)")
         self.assertIn(
             "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "

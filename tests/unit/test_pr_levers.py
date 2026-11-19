@@ -1405,17 +1405,20 @@ def ruleset_answer(
     }
 
 
-# The two validator pins of the manifest (round 9): a daily row's `validators sha256 <8 hex> <8 hex>` field carries
-# their first 8 hex, and the lever requires each to be a prefix of its pin.
+# The three validator pins of the manifest (round 9; round 10 added report-schema.json's): a daily row's `validators
+# sha256 <8 hex> <8 hex> <8 hex>` field carries their first 8 hex, and the lever requires each to be a prefix of its
+# pin. The artifact digests (round 10) are the writer's own, any 8 hex to the lever, which holds them by shape alone.
+VALIDATOR_FILES = ("validate-findings.cjs", "validate-coverage-ledger.cjs", "report-schema.json")
 VALIDATOR_PINS = {
     name: re.search(
         rf"^      {re.escape(name)}: ([0-9a-f]{{64}})$",
         (ROOT / "home/dot_agents/agent-config.yaml").read_text(),
         re.MULTILINE,
     ).group(1)
-    for name in ("validate-findings.cjs", "validate-coverage-ledger.cjs")
+    for name in VALIDATOR_FILES
 }
-DIGESTS8 = f"{VALIDATOR_PINS['validate-findings.cjs'][:8]} {VALIDATOR_PINS['validate-coverage-ledger.cjs'][:8]}"
+DIGESTS8 = " ".join(VALIDATOR_PINS[name][:8] for name in VALIDATOR_FILES)
+ARTIFACTS8 = "0a1b2c3d 4e5f6a7b"
 
 
 def daily_verifier(task="daily-2026-11-19", seat="sweep-3", run=170):
@@ -1424,18 +1427,21 @@ def daily_verifier(task="daily-2026-11-19", seat="sweep-3", run=170):
     return f"security-audit-skill {PIN8} (full audit mode on the srt worker seat {seat}, run-{run}; TASK {task})"
 
 
-def daily_evidence(path=DAILY_FINDINGS, count=0, digests=DIGESTS8, recorded="2026-11-19T01:05:00Z"):
-    """The evidence of a daily row as ledger-row.py daily writes it (round 9): its six `; `-separated fields."""
+def daily_evidence(
+    path=DAILY_FINDINGS, count=0, digests=DIGESTS8, artifacts=ARTIFACTS8, recorded="2026-11-19T01:05:00Z"
+):
+    """The evidence of a daily row as ledger-row.py daily writes it (round 9; round 10): its seven `; `-separated
+    fields."""
     return (
         f"{path}; {count} findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
-        f"validators sha256 {digests}; recorded {recorded}"
+        f"validators sha256 {digests}; artifacts sha256 {artifacts}; recorded {recorded}"
     )
 
 
 def daily_row(head=SHA_B, age=3600, verifier=None, evidence=None, ts=None):
     """One row of `daily-sweeps.tsv` as ledger-row.py daily writes it: the ts `age` seconds before now (or `ts` as
     given), main's head, the skill and its pin word with the seat, the run and the task of the ts's day, and the
-    evidence's six fields (round 9), the findings file under the store first."""
+    evidence's seven fields (round 9, round 10), the findings file under the store first."""
     if ts is None:
         ts = (datetime.now(timezone.utc) - timedelta(seconds=age)).strftime("%Y-%m-%dT%H:%M:%SZ")
     if verifier is None:
@@ -4283,10 +4289,11 @@ class PrMergeTest(PrLeverTestCase):
         no number, an enforcement that is none of GitHub's three, a `strict_required_status_checks_policy` that is a
         string, a number or null (the jq's own error naming the type), two `required_status_checks` rules in one
         ruleset and a default-branch ruleset without the rule are each exit 1 with no merge, no compare and no CI
-        read, before the tip read. A ruleset counts only when active, a branch ruleset, and on the default branch
-        (`~DEFAULT_BRANCH` or `refs/heads/main`, not excluded): a strict ruleset on `refs/heads/release`, one in
-        `evaluate` enforcement, one excluding main and a tag ruleset (never read) leave the policy false beside a
-        non-strict main ruleset, while a strict ruleset naming `refs/heads/main` itself turns it true."""
+        read, before the tip read. A ruleset counts only when active, a branch ruleset, and applying to the default
+        branch (round 10: an include pattern matching `refs/heads/main` and no exclude pattern matching it): a strict
+        ruleset on `refs/heads/release`, one in `evaluate` enforcement, one excluding main and a tag ruleset (never
+        read) leave the policy false beside a non-strict main ruleset, while a strict ruleset naming `refs/heads/main`
+        itself turns it true."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
         docs = files_listing("docs/plan.md")
         checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -4377,8 +4384,8 @@ class PrMergeTest(PrLeverTestCase):
         self.github(paths=docs, ruleset_json={**base, "rules": [{"type": "deletion"}]})
         failed(
             self.merge(),
-            "no active branch ruleset on main (its conditions naming ~DEFAULT_BRANCH or refs/heads/main; listed:"
-            f" {RULESET_ID}) holds a required_status_checks rule",
+            "no active branch ruleset applying to refs/heads/main (an include pattern matching it, ~DEFAULT_BRANCH, ~ALL"
+            f" or a glob, and no exclude pattern matching it; applying: {RULESET_ID}) holds a required_status_checks rule",
         )
         # conditions of another shape
         self.github(paths=docs, ruleset_json={**base, "conditions": {"ref_name": {"include": "~DEFAULT_BRANCH"}}})
@@ -4449,6 +4456,98 @@ class PrMergeTest(PrLeverTestCase):
         self.github(paths=docs, rulesets=(ruleset_summary(), ruleset_summary(7, "unreadable")))
         failed(self.merge(), "cannot read ruleset 7 (gh api repos/{owner}/{repo}/rulesets/7)")
 
+    def test_a_ruleset_applies_to_main_by_github_s_include_and_exclude_matching(self):
+        """U597 round 10 (verdict U597-67e1eea8 P1 at pr-merge.sh:921): round 9 compared each include and exclude
+        entry with the two literals `~DEFAULT_BRANCH` and `refs/heads/main` alone, so a ruleset including
+        `~DEFAULT_BRANCH` and excluding `refs/heads/main` counted (GitHub applies it to no branch named main) and a
+        glob never did, and a strict rule that did not apply to main could grant the exemption without the
+        server-side protection it rests on. A ruleset applies to main the way GitHub decides it: some
+        `conditions.ref_name.include` pattern matches `refs/heads/main` and no `exclude` pattern does,
+        `~DEFAULT_BRANCH` the default branch, `~ALL` every branch, any other pattern an fnmatch glob over the full ref
+        name (`**` across `/`). Beside a non-strict main ruleset, a strict ruleset including `~DEFAULT_BRANCH` and
+        excluding `refs/heads/main` counts nothing (the P1 case: the policy reads false, the per-head sweep stands
+        naming U613, the daily file is not read); one including `refs/heads/ma*` counts, one including `~ALL`
+        counts, one including `refs/heads/**` counts (the policy true, the docs head merges on the daily row with
+        the skip line); one including another branch does not count, an exclude glob that matches main
+        (`refs/heads/m*`) removes a ruleset including `~ALL`, and an exclude glob matching another branch alone
+        removes nothing; the lever spells the match in bash's own pattern with `**` turned into `*`."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        docs = files_listing("docs/plan.md")
+        policy_false = (
+            "strict_required_status_checks_policy false (active ruleset(s) on main with a required_status_checks"
+            f" rule: {RULESET_ID})"
+        )
+        policy_true = (
+            "strict_required_status_checks_policy true (active ruleset(s) on main with a required_status_checks"
+            f" rule: {RULESET_ID}, 7)"
+        )
+        for name, extra, expected in (
+            (
+                "including ~DEFAULT_BRANCH and excluding refs/heads/main (the P1 case)",
+                ruleset_answer(7, strict=True, include=("~DEFAULT_BRANCH",), exclude=("refs/heads/main",)),
+                policy_false,
+            ),
+            (
+                "an include glob refs/heads/ma*",
+                ruleset_answer(7, strict=True, include=("refs/heads/ma*",)),
+                policy_true,
+            ),
+            ("~ALL", ruleset_answer(7, strict=True, include=("~ALL",)), policy_true),
+            (
+                "an include naming another branch",
+                ruleset_answer(7, strict=True, include=("refs/heads/release",)),
+                policy_false,
+            ),
+            ("refs/heads/**", ruleset_answer(7, strict=True, include=("refs/heads/**",)), policy_true),
+            (
+                "an exclude glob matching main",
+                ruleset_answer(7, strict=True, include=("~ALL",), exclude=("refs/heads/m*",)),
+                policy_false,
+            ),
+            (
+                "an exclude glob matching another branch alone",
+                ruleset_answer(7, strict=True, include=("~ALL",), exclude=("refs/heads/release/**",)),
+                policy_true,
+            ),
+        ):
+            with self.subTest(name):
+                if expected == policy_false:
+                    self.daily(text="not a daily file\n")  # not read while the policy is false
+                else:
+                    self.daily(daily_row())
+                self.github(
+                    paths=docs,
+                    strict=False,
+                    rulesets=(ruleset_summary(), ruleset_summary(7, "by pattern")),
+                    rulesets_extra=(extra,),
+                )
+                run = self.merge()
+                self.assertIn(f"pr-merge.sh: ruleset: {expected}\n", run.stderr)
+                if expected == policy_false:
+                    self.assert_refused(run, "(U613)")
+                    self.assertNotIn("sweep: not required", run.stderr)
+                    self.assertNotIn("daily-sweeps.tsv", run.stderr, "the daily file is not read")
+                    self.assertEqual(self.writes(), [])
+                else:
+                    self.assertEqual(run.returncode, 0, run.stderr)
+                    self.assertIn(SKIP_LINE, run.stderr)
+                    self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+                self.calls.unlink()
+        # the lever spells the match: the two tilde words first, then bash's pattern with `**` turned into `*`
+        text = (LEVERS / "pr-merge.sh").read_text()
+        self.assertEqual(text.count("ref_pattern_matches() {"), 1)
+        self.assertIn("""    '~DEFAULT_BRANCH') [[ ${ref} == "refs/heads/${base}" ]] ;;""", text)
+        self.assertIn("    '~ALL') return 0 ;;", text)
+        self.assertIn("        [[ ${ref} == ${pattern//\\*\\*/\\*} ]]", text)
+        self.assertIn('            include) ! ref_pattern_matches "${value}" "${ref}" || includes=1 ;;', text)
+        self.assertIn('            exclude) ! ref_pattern_matches "${value}" "${ref}" || excluded=1 ;;', text)
+        self.assertIn('    local ref="refs/heads/${base}"', text)
+        self.assertNotIn(
+            """[[ ${value} == '~DEFAULT_BRANCH' || ${value} == "refs/heads/${base}" ]]""",
+            text,
+            "the round-9 literal compare is gone",
+        )
+
     def test_a_daily_row_of_a_unit_s_shape_or_with_other_validator_digests_admits_nothing(self):
         """U597 round 9 (verdict U597-c37800e3 P2 at ledger.py:393 and P2 at ledger-row.py:821): the daily reader
         applied the sweep row's grammar, so a recent row of a unit's shape (`TASK U9`, a pinned verifier, an existing
@@ -4493,15 +4592,30 @@ class PrMergeTest(PrLeverTestCase):
             (
                 "two evidence fields",
                 daily_row(evidence=f"{DAILY_FINDINGS}; 0 findings"),
-                f"{daily_file}:2: the evidence of a daily sweep row has 2 '; '-separated fields, not 6",
+                f"{daily_file}:2: the evidence of a daily sweep row has 2 '; '-separated fields, not 7",
             ),
             (
                 "no digests field",
                 daily_row(
                     evidence=f"{DAILY_FINDINGS}; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs"
-                    " PASS; validators pass; recorded 2026-11-19T01:05:00Z"
+                    f" PASS; validators pass; artifacts sha256 {ARTIFACTS8}; recorded 2026-11-19T01:05:00Z"
                 ),
-                f"{daily_file}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>'",
+                f"{daily_file}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'",
+            ),
+            (
+                "the round-9 two digests",
+                daily_row(evidence=daily_evidence(digests=DIGESTS8.rsplit(" ", 1)[0])),
+                f"{daily_file}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex> <8 hex>'",
+            ),
+            (
+                "the round-9 six fields, no artifacts",
+                daily_row(evidence=daily_evidence().replace(f"; artifacts sha256 {ARTIFACTS8}", "")),
+                f"{daily_file}:2: the evidence of a daily sweep row has 6 '; '-separated fields, not 7",
+            ),
+            (
+                "an artifacts field of one digest",
+                daily_row(evidence=daily_evidence(artifacts="0a1b2c3d")),
+                f"{daily_file}:2: field 6 of the evidence of a daily sweep row is not 'artifacts sha256 <8 hex> <8 hex>'",
             ),
             (
                 "a task day two days before the ts",
@@ -4542,12 +4656,31 @@ class PrMergeTest(PrLeverTestCase):
                 f"the daily sweep row of {ts} at main's head {SHA_B} names '{DAILY_FINDINGS}; 0 findings;"
                 " validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS' as its evidence, not the daily row's"
                 " own 'sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS;"
-                " validators sha256 <8 hex> <8 hex>; recorded <ts>' as ledger-row.py daily writes it",
+                " validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>' as"
+                " ledger-row.py daily writes it",
             ),
             (
                 "a digest of seven hex",
                 daily_verifier(f"daily-{ts[:10]}"),
-                daily_evidence(digests="e85f232 2eb280bd"),
+                daily_evidence(digests=f"e85f232 {DIGESTS8.split(' ', 1)[1]}"),
+                "as its evidence, not the daily row's own",
+            ),
+            (
+                "the round-9 two digests",
+                daily_verifier(f"daily-{ts[:10]}"),
+                daily_evidence(digests=DIGESTS8.rsplit(" ", 1)[0]),
+                "as its evidence, not the daily row's own",
+            ),
+            (
+                "an evidence without the artifacts",
+                daily_verifier(f"daily-{ts[:10]}"),
+                daily_evidence().replace(f"; artifacts sha256 {ARTIFACTS8}", ""),
+                "as its evidence, not the daily row's own",
+            ),
+            (
+                "an artifact digest of seven hex",
+                daily_verifier(f"daily-{ts[:10]}"),
+                daily_evidence(artifacts="0a1b2c3 4e5f6a7b"),
                 "as its evidence, not the daily row's own",
             ),
         ):
@@ -4559,23 +4692,38 @@ class PrMergeTest(PrLeverTestCase):
                 refused(self.merge(), message)
         self.reader.write_text((LEVERS / "ledger.py").read_text())
         self.pin_reader("ledger.py", self.reader)
-        # the digest prefixes are held to the manifest's pins: another prefix refuses naming the validator and both
+        # the digest prefixes are held to the manifest's pins: another prefix refuses naming the file and both
         findings_pin = VALIDATOR_PINS["validate-findings.cjs"]
         coverage_pin = VALIDATOR_PINS["validate-coverage-ledger.cjs"]
+        schema_pin = VALIDATOR_PINS["report-schema.json"]
         for name, digests, validator, digest, pin in (
-            ("findings", f"deadbeef {coverage_pin[:8]}", "validate-findings.cjs", "deadbeef", findings_pin),
-            ("coverage", f"{findings_pin[:8]} 0badf00d", "validate-coverage-ledger.cjs", "0badf00d", coverage_pin),
+            (
+                "findings",
+                f"deadbeef {coverage_pin[:8]} {schema_pin[:8]}",
+                "validate-findings.cjs",
+                "deadbeef",
+                findings_pin,
+            ),
+            (
+                "coverage",
+                f"{findings_pin[:8]} 0badf00d {schema_pin[:8]}",
+                "validate-coverage-ledger.cjs",
+                "0badf00d",
+                coverage_pin,
+            ),
+            ("schema", f"{findings_pin[:8]} {coverage_pin[:8]} 0badf00d", "report-schema.json", "0badf00d", schema_pin),
         ):
             with self.subTest(name):
                 row = daily_row(evidence=daily_evidence(digests=digests))
                 self.daily(row)
                 self.github(paths=docs)
+                held = "another schema" if validator == "report-schema.json" else "other pins"
                 refused(
                     self.merge(),
                     f"the daily sweep row of {row.split(chr(9))[0]} at main's head {SHA_B} names validators sha256"
                     f" {digest} for {validator}, which is not a prefix of the manifest's"
                     f" assets.security-audit-skill.validators_sha256.{validator} {pin} ({self.manifest_named}); the"
-                    " sweep's validators were held to other pins than the manifest's, or the row was written by hand",
+                    f" sweep's validators were held to {held} than the manifest's, or the row was written by hand",
                 )
         # a manifest without the pins refuses naming the key; with them the exact row merges
         manifest_text = self.manifest.read_text()
@@ -4602,9 +4750,16 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn(
             "daily_verifier_re='^security-audit-skill [0-9a-f]{8,} \\(full audit mode on the srt worker seat", text
         )
-        self.assertIn("validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}); recorded", text)
+        self.assertIn(
+            "validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}) ([0-9a-f]{8}); artifacts sha256 [0-9a-f]{8} [0-9a-f]{8}; recorded",
+            text,
+        )
         self.assertIn('[[ ${findings_pin} == "${findings_digest}"* ]] ||', text)
         self.assertIn('[[ ${coverage_pin} == "${coverage_digest}"* ]] ||', text)
+        self.assertIn('[[ ${schema_pin} == "${schema_digest}"* ]] ||', text)
+        self.assertIn(
+            'VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs", "report-schema.json")', text
+        )
         self.assertIn(
             '    sweep_row_fields "${subject}" "${daily_verifier}" "${daily_evidence}"\n    daily_row_fields "${subject}" "${daily_verifier}" "${daily_evidence}"\n',
             text,
@@ -4676,7 +4831,7 @@ class PrMergeTest(PrLeverTestCase):
         self.calls.unlink()
         # a row the recheck reads that is not the exact row refuses as the first read would
         broken = self.root / "broken-daily.tsv"
-        broken.write_text(DAILY_HEADER + daily_row(evidence=daily_evidence(digests="deadbeef deadbeef")))
+        broken.write_text(DAILY_HEADER + daily_row(evidence=daily_evidence(digests="deadbeef deadbeef deadbeef")))
         self.daily(row)
         wrap(f"cp {broken} {daily_file}")
         self.github(paths=docs)

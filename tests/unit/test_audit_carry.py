@@ -182,6 +182,74 @@ class AuditCarryTest(unittest.TestCase):
         self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
         self.assertEqual(run.stdout, f"carried {self.earlier} {third} {self.digest(third)}\n")
 
+    def merge_main(self, message):
+        """One merge of `main` into the current branch as GitHub's update-branch makes it (`pr-update-branch.sh`:
+        `gh pr update-branch`, a merge commit with two parents, never a rebase), dated like every fixture commit."""
+        self.clock += 1
+        date = f"{1761800000 + self.clock} +0000"
+        dated = GIT_ENV | {"GIT_AUTHOR_DATE": date, "GIT_COMMITTER_DATE": date}
+        self.git("merge", "-q", "--no-ff", "--no-edit", "-m", message, "main", env=dated)
+        return self.git("rev-parse", "HEAD")
+
+    def test_a_merge_of_main_into_the_branch_is_carried_and_a_second_commit_after_it_is_not(self):
+        """U620 (standing orders 59 and 60): after `pr-update-branch.sh` (GitHub's merge of main into the branch) the
+        coordinator audited and swept the new head again, six times on 2026-11-19, while its diff against main was the
+        audited commit's byte for byte. The merge head has two parents, the audited commit and main's moved tip; its
+        merge base with the moved `origin/main` is that tip, and the raw records of its diff from there are the
+        audited commit's own (the same old and new blobs at the same paths), so the digests are equal and the lever
+        prints the carried line for it. A second commit on the branch after the merge changes the diff, and that head
+        is refused naming the path; a move of main that touches the audited file changes the records too (the old
+        blob is main's new one, though the merge itself is clean), so that merge is refused as well: the carry is the
+        diff's, never the ancestry's."""
+        # main moves by another commit, and the base ref follows it as `origin/main` does after a fetch
+        moved = self.commit({"d.txt": "d\n"}, "main moves")
+        self.git("update-ref", "refs/remotes/origin/main", "main")
+        # the branch holds the one audited commit; GitHub merges main into it
+        self.git("switch", "-q", "-c", "update", self.earlier)
+        merged = self.merge_main("merge main into the branch, as pr-update-branch.sh does")
+        self.assertEqual(
+            self.git("rev-list", "--parents", "-n", "1", merged).split(),
+            [merged, self.earlier, moved],
+            "a merge commit of the audited commit and main's moved tip",
+        )
+        self.assertEqual(self.git("merge-base", "refs/remotes/origin/main", merged), moved)
+        run = self.carry(merged)
+        self.assertEqual((0, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(run.stdout, f"carried {self.earlier} {merged} {self.digest(merged)}\n")
+        self.assertEqual(self.digest(merged), self.digest(self.earlier), "the merge head's diff is the audited one")
+        # a second commit after the merge: the diff against main gains b.txt, and the head is refused naming it
+        second = self.commit({"b.txt": "B\n"}, "a second commit after the merge")
+        run = self.carry(second)
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertEqual(
+            run.stdout,
+            f"audit-carry: not carried: the diff of {second[:8]} against its merge base differs from "
+            f"{self.earlier[:8]}'s at b.txt\n",
+        )
+        # a merge after the second commit carries nothing either: the diff still holds b.txt
+        self.git("switch", "-q", "main")
+        self.commit({"e.txt": "e\n"}, "main moves again")
+        self.git("update-ref", "refs/remotes/origin/main", "main")
+        self.git("switch", "-q", "update")
+        merged_again = self.merge_main("merge main again")
+        run = self.carry(merged_again)
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertTrue(run.stdout.endswith("'s at b.txt\n"), run.stdout)
+        # main moving on the audited file, a clean merge all the same (main adds a third line after the two the
+        # audited commit left; a change of line 2 beside the audited line 1 would conflict, and GitHub makes no merge
+        # then): the merge's diff from the moved tip has another old blob and another new blob at a.txt
+        self.git("switch", "-q", "main")
+        self.commit({"a.txt": "one\ntwo\nthree\n"}, "main adds a third line to a.txt")
+        self.git("update-ref", "refs/remotes/origin/main", "main")
+        self.git("switch", "-q", "-c", "update-touched", self.earlier)
+        touched = self.merge_main("merge a main that touched a.txt")
+        self.assertEqual((self.repo / "a.txt").read_text(), "ONE\ntwo\nthree\n", "a clean merge of both edits")
+        self.git("switch", "-q", "main")
+        run = self.carry(touched)
+        self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)
+        self.assertTrue(run.stdout.endswith("'s at a.txt\n"), run.stdout)
+        self.assertNotEqual(self.digest(touched), self.digest(self.earlier), "main's edit is in the merge head's diff")
+
     def test_unequal_digests_name_the_first_differing_path(self):
         run = self.carry(self.different)
         self.assertEqual((1, ""), (run.returncode, run.stderr), run.stdout)

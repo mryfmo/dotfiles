@@ -163,6 +163,40 @@ MOVED_MAIN = (
     "needs no such sweep: the landed diff is the classified one, or touches nothing the tip gate asks a sweep for "
     "(round 13); record and land as usual."
 )
+# U620 (standing orders 59 and 60): after every `pr-update-branch.sh` the coordinator audited and swept the new head
+# again, six times on 2026-11-19, while its diff against main was the audited commit's; the kit's carry (audit-carry.py,
+# ledger-row.py carried, the merge gate's carried row and its sweep read at the earlier head) had no step that said
+# when to use it. Step 6 runs the digest lever on the new head after the fetch the lever needs (measured: a head the
+# checkout has not fetched is its exit 2, `not our ref`), writes the carried row on the carried line and runs no
+# fresh audit and no fresh sweep then; a refusal keeps today's fresh audit and sweep.
+CARRY_FETCH = (
+    "fetch the moved refs into your checkout first, `git fetch origin main <branch>` (`audit-carry.py` reads the heads "
+    "from the checkout alone and opens no transport, so a head the checkout has not fetched is its exit 2, `git "
+    "upload-pack: not our ref <head>`; measured 2026-11-19 on PRs 808 and 812), then run "
+    "`scripts/orchestrator/audit-carry.py <store> U<n> <n> <new head> --repo <checkout> --base origin/main`"
+)
+CARRY_ROW = (
+    "When it prints `carried <earlier> <new head> <digest>`, write the row with `~/.local/bin/common/ledger-row.py "
+    '<store> carried --pr <n> --head <new head> --unit U<n> --line "<that line>" --note "<note>"` and run no fresh '
+    "audit and no fresh sweep: `pr-merge.sh` accepts the carried row in place of `correct` while the earlier head's "
+    "`correct` row and verdict file stand, and reads the sweep row at the earlier head the row names "
+    "(`require_sweep_row` asks `ledger.py sweep` for the audited head, which under a carried row is that earlier head, "
+    "the head `ledger.py carried-from` answers), so the earlier head's audit and sweep are this head's; CI must be "
+    "green on the new head as for every head."
+)
+CARRY_REFUSED = (
+    "When it refuses (exit 1 naming the differing path, or no earlier audited head), the new head gets the fresh audit "
+    "and the sweep of step 4 as today; exit 2 is a git or store failure to repair first."
+)
+CARRY_PER_HEAD = (
+    "A head that `pr-update-branch.sh` moved has no row of its own until its `carried` row (above) or its fresh "
+    "audit's row is written, and `pr-merge.sh` refuses it until then (the per-head verdict rule)."
+)
+CARRY_GATE = (
+    "gets its own row in `ledger.tsv` before merge: its own fresh-context audit's `correct` row, or a `carried` row "
+    "written from `audit-carry.py`'s line when the head's diff against `main` is byte-identical to the last audited "
+    "head's (standing order 38; the merge of `main` that `pr-update-branch.sh` makes is the measured case, step 6)"
+)
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
@@ -379,6 +413,34 @@ class HcomSeatSkillsTest(unittest.TestCase):
         )
         self.assertLess(merge.index('--receipt "<receipt line>"'), merge.index("dispatch a sweep of the merge commit"))
         self.assertNotIn("U613", merge)
+
+    def test_step_six_carries_the_verdict_and_the_sweep_across_update_branch_after_the_fetch_the_lever_needs(self):
+        """U620 (standing orders 59 and 60): step 6 names, right after the update-branch sentence and before the merge
+        sentence, the fetch of the moved refs, then `audit-carry.py` on the new head, the carried row written with
+        `ledger-row.py carried` and no fresh audit and no fresh sweep on the carried line, and the fresh audit and
+        sweep on a refusal; the fetch comes before the lever (the lever reads the checkout alone, and the coordinator
+        measured `not our ref` without it). The per-head sentence of the step names the carried row as the moved head's
+        own row, step 5's voiding sentence points at the carry, and the Gates bullet admits the carried row beside the
+        fresh audit's; the old sentence that sent every moved head to a fresh audit is gone."""
+        text = ORCHESTRATION.read_text()
+        merge = step(text, "The loop", 6)
+        self.assertIn(CARRY_FETCH + ". " + CARRY_ROW + " " + CARRY_REFUSED + " With a `correct` verdict row", merge)
+        self.assertLess(merge.index("never `gh pr update-branch`. "), merge.index(CARRY_FETCH))
+        self.assertLess(merge.index("git fetch origin main <branch>"), merge.index("audit-carry.py <store>"))
+        self.assertEqual(merge.count("audit-carry.py <store>"), 1)
+        self.assertEqual(merge.count("ledger-row.py <store> carried"), 1)
+        self.assertIn(CARRY_PER_HEAD, merge)
+        self.assertLess(merge.index(CARRY_REFUSED), merge.index(CARRY_PER_HEAD))
+        self.assertNotIn("so it gets a fresh audit before the merge", merge)
+        self.assertIn(
+            "step 6 carries the earlier verdict and sweep to that merge head through `audit-carry.py` when its diff "
+            "against `main` is unchanged, and it is audited afresh otherwise.",
+            step(text, "The loop", 5),
+        )
+        gates = section(text, "Gates")
+        self.assertIn(CARRY_GATE, gates)
+        self.assertIn("never carries over without that row (standing order 18 as amended by U71 and U122)", gates)
+        self.assertNotIn("a verdict for an earlier head never carries over (standing order 18", gates)
 
     def test_step_one_creates_the_worker_worktree_with_the_lever_whose_worktree_cannot_push(self):
         brief = step(ORCHESTRATION.read_text(), "The loop", 1)

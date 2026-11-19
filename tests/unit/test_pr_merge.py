@@ -22,7 +22,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; dis
 from test_pr_levers import (  # noqa: E402
     COMPARE_MATCH,
     COMPARE_OTHER_MATCH,
-    COUNT_MATCH,
     FOOTER,
     GREEN_CHECKS,
     LEDGER_HEADER,
@@ -47,7 +46,7 @@ RULE = (
 )
 # The files the fake `gh api repos/{owner}/{repo}/compare/main...<head>` lists (U597 round 4: the compare API keyed by
 # the head's sha, run through the lever's `--jq` by the fake; round 3: status, filename and previous_filename as one
-# array per file, and the pull request's `changedFiles` read once): a lever path, so the sweep is required (U597).
+# array per file; round 5: one call, no count of the pull request read): a lever path, so the sweep is required (U597).
 LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
 COMPARE_OTHER = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
@@ -121,7 +120,6 @@ class PrMergeSweepGateTest(PrLeverTestCase):
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             {"match": COMPARE_MATCH, "json": {"files": LEVER_FILES}},
             COMPARE_OTHER,
-            {"match": COUNT_MATCH, "json": {"changedFiles": len(LEVER_FILES)}},
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -476,7 +474,6 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             {"match": COMPARE_MATCH, "json": {"files": LEVER_FILES}},
             COMPARE_OTHER,
-            {"match": COUNT_MATCH, "json": {"changedFiles": len(LEVER_FILES)}},
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",

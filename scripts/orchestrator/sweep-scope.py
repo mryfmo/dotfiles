@@ -11,9 +11,9 @@ standing control, whose newest row (`daily-sweeps.tsv`, read through `ledger.py 
 24 hours before it skips the per-head row (round 4).
 
 `sweep_required(paths)` is the predicate, defined here alone and read by `pr-merge.sh` (as `python3 -I -S
-scripts/orchestrator/sweep-scope.py --files-json --changed-files <n>` over the audited head's changed files as the
-GitHub compare API lists them keyed by the head's sha, `gh api 'repos/{owner}/{repo}/compare/main...<head>'
---paginate --jq '.files[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null
+scripts/orchestrator/sweep-scope.py --files-json` over the audited head's changed files as the GitHub compare API
+lists them keyed by the head's sha, one call, `gh api 'repos/{owner}/{repo}/compare/main...<head>' --jq '(.files //
+error("no files key")) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null
 end)] | @json'`, one JSON array per file, both paths of a rename counting, the lever reading no local git object) and
 by `tests/unit/test_sweep_scope.py`.
 The classes are one frozen tuple of path prefixes each (CLASSES, in order of precedence): `credential` (the seat
@@ -29,30 +29,33 @@ CLI: `sweep-scope.py <base> <head>` lists the head's changed paths as `git diff 
 <base>...<head>` (the paths changed since the merge base, renames shown as both paths, run in the current directory's
 repository with replace refs off, and with `-c diff.relative=false` and `--no-relative` so a `diff.relative` setting
 or a run from a subdirectory neither narrows the listing nor strips a prefix; round 3) and prints `required <class>`
-or `not-required`, exit 0; `sweep-scope.py --files-json [--changed-files <n>]` reads the head's files from stdin as
-the lever's compare API read prints them, one JSON array `[status, filename, previous_filename]` per line: `status`
-one of `added`, `removed`, `modified`, `renamed`, `copied`, `changed`, `unchanged`; `filename` a path;
-`previous_filename` a path for `renamed` and `copied` and `null` for every other status (round 4: a value that is
-neither a string nor null, a boolean `false` included, is refused before the status decides, so the lever's jq passes
-the field through as it is, `if has("previous_filename") then .previous_filename else null end`, and never maps a
-malformed value to null); both paths of a rename or a copy count; and with `--changed-files <n>` the count of
-distinct `filename` entries must equal `n`, the pull request's `changedFiles` (a listing cut short, a page lost, or
-a cap read as complete is never `not-required`), and it answers the same. Exit 2 with one stderr line
-(`sweep-scope: ...`) on usage, a git that fails or cannot run, a listing that names no path, an empty line, a line
-that is not JSON or not an array of three, an unknown status, a `previous_filename` that is neither a string nor
-null, a rename or copy without its source, a source on any other status, a count that differs from
-`--changed-files`, a path that is absolute or holds a control character (an embedded newline included, since the
-decoded string holds it) or a `.`, `..` or empty component (not a path git lists), a path that starts with `"` or
-holds a backslash (a C-quoted name, as git prints a path with a tab or a non-ASCII byte under `core.quotePath`, is
-not the path itself; the API never quotes, so this guard is the reader's own, round 2 of U597), or stdin that is not
-UTF-8: a failed or unreadable listing is never `not-required` (standing order 21), and the lever refuses on exit 2
-and fails on any other status.
+or `not-required`, exit 0; `sweep-scope.py --files-json` reads the head's files from stdin as the lever's compare API
+read prints them, one JSON array `[status, filename, previous_filename]` per line: `status` one of `added`,
+`removed`, `modified`, `renamed`, `copied`, `changed`, `unchanged`; `filename` a path; `previous_filename` a path for
+`renamed` and `copied` and `null` for every other status (round 4: a value that is neither a string nor null, a
+boolean `false` included, is refused before the status decides, so the lever's jq passes the field through as it is,
+`if has("previous_filename") then .previous_filename else null end`, and never maps a malformed value to null); both
+paths of a rename or a copy count. Completeness is read from the listing itself (round 5; docs.github.com, REST API,
+commits, compare two commits, read 2026-11-19: the compare response carries `files` on its first page alone, at most
+COMPARE_FILES_CAP (300) entries, and `per_page` pages the commits, not the files, so a diff over the cap cannot be
+listed whole by the endpoint): a listing of COMPARE_FILES_CAP or more entries is at the cap and may be cut short, so
+the reader answers `required cap` (a fifth answer word, not a class; the lever treats it as `required <class>` and
+the per-head sweep stands), never `not-required`; under the cap the listing is whole and the classes decide. Rounds
+3 and 4 counted the listing against the pull request's file count (`--changed-files <n>`), a number-keyed read that
+no pin bound to the audited head (the round-4 P1); that option is gone and the lever makes no such read. Exit 2
+with one stderr line (`sweep-scope: ...`) on usage, a git that fails or cannot run, a listing that names no path, an
+empty line, a line that is not JSON or not an array of three, an unknown status, a `previous_filename` that is
+neither a string nor null, a rename or copy without its source, a source on any other status, a path that is
+absolute or holds a control character (an embedded newline included, since the decoded string holds it) or a `.`,
+`..` or empty component (not a path git lists), a path that starts with `"` or holds a backslash (a C-quoted name,
+as git prints a path with a tab or a non-ASCII byte under `core.quotePath`, is not the path itself; the API never
+quotes, so this guard is the reader's own, round 2 of U597), or stdin that is not UTF-8: a failed or unreadable
+listing is never `not-required` (standing order 21), and the lever refuses on exit 2 and fails on any other status.
 """
 
 from __future__ import annotations
 
 import json
-import re
 import subprocess
 import sys
 
@@ -91,12 +94,16 @@ CLASSES = (
 CLASS_NAMES = tuple(name for name, _ in CLASSES)
 REQUIRED = "required"
 NOT_REQUIRED = "not-required"
-USAGE = "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json [--changed-files <n>]"
-# The statuses the GitHub pull request files API gives a file, and the two that carry the file's source as
-# `previous_filename` (docs.github.com, REST API, pulls, list pull requests files).
+# The fifth answer (round 5): `required cap`, the listing at the compare API's cap and so possibly cut short.
+CAP = "cap"
+# The compare API carries at most this many `files`, on the first page alone (docs.github.com, REST API, commits,
+# compare two commits, read 2026-11-19); a listing of this many entries or more may be cut short.
+COMPARE_FILES_CAP = 300
+USAGE = "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json"
+# The statuses the GitHub compare API gives a file, and the two that carry the file's source as `previous_filename`
+# (docs.github.com, REST API, commits, compare two commits; the same `files` shape as the pull request files API).
 STATUSES = frozenset(("added", "removed", "modified", "renamed", "copied", "changed", "unchanged"))
 SOURCED_STATUSES = frozenset(("renamed", "copied"))
-COUNT = re.compile(r"[0-9]+")
 # The git listing: NUL-separated names, renames as both paths, no external diff, no colour, replace refs off, and
 # paths from the toplevel whatever `diff.relative` says or where the command runs (round 3).
 GIT_DIFF = (
@@ -238,51 +245,51 @@ def file_entry(line: str, number: int) -> tuple[str, str, str | None]:
     return status, filename, previous
 
 
-def paths_from_files_json(text: str, count: int | None) -> list[str]:
-    """The paths of the files listing, one JSON array per line with one trailing newline at most: every filename and
-    every rename's or copy's source. An empty listing or an empty line is Unreadable, as is a count of distinct
-    filenames other than `count` when one is given (the pull request's `changedFiles`)."""
+def paths_from_files_json(text: str) -> tuple[list[str], int]:
+    """The paths of the files listing, one JSON array per line with one trailing newline at most, and the count of
+    its entries: every filename and every rename's or copy's source. An empty listing or an empty line is
+    Unreadable."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
     if not lines:
         raise Unreadable("the files listing names no file; an empty listing is a failed read, never not-required")
     paths: list[str] = []
-    filenames: set[str] = set()
     for number, line in enumerate(lines, 1):
         if not line:
             raise Unreadable(f"line {number} of the files listing is empty; it is not the files API read as data")
         _, filename, previous = file_entry(line, number)
-        filenames.add(filename)
         paths.append(filename)
         if previous is not None:
             paths.append(previous)
-    if count is not None and len(filenames) != count:
-        raise Unreadable(
-            f"the files listing names {len(filenames)} distinct filenames, not the {count} changedFiles of the pull"
-            " request; a listing cut short, a page lost or GitHub's 3,000-file cap read as complete is never"
-            " not-required"
-        )
-    return paths
+    return paths, len(lines)
 
 
-def changed_paths_from_files_json(options: list[str]) -> list[str]:
+def files_answer(text: str) -> str:
+    """The answer for the files listing `text` (round 5): every line parsed first, so a malformed listing is
+    Unreadable whatever its length; then `required cap` when the listing holds COMPARE_FILES_CAP or more entries
+    (the compare API's cap, so the listing may be cut short and the per-head sweep stands), else the classes'
+    answer over the paths."""
+    paths, entries = paths_from_files_json(text)
+    if entries >= COMPARE_FILES_CAP:
+        return f"{REQUIRED} {CAP}"
+    return answer(paths)
+
+
+def changed_files_json(options: list[str]) -> str:
     """The files listing on stdin as the lever's compare API read prints it (`gh api
-    'repos/{owner}/{repo}/compare/main...<head>' --paginate --jq '.files[] | [.status, .filename, (if
-    has("previous_filename") then .previous_filename else null end)] | @json'`), `options` empty or
-    `--changed-files <n>`."""
-    count = None
+    'repos/{owner}/{repo}/compare/main...<head>' --jq '(.files // error("no files key")) | .[] | [.status,
+    .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'`), `options` empty
+    (round 5: the `--changed-files <n>` count is gone), read as text."""
     if options:
-        if len(options) != 2 or options[0] != "--changed-files" or not COUNT.fullmatch(options[1]):
-            raise Unreadable(USAGE)
-        count = int(options[1])
+        raise Unreadable(USAGE)
     try:
         text = sys.stdin.buffer.read().decode()
     except OSError as error:
         raise Unreadable(f"cannot read stdin: {error.strerror}") from None
     except UnicodeDecodeError:
         raise Unreadable("stdin is not UTF-8") from None
-    return paths_from_files_json(text, count)
+    return text
 
 
 def answer(paths) -> str:
@@ -294,15 +301,15 @@ def answer(paths) -> str:
 def main(argv: list[str]) -> int:
     try:
         if argv and argv[0] == "--files-json":
-            paths = changed_paths_from_files_json(argv[1:])
+            result = files_answer(changed_files_json(argv[1:]))
         elif len(argv) == 2 and not argv[0].startswith("-"):
-            paths = changed_paths_from_git(argv[0], argv[1])
+            result = answer(changed_paths_from_git(argv[0], argv[1]))
         else:
             raise Unreadable(USAGE)
     except Unreadable as error:
         print(f"sweep-scope: {error}", file=sys.stderr)
         return 2
-    print(answer(paths))
+    print(result)
     return 0
 
 

@@ -3,17 +3,18 @@ one predicate `sweep_required(paths)` over the four path classes (`credential`, 
 `deployed-executable`, one frozen tuple of prefixes each, in that precedence, held equal to a literal copy here), a
 mixed head's class, a docs-only head that requires nothing, and the CLI forms pr-merge.sh and the coordinator run
 under `python3 -I -S`: `<base> <head>` (the paths `git diff --name-only --no-renames <base>...<head>` lists, from the
-toplevel whatever `diff.relative` says or where the command runs; round 3) and `--files-json [--changed-files <n>]`
-(the audited head's files as the lever's read of the compare API prints them, `gh api
-'repos/{owner}/{repo}/compare/main...<head>' --paginate --jq '.files[] | [.status, .filename, (if
-has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file, keyed by the
-head's sha (round 4), the count of distinct filenames held equal to `changedFiles`; round 3), each printing `required
-<class>` or `not-required`, and exit 2 with one stderr line on a failed git read, an empty listing, a path git would
-not list, a C-quoted name (round 2), a line that is not the API's shape, a rename without its source, a
-`previous_filename` that is neither a string nor null (round 4), a count other than `changedFiles`, or usage (standing
-order 21: never `not-required` by failure). The documents that state the rule (AGENTS.md, the hcom-orchestration
-skill, the orchestrator README) are read against CLASSES, the one definition (round 2), and against the listing keyed
-by the head and the daily sweep row (round 4)."""
+toplevel whatever `diff.relative` says or where the command runs; round 3) and `--files-json` (the audited head's
+files as the lever's one read of the compare API prints them, `gh api 'repos/{owner}/{repo}/compare/main...<head>'
+--jq '(.files // error("no files key")) | .[] | [.status, .filename, (if has("previous_filename") then
+.previous_filename else null end)] | @json'`, one JSON array per file, keyed by the head's sha (round 4); round 5:
+completeness read from the listing itself, 300 or more entries, the API's cap, answering `required cap`, and the
+`--changed-files <n>` count of rounds 3 and 4 gone), each printing `required <class>`, `required cap` or
+`not-required`, and exit 2 with one stderr line on a failed git read, an empty listing, a path git would not list, a
+C-quoted name (round 2), a line that is not the API's shape, a rename without its source, a `previous_filename` that
+is neither a string nor null (round 4), or usage (standing order 21: never `not-required` by failure). The documents
+that state the rule (AGENTS.md, the hcom-orchestration skill, the orchestrator README) are read against CLASSES, the
+one definition (round 2), against the listing keyed by the head and the daily sweep row (round 4), and against the
+one call and the cap answer (round 5)."""
 
 import importlib.util
 import json
@@ -84,11 +85,15 @@ CLASSES_LITERAL = (
     ),
 )
 # The lever's jq form and the reader's call, as pr-merge.sh spells them (round 3; round 4 passes previous_filename
-# through as it is, so a boolean reaches the reader and is refused instead of being mapped to null).
+# through as it is, so a boolean reaches the reader and is refused instead of being mapped to null; round 5 requires
+# the `files` key, so a response without one is the jq's error and never an empty listing).
 FILES_JQ = (
-    "'.files[] | [.status, .filename, (if has(\"previous_filename\") then .previous_filename else null end)] | @json'"
+    '\'(.files // error("no files key")) | .[] | [.status, .filename, '
+    '(if has("previous_filename") then .previous_filename else null end)] | @json\''
 )
-READER_CALL = '"${scope_reader}" --files-json --changed-files "${count}" <<< "${listing}"'
+READER_CALL = '"${scope_reader}" --files-json <<< "${listing}"'
+# The compare API's cap on `files` (round 5), as the reader names it.
+CAP = 300
 
 
 def load_reader():
@@ -226,14 +231,14 @@ class SweepScopePredicateTest(unittest.TestCase):
                     self.reader.check_path(path)
                 self.assertIn("is C-quoted or holds a backslash", str(caught.exception))
                 with self.assertRaises(self.reader.Unreadable):
-                    self.reader.paths_from_files_json(listing("docs/plan.md", path), None)
+                    self.reader.paths_from_files_json(listing("docs/plan.md", path))
         self.assertEqual(self.reader.check_path("scripts/orchestrator/a b.sh"), "scripts/orchestrator/a b.sh")
         self.assertEqual(self.reader.check_path("docs/ä.md"), "docs/ä.md")
 
     def test_the_files_listing_is_read_as_data_both_paths_of_a_rename_counting(self):
         """Round 3 (verdict finding 2): each line is `[status, filename, previous_filename]`; the filename and, for a
-        rename or a copy, the source are the paths; every status of the API is accepted with a null source; the
-        distinct filenames are counted against `changedFiles` when one is given, a rename counting once."""
+        rename or a copy, the source are the paths; every status of the API is accepted with a null source; round 5:
+        the entries are counted beside the paths, and nothing is held to a count from outside the listing."""
         text = (
             entry("docs/a.md", "added")
             + "\n"
@@ -250,7 +255,7 @@ class SweepScopePredicateTest(unittest.TestCase):
             + entry("docs/g.md", "unchanged")
             + "\n"
         )
-        paths = self.reader.paths_from_files_json(text, 7)
+        paths, entries = self.reader.paths_from_files_json(text)
         self.assertEqual(
             paths,
             [
@@ -265,14 +270,30 @@ class SweepScopePredicateTest(unittest.TestCase):
                 "docs/g.md",
             ],
         )
+        self.assertEqual(entries, 7, "the entries, not the paths: a rename is one entry")
         self.assertEqual(self.reader.answer(paths), "required lever")
-        self.assertEqual(self.reader.paths_from_files_json(text, None), paths, "no count given, none checked")
-        self.assertEqual(self.reader.paths_from_files_json(text.rstrip("\n"), 7), paths, "no trailing newline")
-        for count in (6, 8, 0, 9):
-            with self.subTest(count=count):
-                with self.assertRaises(self.reader.Unreadable) as caught:
-                    self.reader.paths_from_files_json(text, count)
-                self.assertIn(f"names 7 distinct filenames, not the {count} changedFiles", str(caught.exception))
+        self.assertEqual(self.reader.files_answer(text), "required lever")
+        self.assertEqual(self.reader.paths_from_files_json(text.rstrip("\n")), (paths, 7), "no trailing newline")
+
+    def test_a_listing_at_the_compare_api_s_cap_answers_required_cap_whatever_its_paths(self):
+        """Round 5 (the round-4 P1 and its first P2): the compare response carries `files` on its first page alone,
+        at most 300, so a listing of 300 or more entries may be cut short: `required cap`, for docs paths alone, for
+        a lever path among them, and for 301 entries; 299 docs entries are whole and `not-required`, 299 with a lever
+        path `required lever`; a malformed line among 300 is still refused for its shape, never answered."""
+        self.assertEqual(self.reader.COMPARE_FILES_CAP, CAP)
+        self.assertEqual(self.reader.CAP, "cap")
+        docs = [f"docs/f{n}.md" for n in range(CAP)]
+        self.assertEqual(self.reader.files_answer(listing(*docs)), "required cap")
+        self.assertEqual(self.reader.files_answer(listing(*docs[:-1], LEVER_PATH)), "required cap", "the cap first")
+        self.assertEqual(self.reader.files_answer(listing(*docs, "docs/more.md")), "required cap", "301 entries")
+        self.assertEqual(self.reader.files_answer(listing(*docs[:-1])), "not-required", "299 entries are whole")
+        self.assertEqual(self.reader.files_answer(listing(*docs[:-2], LEVER_PATH)), "required lever")
+        renamed = listing(*docs[:-1]) + entry("docs/new.md", "renamed", "docs/old.md") + "\n"
+        self.assertEqual(self.reader.files_answer(renamed), "required cap", "a rename is one entry of 300")
+        with self.assertRaises(self.reader.Unreadable) as caught:
+            self.reader.files_answer(listing(*docs[:-1]) + "garbage\n")
+        self.assertIn("line 300 of the files listing is not JSON", str(caught.exception))
+        self.assertNotIn("changed-files", self.reader.USAGE)
 
     def test_a_files_listing_of_another_shape_is_unreadable(self):
         """Round 3: a line that is not JSON, not an array of three, an unknown or non-string status, a filename that
@@ -334,29 +355,38 @@ class SweepScopePredicateTest(unittest.TestCase):
         ):
             with self.subTest(name):
                 with self.assertRaises(self.reader.Unreadable) as caught:
-                    self.reader.paths_from_files_json(text, None)
+                    self.reader.paths_from_files_json(text)
                 self.assertIn(message, str(caught.exception))
                 self.assertNotIn("\n", str(caught.exception), "one stderr line, the newline not echoed")
 
     def test_the_lever_reads_this_module_from_the_checkout_as_data(self):
-        """pr-merge.sh names the module by its checkout path and runs its `--files-json` form with the pull request's
-        `changedFiles` over the compare API's arrays (round 4: the listing keyed by the head's sha itself, status,
-        filename and previous_filename as data, the count read once as `--json changedFiles`), prints the one skip
+        """pr-merge.sh names the module by its checkout path and runs its `--files-json` form over the compare API's
+        arrays (round 4: the listing keyed by the head's sha itself, status, filename and previous_filename as data;
+        round 5: one call without `--paginate`, the `files` key required by the jq, no count read of the pull request
+        and no `--changed-files`), reads `required cap` as a required class with its own reason, prints the one skip
         line (U597), asks the daily sweep once on `not-required` (round 4), runs no `--stdin` form, and keeps no
         number-keyed listing and no `headRefOid,changedFiles` reread."""
         text = LEVER.read_text()
         self.assertIn("scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py", text)
         self.assertIn(READER_CALL, text)
         self.assertIn(
-            f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{base}}...${{head}}" --paginate --jq {FILES_JQ}',
+            f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{base}}...${{head}}" --jq {FILES_JQ}',
             text,
         )
-        self.assertIn('gh_bounded pr view "${pr}" --json changedFiles --jq', text)
+        self.assertNotIn("--paginate", text, "one compare call: the files are on the first page alone (round 5)")
+        self.assertNotIn("changedFiles", text, "no count of the pull request is read (round 5)")
+        self.assertNotIn("--changed-files", text, "the reader's count option is gone (round 5)")
         self.assertNotIn("pulls/${pr}/files", text, "the files endpoint keyed by the number is gone (round 4)")
-        self.assertNotIn("headRefOid,changedFiles", text, "the head reread around the number-keyed listing is gone")
         self.assertNotIn("--stdin", text, "the raw line-per-path form is gone")
         self.assertNotIn(
             "gh_bounded pr diff", text, "the name listing of gh pr diff printed a rename's destination alone"
+        )
+        self.assertIn("    'required cap')\n        # The listing is at the compare API's cap (round 5)", text)
+        self.assertIn("        sweep_class=cap\n", text)
+        self.assertIn(
+            "sweep_reason=\"the head changes 300 or more files, the compare API's cap, so the listing may be cut short"
+            ' and the per-head sweep stands"',
+            text,
         )
         self.assertIn("sweep: not required (no lever, policy, credential or deployed-executable path changed)", text)
         self.assertEqual(text.count("require_sweep_scope\n"), 1, "called once")
@@ -364,9 +394,7 @@ class SweepScopePredicateTest(unittest.TestCase):
         self.assertIn('"${ledger_reader}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}"', text)
         self.assertIn("DAILY_SWEEP_MAX_AGE=86400\n", text)
         self.assertIn("[[ -z ${sweep_reason} ]] || require_sweep_row\n", text)
-        self.assertEqual(
-            self.reader.USAGE, "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json [--changed-files <n>]"
-        )
+        self.assertEqual(self.reader.USAGE, "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json")
 
 
 class SweepScopeCliTest(unittest.TestCase):
@@ -509,17 +537,12 @@ class SweepScopeCliTest(unittest.TestCase):
         self.assert_refused(self.run_reader("-x", self.docs_head), "usage: sweep-scope.py")
 
     def test_the_files_json_form_answers_from_the_listing(self):
-        """The files as the lever's files API read prints them, one JSON array per line, with or without the last
-        newline, with or without `--changed-files`; a rename's source counts, and `--changed-files` equal to the
-        distinct filenames passes."""
+        """The files as the lever's compare API read prints them, one JSON array per line, with or without the last
+        newline; a rename's or a copy's source counts; 300 entries answer `required cap` and 299 the classes (round 5)."""
         docs = listing("docs/plan.md", "README.md")
         self.assert_answer(self.run_reader("--files-json", stdin=docs.encode()), "not-required")
         self.assert_answer(self.run_reader("--files-json", stdin=docs.rstrip("\n").encode()), "not-required")
-        self.assert_answer(self.run_reader("--files-json", "--changed-files", "2", stdin=docs.encode()), "not-required")
-        self.assert_answer(
-            self.run_reader("--files-json", "--changed-files", "2", stdin=listing(DOCS[0], POLICY).encode()),
-            "required policy",
-        )
+        self.assert_answer(self.run_reader("--files-json", stdin=listing(DOCS[0], POLICY).encode()), "required policy")
         self.assert_answer(
             self.run_reader("--files-json", stdin=listing(LEVER_PATH, CREDENTIAL).encode()), "required credential"
         )
@@ -531,87 +554,58 @@ class SweepScopeCliTest(unittest.TestCase):
             "required policy",
         )
         renamed = entry("docs/old.py", "renamed", "scripts/orchestrator/old.py") + "\n" + entry("docs/plan.md") + "\n"
-        self.assert_answer(
-            self.run_reader("--files-json", "--changed-files", "2", stdin=renamed.encode()), "required lever"
-        )
+        self.assert_answer(self.run_reader("--files-json", stdin=renamed.encode()), "required lever")
         copied = entry("docs/copy.py", "copied", "install/bootstrap.sh") + "\n"
-        self.assert_answer(
-            self.run_reader("--files-json", "--changed-files", "1", stdin=copied.encode()),
-            "required deployed-executable",
-        )
+        self.assert_answer(self.run_reader("--files-json", stdin=copied.encode()), "required deployed-executable")
+        capped = listing(*(f"docs/f{n}.md" for n in range(CAP)))
+        self.assert_answer(self.run_reader("--files-json", stdin=capped.encode()), "required cap")
+        whole = listing(*(f"docs/f{n}.md" for n in range(CAP - 1)))
+        self.assert_answer(self.run_reader("--files-json", stdin=whole.encode()), "not-required")
 
-    def test_a_files_listing_short_of_changed_files_or_of_another_shape_is_exit_2(self):
-        """Round 3: an empty listing, a count other than `changedFiles` (a listing cut short, one of 3,000 entries
-        whose `changedFiles` says more, a rename counted twice), a line that is not JSON or not an array of three, a
-        rename without its source, a source on a modified file, an embedded newline, a C-quoted name (round 2) and
-        bytes that are not UTF-8 are each refused naming the shape, never read as `not-required`."""
+    def test_a_files_listing_of_another_shape_is_exit_2_never_not_required(self):
+        """Round 3: an empty listing, a line that is not JSON or not an array of three, a rename without its source, a
+        source on a modified file, an embedded newline, a C-quoted name (round 2) and bytes that are not UTF-8 are
+        each refused naming the shape, never read as `not-required`; round 5: the `--changed-files` count is gone, so
+        a listing is held to no number from outside it, and one of 3,000 entries is `required cap`."""
         plain = entry("docs/plan.md")
-        capped = listing(*(f"docs/f{n}.md" for n in range(3000)))
-        for name, text, count, message in (
-            ("empty", b"", None, "names no file"),
-            ("a newline alone", b"\n", None, "line 1 of the files listing is empty"),
-            ("cut short", listing("docs/a.md", "docs/b.md").encode(), "3", "names 2 distinct filenames, not the 3"),
-            (
-                "counted too high",
-                listing("docs/a.md", "docs/b.md").encode(),
-                "1",
-                "names 2 distinct filenames, not the 1",
-            ),
-            (
-                "3,000 entries, changedFiles 3,001",
-                capped.encode(),
-                "3001",
-                "names 3000 distinct filenames, not the 3001",
-            ),
-            (
-                "a rename counted twice",
-                (entry("docs/b.md", "renamed", "docs/a.md") + "\n").encode(),
-                "2",
-                "names 1 distinct filenames, not the 2",
-            ),
-            ("not JSON", b"docs/plan.md\n", None, "line 1 of the files listing is not JSON"),
-            ("two items", b'["modified", "docs/plan.md"]\n', None, "is not an array of three"),
-            ("an unknown status", b'["moved", "docs/plan.md", null]\n', None, "has the status 'moved'"),
+        for name, text, message in (
+            ("empty", b"", "names no file"),
+            ("a newline alone", b"\n", "line 1 of the files listing is empty"),
+            ("not JSON", b"docs/plan.md\n", "line 1 of the files listing is not JSON"),
+            ("two items", b'["modified", "docs/plan.md"]\n', "is not an array of three"),
+            ("an unknown status", b'["moved", "docs/plan.md", null]\n', "has the status 'moved'"),
             (
                 "a rename without its source",
                 (plain + "\n" + entry("docs/old.py", "renamed") + "\n").encode(),
-                "2",
                 "line 2 of the files listing is renamed without its source",
             ),
             (
                 "a source on a modified file",
                 (entry("docs/plan.md", "modified", "docs/x.md") + "\n").encode(),
-                None,
                 "is modified yet carries a previous_filename",
             ),
             (
                 "an embedded newline",
                 (entry("scripts/orchestrator/a\nb.sh") + "\n").encode(),
-                "1",
                 "holds a control character",
             ),
-            ("an absolute path", (entry("/etc/passwd") + "\n").encode(), None, "is absolute"),
+            ("an absolute path", (entry("/etc/passwd") + "\n").encode(), "is absolute"),
             (
                 "a .. component",
                 (entry("docs/../scripts/x") + "\n").encode(),
-                None,
                 "holds a '.', '..' or empty component",
             ),
             (
                 "a C-quoted lever path",
                 (entry('"scripts/orchestrator/a\\tb.sh"') + "\n").encode(),
-                None,
                 "is C-quoted or holds a backslash",
             ),
-            ("not UTF-8", b'["modified", "docs/\xff.md", null]\n', None, "not UTF-8"),
+            ("not UTF-8", b'["modified", "docs/\xff.md", null]\n', "not UTF-8"),
         ):
             with self.subTest(name):
-                args = ("--files-json",) if count is None else ("--files-json", "--changed-files", count)
-                self.assert_refused(self.run_reader(*args, stdin=text), message)
-        # the complete capped listing, its count equal, answers
-        self.assert_answer(
-            self.run_reader("--files-json", "--changed-files", "3000", stdin=capped.encode()), "not-required"
-        )
+                self.assert_refused(self.run_reader("--files-json", stdin=text), message)
+        capped = listing(*(f"docs/f{n}.md" for n in range(3000)))
+        self.assert_answer(self.run_reader("--files-json", stdin=capped.encode()), "required cap")
 
     def test_usage_is_exit_2(self):
         docs = listing("docs/a.md").encode()
@@ -621,9 +615,7 @@ class SweepScopeCliTest(unittest.TestCase):
             (self.base, self.docs_head, "x"),
             ("--files-json", "x"),
             ("--files-json", "--changed-files"),
-            ("--files-json", "--changed-files", "x"),
-            ("--files-json", "--changed-files", "-1"),
-            ("--files-json", "--changed-files", "1", "x"),
+            ("--files-json", "--changed-files", "2"),
             ("--files-json", "--count", "1"),
             ("--stdin",),
             ("--other",),
@@ -636,10 +628,10 @@ class SweepRuleDocumentsTest(unittest.TestCase):
     """U597 round 2 (verdict finding 5): the module is the one definition of the classes, and the documents that state
     the rule follow it: AGENTS.md's Audit sweep rule line names every prefix of CLASSES and the four classes, the
     hcom-orchestration skill's step 4 and the orchestrator README's pr-merge.sh row name the four classes and the
-    module; round 3: the listing as data (status, filename, previous_filename), the head reread and the count against
-    `changedFiles` are in AGENTS.md's line and the README's row. The regime template
-    `home/dot_agents/regime/AGENTS-audit-section.md` is AGENTS.md's section byte for byte
-    (tests.unit.test_regime_init), so it is not read here."""
+    module; round 3: the listing as data (status, filename, previous_filename); round 4: the listing keyed by the
+    head's sha and the daily row; round 5: one compare call, no count of the pull request, the cap answer, in
+    AGENTS.md's line and the README's row. The regime template `home/dot_agents/regime/AGENTS-audit-section.md` is
+    AGENTS.md's section byte for byte (tests.unit.test_regime_init), so it is not read here."""
 
     def setUp(self):
         self.reader = load_reader()
@@ -664,19 +656,22 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         )
 
     def assert_describes_the_listing_keyed_by_the_head(self, text, where, pr):
-        """The listing keyed by the head's sha (round 4), its three fields as data, the count read against
-        `changedFiles`, and no number-keyed listing or head reread."""
+        """The listing keyed by the head's sha (round 4), its three fields as data, one call whose completeness is
+        the listing's own, the cap answer (round 5), and no number-keyed listing, head reread or count read."""
         self.assertIn(
-            "`gh api 'repos/{owner}/{repo}/compare/main...<head>' --paginate`",
+            "`gh api 'repos/{owner}/{repo}/compare/main...<head>'`",
             text,
             f"{where} names the compare API keyed by the sha",
         )
+        self.assertIn("one call", text, f"{where} names the one call")
+        self.assertNotIn("compare/main...<head>' --paginate", text, f"{where} names no paging of the compare call")
         for field in ("`status`", "`filename`", "`previous_filename`"):
             self.assertIn(field, text, f"{where} names the field {field}")
-        self.assertIn(f"`gh pr view {pr} --json changedFiles`", text, f"{where} names the count read")
-        self.assertIn("distinct filenames", text, f"{where} names the count the listing must reach")
+        self.assertIn("`required cap`", text, f"{where} names the cap answer")
+        self.assertIn("300", text, f"{where} names the cap")
+        self.assertNotIn("changedFiles", text, f"{where} names no count read of the pull request")
+        self.assertNotIn("distinct filenames", text, f"{where} holds the listing to no count from outside it")
         self.assertNotIn(f"pulls/{pr}/files", text, f"{where} names no listing keyed by the pull request's number")
-        self.assertNotIn("headRefOid,changedFiles", text, f"{where} names no head reread")
 
     def assert_describes_the_daily_sweep(self, text, where):
         """The exemption bound to its standing control (round 4): the daily row's file, its writer, the window, and
@@ -731,20 +726,24 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assert_describes_the_daily_sweep(row, "the README's pr-merge.sh row")
 
     def test_the_lever_s_comments_describe_the_listing_as_it_is(self):
-        """The lever's header and the three functions' descriptions name the jq form, the reader's form, the count
-        read, the daily row and no retired form."""
+        """The lever's header and the three functions' descriptions name the jq form, the reader's form, the one
+        call, the cap answer, the daily row, the symlink-free components and no retired form."""
         text = LEVER.read_text()
         self.assertIn(f"--jq {FILES_JQ}", text, "the jq form, in the call")
         self.assertIn('[.status, .filename, (if has("previous_filename") then .previous_filename else null end)]', text)
-        self.assertIn("`gh pr view <pr> --json changedFiles`", text)
-        self.assertIn("--files-json --changed-files", text)
+        self.assertIn('`(.files // error("no files key"))`', text, "the files key named in the prose")
+        self.assertIn("`sweep-scope.py --files-json`", text)
+        self.assertIn("`required cap`", text)
         self.assertIn("`daily-sweeps.tsv`", text)
         self.assertIn("`ledger-row.py daily`", text)
         self.assertIn("`ledger.py <store> daily 86400`", text)
+        self.assertIn("every\n#   directory component between `sweeps/` and the file a directory of this user", text)
+        self.assertNotIn("changedFiles", text, "the count read is gone (round 5)")
+        self.assertNotIn("--changed-files", text, "the reader's count option is gone (round 5)")
+        self.assertNotIn("--paginate", text, "the compare call is one (round 5)")
         self.assertNotIn("(.previous_filename // null)", text, "the round-3 projection mapped a boolean to null")
         self.assertNotIn(".filename, (.previous_filename // empty)", text, "the line-per-path form is gone")
         self.assertNotIn("pulls/<pr>/files", text, "the number-keyed listing is gone")
-        self.assertNotIn("headRefOid,changedFiles", text, "the head reread is gone")
         self.assertNotIn("--stdin", text)
 
 

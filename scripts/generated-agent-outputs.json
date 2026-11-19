@@ -496,7 +496,7 @@
       "target": ".local/bin/common/ledger-row.py",
       "kind": "file",
       "executable": true,
-      "sha256": "d4d9cbb3e56f7b5445e02d21e179b99aa62404caa9266c48cc9f76e05d21e467"
+      "sha256": "111e78aed5639b6fe0b6c2b08785af9cafb253d665c5e539f01cf70f352d3d17"
     },
     {
       "source": "home/dot_local/bin/common/executable_omp-run.sh",
@@ -531,7 +531,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "1c3d650b74c090feceb0ef8e9b2ae06ac12d3add6bd24bced1c372c646e18067"
+      "sha256": "2bc8af7c87c33b73275263e36796e7e7a4cb24a5ccd1e3f63c7fcff5b24b53f0"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -713,7 +713,7 @@
       "target": ".local/bin/common/ledger.py",
       "kind": "file",
       "executable": false,
-      "sha256": "7633972383d6fb33abad1a5c1e13995e1c18aa22d923708f156871c7dee6627f"
+      "sha256": "17e3e4f98b6c2033a9f63265c7696fd188082aebaeaf594ab7e5b4bfc97e5d08"
     },
     {
       "source": "install/common/aws_cli.sh",

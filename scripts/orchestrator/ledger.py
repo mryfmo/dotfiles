@@ -52,10 +52,13 @@ exists at the path (the day's first sweep is not yet recorded: `none` to the lev
 Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts `strptime`
 reads under the one form, no empty cell, a `head_sha` of 40 hex, and the verifier and the evidence the exact fields
 of the sweep rule (`security-audit-skill <pin>`, a findings file `sweeps/<path>.json`), each fault naming the line and
-the field. `Daily.newest_within(now, max_age)` is the newest row by `(ts, line)` whose ts is not older than `max_age`
-seconds before `now`. `ledger.py <store> daily <max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>`
-of that row against the clock (UTC), or `none` (no file, or no row within the window); `pr-merge.sh` asks it with
-86400 and skips a head's own sweep row only on a row, so the exemption of rule C is bound to the control it rests on.
+the field. `Daily.newest_within(now, max_age)` is the newest row by `(ts, line)` whose ts lies within the window
+`now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60 seconds, the clocks' skew; round 5: a row dated further in the
+future is not within the window, so it does not count and is not refused as malformed, where round 4's floor alone
+let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily <max-age-seconds>`
+prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none` (no file, or no
+row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a row, so the
+exemption of rule C is bound to the control it rests on.
 """
 
 from __future__ import annotations
@@ -91,6 +94,9 @@ NONE = "none"
 DAILY_FILE = "daily-sweeps.tsv"
 DAILY_HEADER = ("ts", "head_sha", "verifier", "evidence")
 DAILY_REQUIRED = range(1, 5)  # every cell: a row without a verifier or an evidence is no sweep
+# The window's upper bound (round 5): a daily row may be dated this many seconds after now (the clocks' skew) and no
+# further; a row dated later is not within the window.
+DAILY_FUTURE_SLACK = 60
 MAX_AGE = re.compile(r"^[1-9][0-9]*$")
 
 
@@ -310,10 +316,12 @@ class Daily:
     rows: tuple
 
     def newest_within(self, now, max_age):
-        """The newest row by `(ts, line)` whose ts is not older than `max_age` seconds before `now` (a naive UTC
-        datetime, as the rows' ts are), or None: the daily sweep a head outside every class rests on."""
+        """The newest row by `(ts, line)` whose ts lies within `now - max_age <= ts <= now + DAILY_FUTURE_SLACK`
+        (`now` a naive UTC datetime, as the rows' ts are), or None: the daily sweep a head outside every class rests
+        on. A row dated more than DAILY_FUTURE_SLACK seconds after now is not within the window (round 5)."""
         floor = now - timedelta(seconds=max_age)
-        return newest(row for row in self.rows if row.ts >= floor)
+        ceiling = now + timedelta(seconds=DAILY_FUTURE_SLACK)
+        return newest(row for row in self.rows if floor <= row.ts <= ceiling)
 
 
 def parse_daily(name, text):

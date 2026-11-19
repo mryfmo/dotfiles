@@ -76,10 +76,11 @@
 #   the body's program (the derived store, or the checkout's own store while no derived one exists). The
 #   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
 #   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`); the head's changed paths, which
-#   decide whether the sweep is required (below), are the compare API keyed by the head's sha as data, `gh api
-#   'repos/{owner}/{repo}/compare/main...<head>' --paginate --jq '.files[] | [.status, .filename, (if
-#   has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file, and one
-#   `gh pr view <pr> --json changedFiles` gives the count the listing must reach, `gh` reads like the others. CI is `gh pr checks <pr>
+#   decide whether the sweep is required (below), are the compare API keyed by the head's sha as data, one call, `gh api
+#   'repos/{owner}/{repo}/compare/main...<head>' --jq '(.files // error("no files key")) | .[] | [.status, .filename,
+#   (if has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file, whose
+#   completeness the reader takes from the listing itself (300 or more entries, the API's cap, is `required cap`), a
+#   `gh` read like the others. CI is `gh pr checks <pr>
 #   --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
 #   one check, every bucket `pass` or `skipping`, every name of REQUIRED_CHECKS listed with bucket `pass`, and `gh`
@@ -108,28 +109,32 @@
 #   executable; every other head merges on its Codex audit and CI alone while the standing control stands, one full
 #   sweep of main's head per day, whose row this lever reads since round 4; U147 read the unit's brief for the
 #   trust-boundary mark, and with one class that reading is gone). After `require_dispositions` the lever lists the
-#   audited head's changed files through the GitHub compare API keyed by the head's sha itself, `gh api
-#   'repos/{owner}/{repo}/compare/main...<head>' --paginate --jq '.files[] | [.status, .filename, (if
-#   has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file (U597 round 4,
-#   the mechanism change after three rounds on a listing keyed by the pull request's number: round 1's `gh pr diff
-#   <pr> --name-only` printed a rename's destination alone and kept git's C quoting of a name with a tab; round 2's
-#   files endpoint listed both paths of a rename as JSON, and round 3 made each file one array the reader parses and
-#   refuses in any other shape, but the files endpoint is keyed by the number alone, so a head reread and the
-#   `changedFiles` count around it never bound the listing to the audited head: the pull request's head can move
+#   audited head's changed files through the GitHub compare API keyed by the head's sha itself, one call, `gh api
+#   'repos/{owner}/{repo}/compare/main...<head>' --jq '(.files // error("no files key")) | .[] | [.status, .filename,
+#   (if has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file (U597
+#   round 4, the mechanism change after three rounds on a listing keyed by the pull request's number: round 1's `gh pr
+#   diff <pr> --name-only` printed a rename's destination alone and kept git's C quoting of a name with a tab; round
+#   2's files endpoint listed both paths of a rename as JSON, and round 3 made each file one array the reader parses
+#   and refuses in any other shape, but the files endpoint is keyed by the number alone, so a head reread and a count
+#   of the pull request around it never bound the listing to the audited head: the pull request's head can move
 #   between the listing and the read; the compare request names the sha, so its answer is that head's diff from the
 #   merge base with `main`, the three-dot form, or a failure, and a listing of another head cannot be substituted;
-#   `main` is the base the first view read and required; gh fills `{owner}` and `{repo}` from the checkout's remote,
-#   `--paginate` walks every page of `files`, 300 a page, and a page that fails fails the call; a failed listing is a
-#   failure, an empty one a refusal: a head that changes nothing is nothing to merge, and a listing cut short is
-#   never "not required", standing order 21). Then one `gh pr view <pr> --json changedFiles` read (a failed read is a
-#   failure) gives the count, which goes to the reader: a count, not a listing, so the number key is harmless there,
-#   and the reader refuses a listing whose count of distinct filenames differs from it, naming both counts (a page
-#   lost or a listing cut short). The listing goes on stdin to the checkout's `scripts/orchestrator/sweep-scope.py
-#   --files-json --changed-files <n>`, the one definition of the classes (one frozen tuple of path prefixes per
-#   class), run as `python3 -I -S` with its status read: exit 2 is a refusal carrying its line (a line of another
-#   shape, a rename without its source, a `previous_filename` that is neither a string nor null, which the jq passes
-#   through as it is and never maps to null, round 4), any other non-zero status a failure, and an exit-0 answer is
-#   read by its shape: `required <class>` (the class one lowercase word) keeps the gate below; `not-required` binds
+#   `main` is the base the first view read and required; gh fills `{owner}` and `{repo}` from the checkout's remote).
+#   Round 5 (the round-4 P1 and its first P2): the compare response carries `files` on its first page alone, at most
+#   300 entries, and paging walks its commits, not its files (docs.github.com, REST API, commits, compare two
+#   commits, read 2026-11-19), so the call is one, with no paging, and completeness is read from the listing
+#   itself and from nothing keyed by the number: the reader counts the entries and answers `required cap` for 300 or
+#   more (the listing may be cut short, so the per-head sweep stands), the classes decide under 300, and no count of
+#   the pull request is read beside it. A response without a `files` key (a later page, or a shape the API changed) is
+#   the jq's own error, `(.files // error("no files key"))`, which fails the call and the lever names, never an empty
+#   listing; a failed listing is a failure, an empty one a refusal: a head that changes nothing is nothing to merge,
+#   and a listing cut short is never "not required" (standing order 21). The listing goes on stdin to the checkout's
+#   `scripts/orchestrator/sweep-scope.py --files-json`, the one definition of the classes (one frozen tuple of path
+#   prefixes per class), run as `python3 -I -S` with its status read: exit 2 is a refusal carrying its line (a line of
+#   another shape, a rename without its source, a `previous_filename` that is neither a string nor null, which the jq
+#   passes through as it is and never maps to null, round 4), any other non-zero status a failure, and an exit-0
+#   answer is read by its shape: `required cap` sets `sweep_class` to `cap` with the cap's reason and keeps the gate
+#   below, `required <class>` (the class one lowercase word) keeps the gate below; `not-required` binds
 #   the exemption to its standing control (round 4; the round-2 and round-3 P2 at AGENTS.md:71: until then no merge
 #   gate read the daily sweep, so a head outside every class could merge with no sweep anywhere near it): the
 #   checkout's `ledger.py <store> daily 86400` prints the newest row of the store's `daily-sweeps.tsv` (header `ts
@@ -163,13 +168,14 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read (the compare listing and the `changedFiles` read included), the manifest pin
-#   probe, the scope reader or the ledger reader (any status but 0 or 2), or the merge, failed.
+# @exitcode 1 A `gh` or `git` read (the compare listing included, a response without its `files` key among its
+#   failures), the manifest pin probe, the scope reader or the ledger reader (any status but 0 or 2), or the merge,
+#   failed.
 # @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a compare listing
 #   that names no file, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2: a listing that is not one
 #   JSON array of status, filename and previous_filename per file, a `previous_filename` neither a string nor null, a
-#   rename without its source, a path git would not list, or a count of distinct filenames other than the pull
-#   request's `changedFiles`) or that is neither `not-required` nor `required <class>`, a `daily-sweeps.tsv` that is
+#   rename without its source, or a path git would not list) or that is neither `not-required` nor `required
+#   <class>` (`required cap`, the listing at the compare API's cap, is a required class to this gate), a `daily-sweeps.tsv` that is
 #   a symlink or not a regular file of this user, one the checkout's `ledger.py` cannot read as data (its exit 2
 #   naming the line and field), a daily answer of the reader that is neither `none` nor one row of four tab-separated
 #   fields with a ts and a 40-hex head, a daily row whose verifier or evidence is not the exact row of the rule (as
@@ -179,7 +185,8 @@
 #   neither `none` nor one row of four tab-separated fields with a ts, a sweep row whose verifier is not
 #   `security-audit-skill <pin>` with the
 #   pin word a prefix (8 or more characters) of the manifest's `assets.security-audit-skill.pin`, whose evidence does
-#   not name a regular file of this user `sweeps/<path>.json` under the store, or a manifest without that one pin, a
+#   not name a regular file of this user `sweeps/<path>.json` under the store, reached through real directories alone
+#   and resolving under the resolved store's `sweeps/` (round 5), or a manifest without that one pin, a
 #   ledger the checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the
 #   calendar, a wrong header or column count, an empty required cell, a sweep or audit row whose head is not 40 hex, a
 #   `sweep` row that is not the exact row of the Audit sweep rule, pr `-`, verifier `security-audit-skill <pin>` and
@@ -702,45 +709,44 @@ require_dispositions() {
 
 # @description Decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C of
 #   2026-11-18): the audited head's changed files as data, listed by the GitHub compare API keyed by the head's sha
-#   itself, `gh api "repos/{owner}/{repo}/compare/${base}...${head}" --paginate --jq '.files[] | [.status, .filename,
-#   (if has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file (round 4,
-#   the mechanism change: rounds 1 to 3 listed the pull request's files by its number, `gh pr diff --name-only` and
-#   then the files endpoint, and no reread around a number-keyed listing binds it to the audited head, since the pull
-#   request's head can move between the listing and the read; the compare request names the sha, so its answer is
-#   that head's diff from the merge base with `main`, the three-dot form, or a failure, and a listing of another head
-#   cannot be substituted). `base` is the pull request's base the first view read and required to be `main`, `head`
-#   the pinned full sha. The compare endpoint pages its `files` 300 a page; `--paginate` walks every page and a page
-#   that fails fails the call, a `gh` read bounded like the others; this lever reads no local git object, so no
+#   itself, one call, `gh api "repos/{owner}/{repo}/compare/${base}...${head}" --jq '(.files // error("no files key"))
+#   | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'`, one
+#   JSON array per file (round 4, the mechanism change: rounds 1 to 3 listed the pull request's files by its number,
+#   `gh pr diff --name-only` and then the files endpoint, and no reread around a number-keyed listing binds it to the
+#   audited head, since the pull request's head can move between the listing and the read; the compare request names
+#   the sha, so its answer is that head's diff from the merge base with `main`, the three-dot form, or a failure, and
+#   a listing of another head cannot be substituted). `base` is the pull request's base the first view read and
+#   required to be `main`, `head` the pinned full sha. Round 5 (the round-4 P1 and its first P2): the compare response
+#   carries `files` on its first page alone, at most 300 entries, and `per_page` pages its commits, not its files
+#   (docs.github.com, REST API, commits, compare two commits, read 2026-11-19), so the call is one, with no
+#   paging, and completeness is read from the listing itself: the reader counts the entries and answers
+#   `required cap` for 300 or more, a listing that may be cut short, which this function treats as `required <class>`
+#   does (`sweep_class=cap`, the cap's reason), and under 300 the listing is whole and the classes decide; the
+#   pull request's file count of rounds 3 and 4 was a read keyed by the pull request's number that no pin bound to
+#   the audited head, and it is gone with the reader's count option. A response without a `files` key (a later
+#   page, or a shape the API changed) is the jq's own error, `(.files // error("no files key"))`, so the call fails and
+#   the failure names it, never an empty listing read as "not required". This lever reads no local git object, so no
 #   planted replace ref or graft can narrow the listing. A listing that fails is a failure and one that names no file
 #   a refusal (standing order 21: a head that changes nothing is nothing to merge, and a listing cut short is never
-#   "not required"). Then one `gh pr view <pr> --json changedFiles` (a failed read is a failure) gives the count the
-#   listing must reach, a count and not a listing, so the number key is harmless there; it goes to the reader as
-#   `--changed-files <n>`, which refuses a listing whose count of distinct filenames differs from it, naming both
-#   counts (a page lost or a listing cut short is never "not required"). The listing goes on stdin to the checkout's
-#   `sweep-scope.py --files-json --changed-files <n>`, the one definition of the classes, run as `python3 -I -S` as the
-#   ledger reader is, with its status read as ledger_verdict reads it: 2 a refusal carrying its line (a line of
-#   another shape, a rename without its source, a `previous_filename` that is neither a string nor null, which the jq
-#   passes through as it is and never maps to null, round 4), any other non-zero a failure. The exit-0 answer is read
-#   by its shape: `required <class>` with the class one lowercase word (letters and hyphens) sets `sweep_class` to it
-#   and `sweep_reason` to the class clause; `not-required` alone sets `sweep_class` empty and asks
-#   require_daily_sweep whether the standing control stands (round 4: the exemption is bound to the daily sweep);
-#   anything else, a second line included, is a refusal naming the reader and the answer. The lever reads the listing
-#   as text it passes on and judges no class itself.
-# @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), or empty when none does.
-# @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
+#   "not required"). The listing goes on stdin to the checkout's `sweep-scope.py --files-json`, the one definition of
+#   the classes, run as `python3 -I -S` as the ledger reader is, with its status read as ledger_verdict reads it: 2 a
+#   refusal carrying its line (a line of another shape, a rename without its source, a `previous_filename` that is
+#   neither a string nor null, which the jq passes through as it is and never maps to null, round 4), any other
+#   non-zero a failure. The exit-0 answer is read by its shape: `required cap` sets `sweep_class` to `cap` and
+#   `sweep_reason` to the cap's clause; `required <class>` with the class one lowercase word (letters and hyphens)
+#   sets `sweep_class` to it and `sweep_reason` to the class clause; `not-required` alone sets `sweep_class` empty
+#   and asks require_daily_sweep whether the standing control stands (round 4: the exemption is bound to the daily
+#   sweep); anything else, a second line included, is a refusal naming the reader and the answer. The lever reads the
+#   listing as text it passes on and judges no class itself.
+# @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), `cap` for a listing at the compare API's cap, or empty when none does.
+# @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
 require_sweep_scope() {
-    local status=0 listing count answer class
-    listing=$(gh_bounded api "repos/{owner}/{repo}/compare/${base}...${head}" --paginate --jq '.files[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json') ||
-        fail "cannot list the changed paths of the head ${head} of pull request ${pr} (gh api repos/{owner}/{repo}/compare/${base}...${head}); the sweep scope is decided from them"
+    local status=0 listing answer class
+    listing=$(gh_bounded api "repos/{owner}/{repo}/compare/${base}...${head}" --jq '(.files // error("no files key")) | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json') ||
+        fail "cannot list the changed paths of the head ${head} of pull request ${pr} (gh api repos/{owner}/{repo}/compare/${base}...${head}); the sweep scope is decided from them, and a response without its files key (a later page, or a shape the API changed) is this failure through the jq's error(\"no files key\"), never an empty listing"
     [[ -n ${listing} ]] ||
         refuse "the compare API (gh api repos/{owner}/{repo}/compare/${base}...${head}) listed no changed path of the head ${head} of pull request ${pr}; a head that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
-    # The count the listing must reach (round 3), one read of the pull request: a count, not a listing, so the number
-    # key binds nothing and need not; the reader refuses a listing of another count naming both.
-    count=$(gh_bounded pr view "${pr}" --json changedFiles --jq '.changedFiles') ||
-        fail "cannot read the changedFiles count of pull request ${pr}; the listing of the head ${head} is counted against it"
-    [[ ${count} =~ ^[0-9]+$ ]] ||
-        fail "pull request ${pr} has no readable changedFiles count: ${count:-nothing}"
-    answer=$("${python}" -I -S "${scope_reader}" --files-json --changed-files "${count}" <<< "${listing}" 2>&1) || status=$?
+    answer=$("${python}" -I -S "${scope_reader}" --files-json <<< "${listing}" 2>&1) || status=$?
     case ${status} in
     0) ;;
     2) refuse "${answer#sweep-scope: }" ;;
@@ -750,6 +756,12 @@ require_sweep_scope() {
     not-required)
         sweep_class=''
         require_daily_sweep
+        ;;
+    'required cap')
+        # The listing is at the compare API's cap (round 5): 300 or more entries, so it may be cut short and the
+        # per-head sweep stands, as for a class.
+        sweep_class=cap
+        sweep_reason="the head changes 300 or more files, the compare API's cap, so the listing may be cut short and the per-head sweep stands"
         ;;
     'required '*)
         class=${answer#required }
@@ -826,15 +838,20 @@ require_daily_sweep() {
 #   the manifest's `assets.security-audit-skill.pin` (sweep_pin_probe over LEVER_MANIFEST: exit 0 the pin, 2 a
 #   refusal carrying its line, anything else a failure); the findings file is the evidence's first `;`-separated
 #   field stripped of whitespace, a relative path under `sweeps/` ending in `.json` with no `..`, `.` or empty
-#   component, checked as the verdict file is (`sweeps/` a directory of this user and no symlink, then the file `-f`,
-#   `-O`, `! -L`) and never opened. The reader already refuses a row of another shape as a malformed store; the lever
-#   reads the answer by its shape all the same. A pin that is no prefix or a file that is missing, a symlink or
-#   another user's is a refusal naming it and the row.
+#   component, checked as the verdict file is (`sweeps/` a directory of this user and no symlink, then every
+#   directory component between `sweeps/` and the file a directory of this user and no symlink, walked one by one
+#   with `-L` on each, then the file `-f`, `-O`, `! -L`, then the realpath of the file's directory, `cd` and `pwd -P`,
+#   under the realpath of the store's `sweeps/`; round 5: `-f` on the file alone followed a symlinked directory
+#   between them, so a row could name a findings file outside the store) and never opened. The reader already refuses
+#   a row of another shape as a malformed store; the lever reads the answer by its shape all the same. A pin that is
+#   no prefix or a file that is missing, a symlink, another user's, behind a symlinked component or resolving outside
+#   the store's `sweeps/` is a refusal naming it and the row.
 # @arg $1 string The row, as the refusals name it (`the sweep row of U<n> at <head>`, `the daily sweep row of <ts> at main's head <head>`).
 # @arg $2 string The row's verifier.
 # @arg $3 string The row's evidence.
 sweep_row_fields() {
     local subject=$1 verifier=$2 evidence=$3 status=0 pin_word manifest_pin findings_path sweeps_dir findings_file
+    local relative component_dir resolved_store resolved_dir
     case ${verifier} in
     'security-audit-skill '*) ;;
     *) refuse "${subject} names '${verifier}' as its verifier, not the pinned skill and its pin (security-audit-skill <pin>); the gate admits the row the AGENTS.md Audit sweep rule defines alone" ;;
@@ -866,9 +883,25 @@ sweep_row_fields() {
     sweeps_dir=${store}/sweeps
     [[ ! -L ${sweeps_dir} && -d ${sweeps_dir} && -O ${sweeps_dir} ]] ||
         refuse "${sweeps_dir} is not a directory of this user (a symlink or missing); the findings file a sweep row names must be in the checkout's own store"
+    # Every directory component between sweeps/ and the file, walked one by one (round 5): a symlinked directory
+    # there carried a findings file from outside the store into the row, since `-f` on the file follows it.
+    relative=${findings_path#sweeps/}
+    component_dir=${sweeps_dir}
+    while [[ ${relative} == */* ]]; do # lint-comparisons: allow the row's store-relative path is split as the text it is; each component is then stat'ed under the store
+        component_dir=${component_dir}/${relative%%/*}
+        relative=${relative#*/}
+        [[ ! -L ${component_dir} && -d ${component_dir} && -O ${component_dir} ]] ||
+            refuse "${component_dir}, a directory component of the findings file ${findings_path} that ${subject} names, is a symbolic link or not a directory of this user; the file is read under the store's sweeps/ through real directories alone"
+    done
     findings_file=${store}/${findings_path}
     [[ ! -L ${findings_file} && -f ${findings_file} && -O ${findings_file} ]] ||
         refuse "${findings_file}, the findings file ${subject} names, is not a regular file of this user (a symlink or missing); a sweep whose findings file is not in the store admits no merge"
+    # The resolved file lies under the resolved store's sweeps/ (round 5): the realpath of the file's directory and of
+    # the store, `cd` and `pwd -P`, the lever's physical form; each read with its status.
+    resolved_store=$(cd "${store}" 2> /dev/null && pwd -P) || fail "cannot resolve the store ${store} to its physical path"
+    resolved_dir=$(cd "${findings_file%/*}" 2> /dev/null && pwd -P) || fail "cannot resolve the directory of the findings file ${findings_file} to its physical path"
+    [[ ${resolved_dir}/ == "${resolved_store}/sweeps/"* ]] || # lint-comparisons: allow both sides are pwd -P forms
+        refuse "the findings file ${findings_file} that ${subject} names resolves to ${resolved_dir}/${findings_file##*/}, outside the store's ${resolved_store}/sweeps/; a sweep whose findings file is not in the store admits no merge"
 }
 
 # @description Refuse unless the ledger holds the unit's sweep row at `audited_head` (regime-cutover U147, every unit

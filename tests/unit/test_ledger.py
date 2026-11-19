@@ -9,7 +9,8 @@ three audit questions, a sweep row with a short head is a malformed store naming
 (U597 round 4): `read_daily` and `Daily.newest_within(now, max_age)` over the store's `daily-sweeps.tsv` with the
 ledger's strictness (a missing file None, a malformed row naming the line and the field), and the CLI form `ledger.py
 <store> daily <max-age-seconds>` printing `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of the newest row within the
-window against the clock, or `none`."""
+window against the clock, or `none`; round 5: the window is bounded above by 60 seconds, so a row dated further in
+the future does not count (and is not refused as malformed)."""
 
 import importlib.util
 import os
@@ -336,7 +337,9 @@ class LedgerDailyTest(unittest.TestCase):
         self.assertIsNone(read.newest_within(now, 7199), "a row one second older than the window is not")
         self.assertIsNone(read.newest_within(now, 3600))
         self.assertEqual(
-            read.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line, 5, "a future ts stands (the clock's)"
+            read.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line,
+            2,
+            "the rows dated 22 hours ahead of the clock are not within the window (round 5); the past row at its edge is",
         )
         only_past = self.write(daily("2026-11-18T11:00:00Z", A), daily("2026-11-17T11:00:00Z", B))
         self.assertEqual(only_past.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line, 2, "the window moves")
@@ -355,6 +358,41 @@ class LedgerDailyTest(unittest.TestCase):
             daily("2026-11-19T10:00:00Z", B).replace("\n", "\r\n"), header=DAILY_HEADER.replace("\n", "\r\n")
         )
         self.assertEqual(with_cr.rows[0].evidence, "sweeps/daily-2026-11-19/findings.json; 0 findings", "CR stripped")
+
+    def test_a_row_dated_more_than_60_seconds_ahead_is_not_within_the_window(self):
+        """Round 5 (verdict U597-1b3c4b1d P2 at ledger.py:316): round 4's window had a floor alone, so a row dated in
+        the future waived per-head sweeps until a day after its ts. The window is `now - max_age <= ts <= now + 60 s`:
+        a row 60 seconds ahead counts, one 61 seconds ahead does not, and such a row is not malformed (the file still
+        parses, an older row within the window still answers); the CLI agrees against the clock."""
+        self.assertEqual(self.reader.DAILY_FUTURE_SLACK, 60)
+        now = datetime(2026, 11, 19, 12, 0, 0)
+        read = self.write(
+            daily("2026-11-19T11:00:00Z", A),  # line 2: an hour before now
+            daily("2026-11-19T12:01:00Z", B),  # line 3: 60 seconds ahead, within
+            daily("2026-11-19T12:01:01Z", C),  # line 4: 61 seconds ahead, not within
+            daily("2026-11-20T12:00:00Z", C),  # line 5: a day ahead, not within
+        )
+        self.assertEqual([row.line for row in read.rows], [2, 3, 4, 5], "a future row is data, not malformed")
+        self.assertEqual((read.newest_within(now, 86400).line, read.newest_within(now, 86400).head_sha), (3, B))
+        self.assertEqual(read.newest_within(now, 86400).ts_text, "2026-11-19T12:01:00Z")
+        future_only = self.write(daily("2026-11-19T12:01:01Z", C), daily("2026-11-20T12:00:00Z", C))
+        self.assertIsNone(future_only.newest_within(now, 86400), "future rows alone count for nothing")
+        self.assertEqual(future_only.newest_within(datetime(2026, 11, 19, 12, 0, 1), 86400).line, 2, "the clock moves")
+        self.assertEqual(future_only.newest_within(datetime(2026, 11, 20, 12, 0, 0), 86400).line, 3)
+        # the CLI against the clock: a row a day ahead is none, a row 30 seconds ahead stands, an hour-old row beside
+        # a day-ahead row is the answer
+        day_ahead = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.write(daily(day_ahead, C))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "a day ahead is not within")
+        soon = (datetime.now(timezone.utc) + timedelta(seconds=30)).strftime("%Y-%m-%dT%H:%M:%SZ")
+        self.write(daily(soon, B))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(soon, B), ""), "30 seconds ahead stands")
+        hour_old = ago(3600)
+        self.write(daily(hour_old, A), daily(day_ahead, C))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(hour_old, A), ""))
 
     def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
         ts = "2026-11-19T10:00:00Z"

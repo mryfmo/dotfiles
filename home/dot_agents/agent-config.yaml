@@ -991,12 +991,12 @@ claude:
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: c7e32bfdff7f50a6b9caa62aad7e5fafa607a63ebe8ea6b1bc112729744fbd24
-      pr-merge.sh: 1c3d650b74c090feceb0ef8e9b2ae06ac12d3add6bd24bced1c372c646e18067
+      pr-merge.sh: 2bc8af7c87c33b73275263e36796e7e7a4cb24a5ccd1e3f63c7fcff5b24b53f0
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: 1eba892d08bfc45a996a5d0d9e70fae6759bdd2079b82f4e4e1b597046be58f1
       brief-check.py: 2e7381a738a59ff1075754221189704f48a39e3af5ded6d697acc895d6224948
-      ledger-row.py: d4d9cbb3e56f7b5445e02d21e179b99aa62404caa9266c48cc9f76e05d21e467
-      ledger.py: 7633972383d6fb33abad1a5c1e13995e1c18aa22d923708f156871c7dee6627f
+      ledger-row.py: 111e78aed5639b6fe0b6c2b08785af9cafb253d665c5e539f01cf70f352d3d17
+      ledger.py: 17e3e4f98b6c2033a9f63265c7696fd188082aebaeaf594ab7e5b4bfc97e5d08
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 70d1e3cbe87fae92fc675399b2c0ba8688a7f7759adc4b6356f6e0b63b6f241a

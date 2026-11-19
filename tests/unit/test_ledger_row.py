@@ -288,7 +288,8 @@ class LedgerRowTest(unittest.TestCase):
         """U597 round 4: the `daily` kind writes the one row of the store's `daily-sweeps.tsv`, main's head, the
         verifier of the `sweep` kind with the daily task id, the findings file and the count; the file is made with
         its header when absent and appended when present; the ledger is untouched; `ledger.py daily` reads the newest
-        row back; a unit's id is accepted as the task too."""
+        row back; a unit's id is accepted as the task too (round 5: the second row is another run, with its own
+        findings file, since a findings file already recorded is refused)."""
         daily = self.store / "daily-sweeps.tsv"
         args = (
             "daily",
@@ -316,11 +317,13 @@ class LedgerRowTest(unittest.TestCase):
         self.assertTrue(text.startswith(DAILY_HEADER), text)
         self.assertEqual(text.count("\n"), 2, "the header and one row")
         self.assertFalse(daily.is_symlink())
+        (self.store / "sweeps/U9-cccccccc").mkdir()
+        (self.store / "sweeps/U9-cccccccc/findings.json").write_text("[]\n")
         cells = self.assert_daily_appended(
-            (*args[:7], "--task", "U9", "--findings", "sweeps/U9-bbbbbbbb/findings.json", "--count", "2"),
+            (*args[:7], "--task", "U9", "--findings", "sweeps/U9-cccccccc/findings.json", "--count", "2"),
             A,
             verifier.replace("TASK daily-2026-11-19", "TASK U9"),
-            evidence.replace("0 findings", "2 findings"),
+            evidence.replace("U9-bbbbbbbb", "U9-cccccccc").replace("0 findings", "2 findings"),
         )
         self.assertEqual(daily.read_text().count("\n"), 3, "appended, the header once")
         run = self.read("daily", "86400")
@@ -423,6 +426,183 @@ class LedgerRowTest(unittest.TestCase):
         daily.unlink()
         refused(args(seat="sweep\t3"), "holds a tab")
         self.assertFalse(daily.exists())
+
+    DAILY_ARGS = (
+        "daily",
+        "--head",
+        A,
+        "--seat",
+        "sweep-3",
+        "--run",
+        "170",
+        "--task",
+        "daily-2026-11-19",
+        "--findings",
+        "sweeps/U9-bbbbbbbb/findings.json",
+        "--count",
+        "0",
+    )
+    DAILY_VERIFIER = f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-3, run-170; TASK daily-2026-11-19)"
+    DAILY_EVIDENCE = (
+        "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
+    )
+
+    def test_a_daily_row_refuses_a_findings_path_an_existing_row_already_names(self):
+        """U597 round 5 (verdict U597-1b3c4b1d P2 at ledger-row.py:408): the writer dates the row by the clock, not
+        the sweep, so recording a finished run again refreshed the exemption's window without a new sweep. A
+        `--findings` path any existing daily row names (the evidence's first `;`-separated field, stripped) is refused
+        with one line naming that row's ts and line, the file unchanged byte for byte; another findings file appends;
+        a hand-written row with spaces around the path names it all the same."""
+        daily = self.store / "daily-sweeps.tsv"
+        first = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        before = daily.read_bytes()
+        for name, arguments in (
+            ("the same arguments", self.DAILY_ARGS),
+            ("another count and head", (*self.DAILY_ARGS[:2], B, *self.DAILY_ARGS[3:-1], "3")),
+            ("another task", (*self.DAILY_ARGS[:8], "daily-2026-11-20", *self.DAILY_ARGS[9:])),
+        ):
+            with self.subTest(name):
+                run = self.run_writer(*arguments)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(
+                    run.stderr,
+                    "ledger-row: refused: the findings file sweeps/U9-bbbbbbbb/findings.json is already recorded by"
+                    f" the daily sweep row of {first[0]} ({daily}:2); a finished run is not re-recorded to refresh the"
+                    " window\n",
+                )
+                self.assertEqual(daily.read_bytes(), before, "the daily file is unchanged")
+        # another findings file is another run: appended
+        (self.store / "sweeps/daily-2026-11-20").mkdir()
+        (self.store / "sweeps/daily-2026-11-20/findings.json").write_text("[]\n")
+        other = (
+            *self.DAILY_ARGS[:8],
+            "daily-2026-11-20",
+            "--findings",
+            "sweeps/daily-2026-11-20/findings.json",
+            "--count",
+            "1",
+        )
+        self.assert_daily_appended(
+            other,
+            A,
+            self.DAILY_VERIFIER.replace("daily-2026-11-19", "daily-2026-11-20"),
+            "sweeps/daily-2026-11-20/findings.json; 1 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+        )
+        self.assertEqual(daily.read_text().count("\n"), 3)
+        # a hand-written earlier row with spaces around the path still names the path (the field is stripped)
+        daily.write_text(
+            DAILY_HEADER
+            + f"2026-11-19T01:00:00Z\t{B}\t{self.DAILY_VERIFIER}\t sweeps/U9-bbbbbbbb/findings.json ; 0 findings\n"
+        )
+        run = self.run_writer(*self.DAILY_ARGS)
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(
+            f"is already recorded by the daily sweep row of 2026-11-19T01:00:00Z ({daily}:2); a finished run",
+            run.stderr,
+        )
+        self.assertEqual(daily.read_text().count("\n"), 2, "unchanged")
+
+    def inject_short_write(self, *args):
+        """The lever under `python3 -I -S` with `os.write` replaced by one that lands the first two bytes alone (the
+        auditor's fault injection of verdict U597-1b3c4b1d; round 5)."""
+        injection = (
+            "import os, runpy, sys\n"
+            "real = os.write\n"
+            "def short(descriptor, data, *rest):\n"
+            "    return real(descriptor, data[:2], *rest)\n"
+            "os.write = short\n"
+            "sys.argv = sys.argv[1:]\n"
+            "runpy.run_path(sys.argv[0], run_name='__main__')\n"
+        )
+        return subprocess.run(
+            [sys.executable, "-I", "-S", "-c", injection, str(self.writer), str(self.store), *args],
+            capture_output=True,
+            text=True,
+            env=self.env,
+            timeout=60,
+            check=False,
+        )
+
+    def test_a_short_first_write_of_the_daily_file_leaves_no_file_and_the_rerun_writes_it(self):
+        """U597 round 5 (verdict U597-1b3c4b1d P2 at ledger-row.py:506): round 4 made the file with `O_EXCL` and wrote
+        the header through it, so a short write left a malformed `daily-sweeps.tsv` that the rerun refused and never
+        repaired. The first file is now the header and the row written whole into a temporary file of the store
+        directory and renamed onto the name: an `os.write` that lands two bytes is exit 1, one stderr line naming the
+        file and the short write, and the store holds no `daily-sweeps.tsv` and no temporary file; an injected
+        `fsync`, `replace` or `fchmod` failure leaves the same; the rerun writes the whole file, mode 0644; and a file
+        whose header is malformed (an empty file, a wrong header) is refused naming line 1 and left as it is, never
+        repaired; a later row is appended as one write, the first file untouched before it."""
+        daily = self.store / "daily-sweeps.tsv"
+        before = self.store_listing()
+        run = self.inject_short_write(*self.DAILY_ARGS)
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+        self.assertTrue(run.stderr.startswith(f"ledger-row: cannot write {daily}: short write, 2 of "), run.stderr)
+        self.assertIn(
+            " bytes; the temporary file is removed and no daily-sweeps.tsv exists; the rerun writes it again\n",
+            run.stderr,
+        )
+        self.assertFalse(daily.exists(), "no malformed file is left for the rerun to refuse")
+        self.assertEqual(self.store_listing(), before, "no file but the ledger, and no temporary file")
+        for function in ("fsync", "replace", "fchmod"):
+            with self.subTest(function):
+                run = self.inject(function, *self.DAILY_ARGS)
+                self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertTrue(run.stderr.startswith(f"ledger-row: cannot write {daily}: "), run.stderr)
+                self.assertIn("Input/output error; the temporary file is removed", run.stderr)
+                self.assertFalse(daily.exists())
+                self.assertEqual(self.store_listing(), before)
+        # the rerun writes the whole file, the header and the row, mode 0644, nothing else in the store
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        self.assertEqual(daily.read_text().count("\n"), 2)
+        self.assertEqual(stat.S_IMODE(daily.stat().st_mode), 0o644)
+        self.assertEqual(
+            sorted(entry.name for entry in self.store.iterdir()),
+            ["daily-sweeps.tsv", "ledger.tsv", "sweeps", "verdicts"],
+        )
+        # a later row is appended as one write to the existing file; a short append truncates back (the ledger's
+        # own recovery), the first file whole
+        whole = daily.read_bytes()
+        (self.store / "sweeps/daily-2026-11-20").mkdir()
+        (self.store / "sweeps/daily-2026-11-20/findings.json").write_text("[]\n")
+        other = (
+            *self.DAILY_ARGS[:8],
+            "daily-2026-11-20",
+            "--findings",
+            "sweeps/daily-2026-11-20/findings.json",
+            "--count",
+            "0",
+        )
+        run = self.inject_short_write(*other)
+        self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
+        self.assertTrue(run.stderr.startswith(f"ledger-row: cannot write {daily}: short write, 2 of "), run.stderr)
+        self.assertIn(f"truncated back to {len(whole)} bytes", run.stderr)
+        self.assertEqual(daily.read_bytes(), whole, "the first file is whole after the failed append")
+        self.assert_daily_appended(
+            other,
+            A,
+            self.DAILY_VERIFIER.replace("daily-2026-11-19", "daily-2026-11-20"),
+            "sweeps/daily-2026-11-20/findings.json; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+        )
+        # a malformed header is refused naming line 1 and never repaired
+        for text, message in (
+            ("", f"{daily}:1: the header is '', not"),
+            ("ts\thead\n", f"{daily}:1: the header is 'ts\\thead', not"),
+            (b"\xff\n".decode("latin-1"), f"{daily}: not UTF-8"),
+        ):
+            with self.subTest(text=text):
+                daily.write_bytes(text.encode("latin-1"))
+                run = self.run_writer(*self.DAILY_ARGS)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn(message, run.stderr)
+                self.assertEqual(daily.read_bytes(), text.encode("latin-1"), "never repaired")
+                self.assertEqual(
+                    sorted(entry.name for entry in self.store.iterdir()),
+                    ["daily-sweeps.tsv", "ledger.tsv", "sweeps", "verdicts"],
+                    "no temporary file",
+                )
 
     def test_an_audit_row_reads_its_word_and_counts_from_the_verdict_file_s_last_lines(self):
         (self.store / "verdicts/U7-bbbbbbbb.md").write_text(VERDICT_CORRECT)

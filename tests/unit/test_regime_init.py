@@ -79,6 +79,14 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
                 self.assertEqual(text.count(f"\n{section}\n"), 1, f"one {section} heading")
         self.assertIn("\nCLOSURE\nremove\n", text)
         self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=ready_for_review pr=none head=<head>", text)
+        # round 5 (verdict U597-1b3c4b1d P2 at :38): the timeout path sends `status=partial`, not the full sweep's
+        # RESULT, and the recording step writes the daily row for `status=ready_for_review` alone
+        self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=partial pr=none head=<head>", text)
+        self.assertIn("The coordinator writes the day's row only for a RESULT with `status=ready_for_review`", text)
+        self.assertIn("A `status=partial` RESULT (the TIMEBOX path) gets no daily row", text)
+        timebox = text[text.index("\nTIMEBOX\n") : text.index("\nFORBIDDEN\n")]
+        self.assertIn("status=partial", timebox)
+        self.assertNotIn("status=ready_for_review", timebox, "the timeout path never sends the full sweep's RESULT")
         self.assertIn(
             "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
             "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>/findings.json --count <count>`",

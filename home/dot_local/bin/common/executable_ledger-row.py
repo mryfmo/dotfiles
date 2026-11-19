@@ -45,8 +45,14 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   clock, head main's head the sweep ran at, verifier as the `sweep` kind composes it (`security-audit-skill <pin8>
   (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`), evidence `<findings>; <count> findings;
   validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS` with the findings path a regular file under the
-  store; the file is made with its header when absent (`O_CREAT | O_EXCL`, the one file this lever creates), and
-  then read, checked through `ledger.parse_daily` and appended under the same lock as the ledger.
+  store. Round 5 (verdicts/U597-1b3c4b1d.md): the day's first file, the header and the first row, is written whole
+  through a temporary file of the store directory and `os.replace` under the ledger's lock (so two first writers
+  serialise and the second appends), and appears whole or not at all, where round 4's `O_CREAT | O_EXCL` header
+  write left a malformed file after a short write that no retry repaired; a later row is read, checked through
+  `ledger.parse_daily` and appended as one write under the daily file's own lock as the ledger is; a file whose
+  header is malformed is refused naming the line, never repaired; and a `--findings` path an existing daily row
+  already names (the evidence's first `;`-separated field) is refused naming that row's ts, so a finished run is
+  not re-recorded to refresh the window (the writer dates the row by the clock, not the sweep).
 
 Two refusals cross rows, before any write (standing order 21): a `pushed` or `receipt` row whose head is 40 hex while
 `ledger.already_audited` names an audit row of the same pull request at that head is refused naming that row's ts (the
@@ -64,7 +70,9 @@ levers writing at once never lose each other's row, and every argument round-tri
 anything is read (Python decodes argv with surrogateescape). Round 4 (U222d, verdicts/U222-238f0f55.md): the lever
 makes no file but the ledger (rounds 2 and 3 each wrote a helper file in the store, a temporary and a lock file, and
 the store's own walks refuse a name beginning with `.`), and since U597 round 4 the `daily-sweeps.tsv` the `daily`
-kind writes, made with its header on the first daily row. One descriptor, `os.open(<file>, O_RDWR | O_APPEND)`,
+kind writes, on the first daily row whole through a temporary file `daily-sweeps.tsv.<random>.tmp` of the store
+directory that `os.replace` renames onto the name (U597 round 5; a failed first write removes it, so no partial file
+and no temporary stays). One descriptor, `os.open(<file>, O_RDWR | O_APPEND)`,
 carries the lock, the read and the write: `fcntl.flock(LOCK_EX | LOCK_NB)` tried every 0.1 s for `--lock-wait`
 seconds (default 30), expiry a refusal naming the ledger (advisory: the readers, `ledger.py` and `pr-merge.sh`, open
 the file without a lock and are unaffected); under it `os.fstat` gives the length n0, `os.pread` from 0 until n0 bytes
@@ -92,6 +100,7 @@ import os
 import re
 import stat
 import sys
+import tempfile
 import time
 from datetime import datetime, timezone
 
@@ -486,33 +495,88 @@ def parser():
     return top
 
 
-def make_daily_file(store):
-    """`<store>/daily-sweeps.tsv` with its header when no entry of that name exists (U597 round 4): `O_CREAT |
-    O_EXCL | O_NOFOLLOW`, so an existing file, a symlink or any other entry is left to the path rule of store_file,
-    and two first writers never both create it. The one file this lever makes beside the ledger."""
-    path = os.path.join(store, ledger.DAILY_FILE)
+def daily_absent(path):
+    """True when no entry of any kind exists at `path` (`os.lstat` ENOENT alone, so a symlink or another entry at the
+    name is present and left to the path rule of store_file); any other failure to look is a refusal naming it
+    (standing order 21)."""
     try:
-        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
-    except FileExistsError:
-        return
+        os.lstat(path)
+    except FileNotFoundError:
+        return True
     except OSError as error:
-        refuse(f"cannot create {path}: {error.strerror}")
-    header = ("\t".join(ledger.DAILY_HEADER) + "\n").encode("utf-8")
+        refuse(f"cannot look for the daily sweeps file {path}: {error.strerror}")
+    return False
+
+
+def write_daily_file(store, path, line):
+    """The day's first `daily-sweeps.tsv` (U597 round 5): the header and the first row as one byte string into a
+    temporary file of the store directory (`tempfile.mkstemp`, `daily-sweeps.tsv.<random>.tmp`, mode 0644 as the
+    round-4 file was), one `os.write` compared with the length, `os.fsync`, the close, then `os.replace` onto the
+    name, so the file appears whole or not at all. A write that fails or returns short, a fsync, a close or a replace
+    that fails removes the temporary file and returns the failure text naming the file (exit 1 is the caller's); the
+    store then holds no `daily-sweeps.tsv` and the rerun writes it again (round 4 wrote the header through `O_EXCL`
+    first, so a short write left a malformed file no retry repaired). Returns None or the failure text."""
+    data = ("\t".join(ledger.DAILY_HEADER) + "\n" + line).encode("utf-8")
     try:
-        written = os.write(descriptor, header)
-        if written != len(header):
-            raise OSError(errno.EIO, f"short write, {written} of {len(header)} bytes")
+        descriptor, temporary = tempfile.mkstemp(prefix=f"{ledger.DAILY_FILE}.", suffix=".tmp", dir=store)
+    except OSError as error:
+        return f"cannot make a temporary file in {store} for {path}: {error.strerror}"
+    try:
+        os.fchmod(descriptor, 0o644)
+        written = os.write(descriptor, data)
+        if written != len(data):
+            raise OSError(errno.EIO, f"short write, {written} of {len(data)} bytes")
         os.fsync(descriptor)
+        os.close(descriptor)
+        descriptor = None
+        os.replace(temporary, path)
     except OSError as error:
+        if descriptor is not None:
+            try:
+                os.close(descriptor)
+            except OSError:
+                pass
         try:
-            os.close(descriptor)
+            os.unlink(temporary)
+            left = f"the temporary file is removed and no {ledger.DAILY_FILE} exists; the rerun writes it again"
+        except OSError as unlink_error:
+            left = f"the temporary file {temporary} could not be removed: {unlink_error.strerror}"
+        return f"cannot write {path}: {error.strerror or error}; {left}"
+    return None
+
+
+def first_daily_row(args, store, path, row):
+    """The day's first daily row (U597 round 5), when no entry exists at `path`: under the ledger's own lock
+    (`open_ledger` on `ledger.tsv`, the lock every writer of the store takes, so two first writers serialise and the
+    second finds the file and appends under the daily file's lock), the absence looked for again, the row's cells
+    checked, the header plus the row parsed by the reader's grammar, then write_daily_file. Returns None when the
+    file appeared meanwhile (the caller appends), else (code, text) as write_row returns it."""
+    lock = open_ledger(store_file(store, "ledger.tsv", "ledger"), args.lock_wait)
+    try:
+        if not daily_absent(path):
+            return None
+        line = daily_line(row)
+        try:
+            ledger.parse_daily(path, "\t".join(ledger.DAILY_HEADER) + "\n" + line)
+        except ledger.Malformed as error:
+            refuse(f"the reader refuses the composed row: {error}")
+        failure = write_daily_file(store, path, line)
+    finally:
+        try:
+            os.close(lock)
         except OSError:
             pass
-        refuse(f"cannot write the header of {path}: {error.strerror or error}")
-    try:
-        os.close(descriptor)
-    except OSError as error:
-        refuse(f"cannot write the header of {path}: close: {error.strerror}")
+    if failure is not None:
+        return 1, failure
+    return 0, f"appended {row.ts_text} line 2"
+
+
+def daily_line(row):
+    """The daily row's line, its four cells checked for a tab or a line break first."""
+    cells = (row.ts_text, row.head_sha, row.verifier, row.evidence)
+    for name, value in zip(ledger.DAILY_HEADER, cells):
+        cell_check(f"{name} cell", value)
+    return "\t".join(cells) + "\n"
 
 
 def store_file(store, relative, label):
@@ -665,12 +729,17 @@ def main(argv=None):
     store = os.path.realpath(args.store)
     # The record file first (standing order 21): its path by the store's file rule, its descriptor opened and locked
     # before it is read, before the row is composed and before any file of the store is read for it. The daily kind
-    # composes and checks its row first, since the row reads nothing from the daily file and the file is made with
-    # its header when absent (the day's first row), so a refusal makes no file; the ledger is never made.
+    # composes and checks its row first, since the row reads nothing from the daily file, so a refusal makes no file;
+    # the day's first row makes the file whole (first_daily_row, round 5) and a later one appends; the ledger is
+    # never made.
     composed = None
     if daily:
         composed = daily_row(args, store)
-        make_daily_file(store)
+        daily_path = os.path.join(store, ledger.DAILY_FILE)
+        if daily_absent(daily_path):
+            outcome = first_daily_row(args, store, daily_path, composed)
+            if outcome is not None:
+                return report(*outcome)
         record_path = store_file(store, ledger.DAILY_FILE, "daily sweeps file")
     else:
         record_path = store_file(store, "ledger.tsv", "ledger")
@@ -691,6 +760,11 @@ def main(argv=None):
         else:
             text = f"{text}; the close failed too: {error.strerror}"
         code = 1
+    return report(code, text)
+
+
+def report(code, text):
+    """The receipt on stdout (exit 0) or the failure as one stderr line (exit 1); returns `code`."""
     if code == 0:
         print(text)
     else:
@@ -711,6 +785,15 @@ def write_row(args, store, ledger_path, descriptor, composed=None):
         refuse(str(error))
     if args.kind == "daily":
         row = composed
+        # A findings path an earlier daily row names is a finished run (round 5): recording it again would date a
+        # new row by the clock and refresh the window without a new sweep.
+        for existing in read.rows:
+            if existing.sweep_evidence_path == args.findings:  # lint-comparisons: allow named-text: a recorded path
+                refuse(
+                    f"the findings file {args.findings} is already recorded by the daily sweep row of"
+                    f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded to"
+                    " refresh the window"
+                )
         header = ledger.DAILY_HEADER
         cells = (row.ts_text, row.head_sha, row.verifier, row.evidence)
     else:

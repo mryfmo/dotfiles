@@ -47,6 +47,73 @@ class AuditSectionTest(unittest.TestCase):
         self.assertEqual(section, (TEMPLATES / "AGENTS-audit-section.md").read_text())
 
 
+class DailySweepBriefTemplateTest(unittest.TestCase):
+    """U597 round 4: the kit carries the brief template of the daily sweep of main's head, the standing control the
+    sweep rule C rests on (the shape of the store's sweep briefs, with `<head>`, `<run>` and `<prev>` placeholders and
+    the task id `daily-<YYYY-MM-DD>`); the coordinator fills it once per UTC day (hcom-orchestration SKILL step 4) and
+    writes the day's row with `ledger-row.py daily`, the row `pr-merge.sh` reads."""
+
+    def test_the_template_has_a_sweep_brief_s_shape_its_placeholders_and_passes_brief_check_filled(self):
+        text = (TEMPLATES / "daily-sweep-brief.md").read_text()
+        self.assertTrue(
+            text.startswith("# daily-<YYYY-MM-DD> the daily security-audit sweep of main's head"), text[:80]
+        )
+        for placeholder in ("<head>", "<run>", "<prev>", "daily-<YYYY-MM-DD>", "<seat>", "<repository>"):
+            with self.subTest(placeholder):
+                self.assertIn(placeholder, text)
+        for section in (
+            "GOAL",
+            "SCOPE",
+            "CONTEXT",
+            "CHANGE",
+            "ACCEPTANCE",
+            "VERIFY",
+            "CLOSURE",
+            "TRUST",
+            "TIMEBOX",
+            "FORBIDDEN",
+            "REPORT",
+            "STANDING",
+        ):
+            with self.subTest(section):
+                self.assertEqual(text.count(f"\n{section}\n"), 1, f"one {section} heading")
+        self.assertIn("\nCLOSURE\nremove\n", text)
+        self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=ready_for_review pr=none head=<head>", text)
+        self.assertIn(
+            "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
+            "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>/findings.json --count <count>`",
+            text,
+        )
+        self.assertIn("`daily-sweeps.tsv`", text)
+        self.assertIn("`ledger.py daily 86400`", text)
+        self.assertIn("validate-findings.cjs", text)
+        self.assertIn("validate-coverage-ledger.cjs", text)
+        self.assertNotIn("U605", text, "a template, not one unit's brief")
+        self.assertNotIn("/Users/", text)
+        # filled in as the coordinator fills it, the brief passes brief-check.py, the gate every TASK's brief passes
+        filled = (
+            text.replace("<head>", "a" * 40)
+            .replace("<run>", "run-170")
+            .replace("<prev>", "run-164")
+            .replace("daily-<YYYY-MM-DD>", "daily-2026-11-19")
+            .replace("<seat>", "sweep-3")
+            .replace("<repository>", "dotfiles")
+        )
+        self.assertNotIn("<YYYY", filled)
+        with tempfile.TemporaryDirectory() as temp:
+            brief = Path(temp) / "briefs/daily-2026-11-19.md"
+            brief.parent.mkdir()
+            brief.write_text(filled)
+            run = subprocess.run(
+                [sys.executable, "-I", str(ROOT / "scripts/orchestrator/brief-check.py"), str(brief)],
+                capture_output=True,
+                text=True,
+                check=False,
+                timeout=60,
+            )
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
+
+
 class RegimeInitTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()

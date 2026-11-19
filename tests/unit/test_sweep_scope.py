@@ -4,14 +4,16 @@ one predicate `sweep_required(paths)` over the four path classes (`credential`, 
 mixed head's class, a docs-only head that requires nothing, and the CLI forms pr-merge.sh and the coordinator run
 under `python3 -I -S`: `<base> <head>` (the paths `git diff --name-only --no-renames <base>...<head>` lists, from the
 toplevel whatever `diff.relative` says or where the command runs; round 3) and `--files-json [--changed-files <n>]`
-(the pull request's files as the lever's read of the files API prints them, `gh api
-'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | [.status, .filename, (.previous_filename // null)] |
-@json'`, one JSON array per file, the count of distinct filenames held equal to `changedFiles`; round 3), each
-printing `required <class>` or `not-required`, and exit 2 with one stderr line on a failed git read, an empty
-listing, a path git would not list, a C-quoted name (round 2), a line that is not the API's shape, a rename without
-its source, a count other than `changedFiles`, or usage (standing order 21: never `not-required` by failure). The
-documents that state the rule (AGENTS.md, the hcom-orchestration skill, the orchestrator README) are read against
-CLASSES, the one definition (round 2)."""
+(the audited head's files as the lever's read of the compare API prints them, `gh api
+'repos/{owner}/{repo}/compare/main...<head>' --paginate --jq '.files[] | [.status, .filename, (if
+has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON array per file, keyed by the
+head's sha (round 4), the count of distinct filenames held equal to `changedFiles`; round 3), each printing `required
+<class>` or `not-required`, and exit 2 with one stderr line on a failed git read, an empty listing, a path git would
+not list, a C-quoted name (round 2), a line that is not the API's shape, a rename without its source, a
+`previous_filename` that is neither a string nor null (round 4), a count other than `changedFiles`, or usage (standing
+order 21: never `not-required` by failure). The documents that state the rule (AGENTS.md, the hcom-orchestration
+skill, the orchestrator README) are read against CLASSES, the one definition (round 2), and against the listing keyed
+by the head and the daily sweep row (round 4)."""
 
 import importlib.util
 import json
@@ -81,8 +83,11 @@ CLASSES_LITERAL = (
         ),
     ),
 )
-# The lever's jq form and the reader's call, as pr-merge.sh spells them (round 3).
-FILES_JQ = "'.[] | [.status, .filename, (.previous_filename // null)] | @json'"
+# The lever's jq form and the reader's call, as pr-merge.sh spells them (round 3; round 4 passes previous_filename
+# through as it is, so a boolean reaches the reader and is refused instead of being mapped to null).
+FILES_JQ = (
+    "'.files[] | [.status, .filename, (if has(\"previous_filename\") then .previous_filename else null end)] | @json'"
+)
 READER_CALL = '"${scope_reader}" --files-json --changed-files "${count}" <<< "${listing}"'
 
 
@@ -294,7 +299,26 @@ class SweepScopePredicateTest(unittest.TestCase):
                 "line 2 of the files listing is renamed without its source (previous_filename)",
             ),
             ("a copy without its source", entry("docs/old.py", "copied") + "\n", "is copied without its source"),
-            ("a numeric source", '["renamed", "docs/new.py", 7]\n', "is renamed without its source"),
+            (
+                "a numeric source",
+                '["renamed", "docs/new.py", 7]\n',
+                "has a previous_filename that is neither a string nor null: 7",
+            ),
+            (
+                "a boolean false source on a rename",
+                '["renamed", "docs/new.py", false]\n',
+                "line 1 of the files listing has a previous_filename that is neither a string nor null: False",
+            ),
+            (
+                "a boolean false source on a modified file (the round-3 P3)",
+                '["modified", "docs/plan.md", false]\n',
+                "line 1 of the files listing has a previous_filename that is neither a string nor null: False",
+            ),
+            (
+                "an object source",
+                '["modified", "docs/plan.md", {}]\n',
+                "has a previous_filename that is neither a string nor null: {}",
+            ),
             (
                 "a source on a modified file",
                 entry("docs/plan.md", "modified", "scripts/orchestrator/x.py") + "\n",
@@ -316,23 +340,30 @@ class SweepScopePredicateTest(unittest.TestCase):
 
     def test_the_lever_reads_this_module_from_the_checkout_as_data(self):
         """pr-merge.sh names the module by its checkout path and runs its `--files-json` form with the pull request's
-        `changedFiles` over the files API's arrays (round 3: status, filename and previous_filename as data, after
-        one read of `headRefOid,changedFiles`), prints the one skip line (U597), and runs no `--stdin` form."""
+        `changedFiles` over the compare API's arrays (round 4: the listing keyed by the head's sha itself, status,
+        filename and previous_filename as data, the count read once as `--json changedFiles`), prints the one skip
+        line (U597), asks the daily sweep once on `not-required` (round 4), runs no `--stdin` form, and keeps no
+        number-keyed listing and no `headRefOid,changedFiles` reread."""
         text = LEVER.read_text()
         self.assertIn("scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py", text)
         self.assertIn(READER_CALL, text)
         self.assertIn(
-            f'gh_bounded api "repos/{{owner}}/{{repo}}/pulls/${{pr}}/files" --paginate --jq {FILES_JQ}',
+            f'gh_bounded api "repos/{{owner}}/{{repo}}/compare/${{base}}...${{head}}" --paginate --jq {FILES_JQ}',
             text,
         )
-        self.assertIn('gh_bounded pr view "${pr}" --json headRefOid,changedFiles', text)
+        self.assertIn('gh_bounded pr view "${pr}" --json changedFiles --jq', text)
+        self.assertNotIn("pulls/${pr}/files", text, "the files endpoint keyed by the number is gone (round 4)")
+        self.assertNotIn("headRefOid,changedFiles", text, "the head reread around the number-keyed listing is gone")
         self.assertNotIn("--stdin", text, "the raw line-per-path form is gone")
         self.assertNotIn(
             "gh_bounded pr diff", text, "the name listing of gh pr diff printed a rename's destination alone"
         )
         self.assertIn("sweep: not required (no lever, policy, credential or deployed-executable path changed)", text)
         self.assertEqual(text.count("require_sweep_scope\n"), 1, "called once")
-        self.assertIn("[[ -z ${sweep_class} ]] || require_sweep_row\n", text)
+        self.assertEqual(text.count("        require_daily_sweep\n"), 1, "the daily sweep asked once, on not-required")
+        self.assertIn('"${ledger_reader}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}"', text)
+        self.assertIn("DAILY_SWEEP_MAX_AGE=86400\n", text)
+        self.assertIn("[[ -z ${sweep_reason} ]] || require_sweep_row\n", text)
         self.assertEqual(
             self.reader.USAGE, "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json [--changed-files <n>]"
         )
@@ -632,12 +663,29 @@ class SweepRuleDocumentsTest(unittest.TestCase):
             "Every unit and every program milestone", text, f"{where} no longer states the every-unit rule"
         )
 
-    def assert_describes_the_listing_as_data(self, text, where, pr):
-        """The listing's three fields as data, the head read after it and the count against `changedFiles`."""
+    def assert_describes_the_listing_keyed_by_the_head(self, text, where, pr):
+        """The listing keyed by the head's sha (round 4), its three fields as data, the count read against
+        `changedFiles`, and no number-keyed listing or head reread."""
+        self.assertIn(
+            "`gh api 'repos/{owner}/{repo}/compare/main...<head>' --paginate`",
+            text,
+            f"{where} names the compare API keyed by the sha",
+        )
         for field in ("`status`", "`filename`", "`previous_filename`"):
             self.assertIn(field, text, f"{where} names the field {field}")
-        self.assertIn(f"`gh pr view {pr} --json headRefOid,changedFiles`", text, f"{where} names the head reread")
+        self.assertIn(f"`gh pr view {pr} --json changedFiles`", text, f"{where} names the count read")
         self.assertIn("distinct filenames", text, f"{where} names the count the listing must reach")
+        self.assertNotIn(f"pulls/{pr}/files", text, f"{where} names no listing keyed by the pull request's number")
+        self.assertNotIn("headRefOid,changedFiles", text, f"{where} names no head reread")
+
+    def assert_describes_the_daily_sweep(self, text, where):
+        """The exemption bound to its standing control (round 4): the daily row's file, its writer, the window, and
+        no sentence saying the lever never reads it."""
+        self.assertIn("`daily-sweeps.tsv`", text, f"{where} names the daily sweep file")
+        self.assertIn("`ledger-row.py daily`", text, f"{where} names the row's writer")
+        self.assertIn("24 hours", text, f"{where} names the window")
+        self.assertNotIn("no merge gate reads", text, f"{where} no longer says the lever never reads the daily sweep")
+        self.assertNotIn("never reads", text, f"{where} no longer says the lever never reads the daily sweep")
 
     def test_the_agents_md_rule_line_names_every_prefix_and_the_four_classes(self):
         line = self.rule_line()
@@ -646,10 +694,13 @@ class SweepRuleDocumentsTest(unittest.TestCase):
             for prefix in prefixes:
                 with self.subTest(prefix):
                     self.assertIn(f"`{prefix}`", line, f"the {name} prefix {prefix} is in the AGENTS.md rule line")
-        # the daily sweep of main and the files API read as data are the rule's, too
+        # the daily sweep of main, the compare API keyed by the sha and the daily row are the rule's, too
         self.assertIn("one full sweep per UTC day", line)
-        self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<n>/files' --paginate`", line)
-        self.assert_describes_the_listing_as_data(line, "AGENTS.md's sweep rule", "<n>")
+        self.assert_describes_the_listing_keyed_by_the_head(line, "AGENTS.md's sweep rule", "<n>")
+        self.assert_describes_the_daily_sweep(line, "AGENTS.md's sweep rule")
+        self.assertIn("`home/dot_agents/regime/daily-sweep-brief.md`", line)
+        self.assertIn("`ledger.py daily 86400`", line)
+        self.assertNotIn("briefs/daily-sweep.md", line, "the template is the kit's, not a store file")
 
     def test_the_skill_s_step_four_names_the_four_classes_and_the_module(self):
         text = SKILL.read_text()
@@ -663,6 +714,10 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         # order 44, which governs executed tests
         self.assertIn("the operator's sweep rule C of 2026-11-18", step)
         self.assertNotIn("standing order 44", step)
+        # round 4: the coordinator's daily dispatch from the kit's template, its row, and the lever's read of it
+        self.assertIn("once per UTC day", step)
+        self.assertIn("`~/.agents/regime/daily-sweep-brief.md`", step)
+        self.assert_describes_the_daily_sweep(step, "the skill's step 4")
 
     def test_the_readme_s_pr_merge_row_names_the_four_classes_and_the_module(self):
         rows = [
@@ -671,19 +726,25 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertEqual(len(rows), 1, "one pr-merge.sh row in the lever table")
         row = rows[0]
         self.assert_names_the_classes(row, "the README's pr-merge.sh row")
-        self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate`", row)
         self.assertNotIn("`gh pr diff <pr> --name-only`", row)
-        self.assert_describes_the_listing_as_data(row, "the README's pr-merge.sh row", "<pr>")
+        self.assert_describes_the_listing_keyed_by_the_head(row, "the README's pr-merge.sh row", "<pr>")
+        self.assert_describes_the_daily_sweep(row, "the README's pr-merge.sh row")
 
     def test_the_lever_s_comments_describe_the_listing_as_it_is(self):
-        """The lever's header and `require_sweep_scope`'s description name the jq form, the reader's form, the head
-        reread and the count, and no retired form."""
+        """The lever's header and the three functions' descriptions name the jq form, the reader's form, the count
+        read, the daily row and no retired form."""
         text = LEVER.read_text()
         self.assertIn(f"--jq {FILES_JQ}", text, "the jq form, in the call")
-        self.assertIn("[.status, .filename, (.previous_filename // null)]", text)
-        self.assertIn("`gh pr view <pr> --json headRefOid,changedFiles`", text)
+        self.assertIn('[.status, .filename, (if has("previous_filename") then .previous_filename else null end)]', text)
+        self.assertIn("`gh pr view <pr> --json changedFiles`", text)
         self.assertIn("--files-json --changed-files", text)
+        self.assertIn("`daily-sweeps.tsv`", text)
+        self.assertIn("`ledger-row.py daily`", text)
+        self.assertIn("`ledger.py <store> daily 86400`", text)
+        self.assertNotIn("(.previous_filename // null)", text, "the round-3 projection mapped a boolean to null")
         self.assertNotIn(".filename, (.previous_filename // empty)", text, "the line-per-path form is gone")
+        self.assertNotIn("pulls/<pr>/files", text, "the number-keyed listing is gone")
+        self.assertNotIn("headRefOid,changedFiles", text, "the head reread is gone")
         self.assertNotIn("--stdin", text)
 
 

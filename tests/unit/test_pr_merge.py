@@ -20,6 +20,9 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from test_pr_levers import (  # noqa: E402
+    COMPARE_MATCH,
+    COMPARE_OTHER_MATCH,
+    COUNT_MATCH,
     FOOTER,
     GREEN_CHECKS,
     LEDGER_HEADER,
@@ -42,12 +45,11 @@ RULE = (
     "a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one sweep "
     "of the security-audit skill before its pull request merges"
 )
-# The files the fake `gh api repos/{owner}/{repo}/pulls/7/files` lists (U597 round 2: the files API, run through the
-# lever's `--jq` by the fake; round 3: status, filename and previous_filename as one array per file, and the head and
-# `changedFiles` read once after the listing): a lever path, so the sweep is required (U597).
+# The files the fake `gh api repos/{owner}/{repo}/compare/main...<head>` lists (U597 round 4: the compare API keyed by
+# the head's sha, run through the lever's `--jq` by the fake; round 3: status, filename and previous_filename as one
+# array per file, and the pull request's `changedFiles` read once): a lever path, so the sweep is required (U597).
 LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
-FILES_MATCH = r"^api repos/\{owner\}/\{repo\}/pulls/7/files --paginate$"
-KEYED_MATCH = r"^pr view 7 --json headRefOid,changedFiles$"
+COMPARE_OTHER = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
 CHECKS_CALL = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -117,8 +119,9 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": FILES_MATCH, "json": LEVER_FILES},
-            {"match": KEYED_MATCH, "json": {"headRefOid": head, "changedFiles": len(LEVER_FILES)}},
+            {"match": COMPARE_MATCH, "json": {"files": LEVER_FILES}},
+            COMPARE_OTHER,
+            {"match": COUNT_MATCH, "json": {"changedFiles": len(LEVER_FILES)}},
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -471,8 +474,9 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": FILES_MATCH, "json": LEVER_FILES},
-            {"match": KEYED_MATCH, "json": {"headRefOid": SHA_A, "changedFiles": len(LEVER_FILES)}},
+            {"match": COMPARE_MATCH, "json": {"files": LEVER_FILES}},
+            COMPARE_OTHER,
+            {"match": COUNT_MATCH, "json": {"changedFiles": len(LEVER_FILES)}},
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",

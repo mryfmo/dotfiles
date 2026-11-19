@@ -26,6 +26,7 @@ LEVERS = ROOT / "scripts/orchestrator"
 WRITER = LEVERS / "ledger-row.py"
 READER = LEVERS / "ledger.py"
 HEADER = "ts\tunit\tpr\thead_sha\tverdict\tverifier\tevidence\n"
+DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"
 A, B, C = "a" * 40, "b" * 40, "c" * 40
 COMMIT = "d" * 40
 DIGEST = "f" * 64
@@ -256,6 +257,172 @@ class LedgerRowTest(unittest.TestCase):
             f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-2, run-52; TASK U9)",
             "sweeps/U9-bbbbbbbb/findings.json; pr 7; 2 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
         )
+
+    def assert_daily_appended(self, args, head, verifier, evidence):
+        """The `daily` kind appends exactly one row to `daily-sweeps.tsv` (made with its header when absent), the
+        ledger untouched byte for byte; stdout names the ts and the line; the row is returned as a list of cells."""
+        daily = self.store / "daily-sweeps.tsv"
+        ledger_before = self.ledger.read_bytes()
+        before = daily.read_bytes() if daily.exists() else DAILY_HEADER.encode()
+        start = datetime.now(timezone.utc).replace(microsecond=0)
+        run = self.run_writer(*args)
+        end = datetime.now(timezone.utc)
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        after = daily.read_bytes()
+        self.assertTrue(after.startswith(before), "the file is appended, never rewritten")
+        added = after[len(before) :].decode()
+        self.assertEqual(added.count("\n"), 1, added)
+        cells = added[:-1].split("\t")
+        self.assertEqual(len(cells), 4, cells)
+        ts = cells[0]
+        self.assertRegex(ts, TS)
+        at = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        self.assertTrue(start <= at <= end, (start, at, end))
+        self.assertEqual(cells[1:], [head, verifier, evidence])
+        line = before.count(b"\n") + 1
+        self.assertEqual(run.stdout, f"appended {ts} line {line}\n")
+        self.assertEqual(self.ledger.read_bytes(), ledger_before, "the ledger is not the daily row's file")
+        return cells
+
+    def test_a_daily_row_writes_the_exact_row_of_daily_sweeps_tsv_making_the_file_with_its_header(self):
+        """U597 round 4: the `daily` kind writes the one row of the store's `daily-sweeps.tsv`, main's head, the
+        verifier of the `sweep` kind with the daily task id, the findings file and the count; the file is made with
+        its header when absent and appended when present; the ledger is untouched; `ledger.py daily` reads the newest
+        row back; a unit's id is accepted as the task too."""
+        daily = self.store / "daily-sweeps.tsv"
+        args = (
+            "daily",
+            "--head",
+            A,
+            "--seat",
+            "sweep-3",
+            "--run",
+            "170",
+            "--task",
+            "daily-2026-11-19",
+            "--findings",
+            "sweeps/U9-bbbbbbbb/findings.json",
+            "--count",
+            "0",
+        )
+        verifier = (
+            f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-3, run-170; "
+            "TASK daily-2026-11-19)"
+        )
+        evidence = "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
+        self.assertFalse(daily.exists())
+        self.assert_daily_appended(args, A, verifier, evidence)
+        text = daily.read_text()
+        self.assertTrue(text.startswith(DAILY_HEADER), text)
+        self.assertEqual(text.count("\n"), 2, "the header and one row")
+        self.assertFalse(daily.is_symlink())
+        cells = self.assert_daily_appended(
+            (*args[:7], "--task", "U9", "--findings", "sweeps/U9-bbbbbbbb/findings.json", "--count", "2"),
+            A,
+            verifier.replace("TASK daily-2026-11-19", "TASK U9"),
+            evidence.replace("0 findings", "2 findings"),
+        )
+        self.assertEqual(daily.read_text().count("\n"), 3, "appended, the header once")
+        run = self.read("daily", "86400")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, "\t".join(cells) + "\n", "the newest daily row, read back through the reader")
+        self.assertEqual(
+            sorted(entry.name for entry in self.store.iterdir()),
+            ["daily-sweeps.tsv", "ledger.tsv", "sweeps", "verdicts"],
+        )
+
+    def test_a_daily_row_refuses_a_bad_head_pin_or_path_and_writes_nothing(self):
+        """U597 round 4: every refusal of the `daily` kind is exit 2 with one stderr line, the daily file unchanged
+        (or still absent) and the ledger unchanged: a head that is not 40 hex, a task that is neither the daily id nor
+        a unit, a run or a count that is no number, a seat of two words, a findings path outside `sweeps/`, with a
+        `;` in its directory or naming no regular file, a manifest without the pin, a daily file that is a symlink,
+        and a daily file the reader refuses (a malformed row), which is named with its line."""
+        daily = self.store / "daily-sweeps.tsv"
+        base = {
+            "--head": A,
+            "--seat": "sweep-3",
+            "--run": "170",
+            "--task": "daily-2026-11-19",
+            "--findings": "sweeps/U9-bbbbbbbb/findings.json",
+            "--count": "0",
+        }
+
+        def args(**changes):
+            options = {**base, **{f"--{key}": value for key, value in changes.items()}}
+            return ("daily", *(part for key, value in options.items() for part in (key, value)))
+
+        def refused(arguments, *reasons):
+            before = daily.read_bytes() if daily.exists() else None
+            ledger_before = self.ledger.read_bytes()
+            run = self.run_writer(*arguments)
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+            self.assertTrue(run.stderr.startswith("ledger-row: refused: "), run.stderr)
+            for reason in reasons:
+                self.assertIn(reason, run.stderr)
+            self.assertEqual(daily.read_bytes() if daily.exists() else None, before, "the daily file is unchanged")
+            self.assertEqual(self.ledger.read_bytes(), ledger_before, "the ledger is unchanged")
+
+        for name, arguments, reason in (
+            ("a short head", args(head=A[:8]), f"the head {A[:8]!r} is not 40 hex"),
+            ("a dash head", args(head="-"), "the head '-' is not 40 hex"),
+            ("an upper-case head", args(head=A.upper()), "is not 40 hex"),
+            (
+                "a task of another shape",
+                args(task="daily-2026-1-19"),
+                "the task 'daily-2026-1-19' is not daily-<YYYY-MM-DD> or U<n>",
+            ),
+            ("a task that is a word", args(task="main"), "the task 'main' is not daily-<YYYY-MM-DD> or U<n>"),
+            ("a run that is no number", args(run="x"), "the run 'x' is not a decimal number"),
+            ("a count that is no number", args(count="-1"), "the count '-1' is not a decimal number"),
+            ("a seat of two words", args(seat="sweep 3"), "the seat 'sweep 3' is not one word"),
+            (
+                "a findings path outside sweeps/",
+                args(findings="verdicts/U7-bbbbbbbb.md"),
+                "is not sweeps/<dir>/findings.json under the store",
+            ),
+            (
+                "a findings directory with a semicolon",
+                args(findings="sweeps/U9;note/findings.json"),
+                "is not sweeps/<dir>/findings.json under the store",
+            ),
+            (
+                "a findings file that is missing",
+                args(findings="sweeps/U9-missing/findings.json"),
+                "is not a regular file under the store: No such file or directory",
+            ),
+            (
+                "a findings path that is a directory",
+                args(findings="sweeps/U9-bbbbbbbb/findings.json".replace("findings.json", "findings.json")),
+                None,
+            ),
+        ):
+            if reason is None:
+                continue
+            with self.subTest(name):
+                refused(arguments, reason)
+        self.assertFalse(daily.exists(), "no refusal before the write made the file")
+        # the manifest without the pin: refused naming the manifest, the file still absent
+        self.manifest.write_text(MANIFEST.replace(f"    pin: {PIN}\n", ""))
+        refused(args(), "holds 0 assets.security-audit-skill.pin lines of 40 hex, not one")
+        self.manifest.write_text(MANIFEST)
+        self.assertFalse(daily.exists())
+        # a symlink at the file's name is refused by the path rule, nothing written through it
+        elsewhere = Path(self.temp.name) / "elsewhere.tsv"
+        elsewhere.write_text(DAILY_HEADER)
+        daily.symlink_to(elsewhere)
+        refused(args(), "is a symbolic link")
+        self.assertEqual(elsewhere.read_text(), DAILY_HEADER)
+        daily.unlink()
+        # a file the reader refuses is named with its line, unchanged
+        daily.write_text(DAILY_HEADER + "garbage\n")
+        refused(args(), f"{daily}:2: 1 columns, not 4")
+        daily.write_text("ts\thead\n")
+        refused(args(), f"{daily}:1: the header is 'ts\\thead', not")
+        # a cell holding a tab is refused before anything is written, as for every kind
+        daily.unlink()
+        refused(args(seat="sweep\t3"), "holds a tab")
+        self.assertFalse(daily.exists())
 
     def test_an_audit_row_reads_its_word_and_counts_from_the_verdict_file_s_last_lines(self):
         (self.store / "verdicts/U7-bbbbbbbb.md").write_text(VERDICT_CORRECT)

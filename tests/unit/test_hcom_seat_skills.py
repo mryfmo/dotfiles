@@ -85,6 +85,20 @@ SWEEP_TASK = (
     "the swept head, verifier `security-audit-skill c1c8a8c1`, evidence the findings file under the store) before the "
     "unit's merge."
 )
+# U597 round 4: the daily sweep of main's head is the coordinator's dispatch once per UTC day from the kit's template,
+# recorded with ledger-row.py daily as a row of the store's daily-sweeps.tsv, the row pr-merge.sh reads before it
+# skips a head's own sweep row.
+DAILY_DISPATCH = (
+    "and main's head one full sweep per UTC day, which you dispatch once per UTC day to the sweep seat at main's head "
+    "from the kit's brief template `~/.agents/regime/daily-sweep-brief.md` (task id `daily-<YYYY-MM-DD>`; the "
+    "`<head>`, `<run>` and `<prev>` placeholders filled) and record with `~/.local/bin/common/ledger-row.py <store> "
+    "daily --head <head> --seat <seat> --run <n> --task daily-<YYYY-MM-DD> --findings sweeps/<dir>/findings.json "
+    "--count <n>` (`ledger-row.py daily`) as a row of the store's `daily-sweeps.tsv`"
+)
+DAILY_GATE = (
+    "skips the row for every other head only while `ledger.py daily 86400` finds a daily sweep of main's head within "
+    "24 hours, so a day without its sweep keeps the per-head rule for every head"
+)
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
@@ -226,13 +240,18 @@ class HcomSeatSkillsTest(unittest.TestCase):
         verify = step(ORCHESTRATION.read_text(), "The loop", 4)
         self.assertIn(SWEEP_TASK, verify)
         # U597: the sweep rule by path class; the every-unit sentence is gone, and the daily sweep and the classes
-        # cite the operator's sweep rule C of 2026-11-18, not standing order 44, which governs executed tests (round 3)
+        # cite the operator's sweep rule C of 2026-11-18, not standing order 44, which governs executed tests (round 3);
+        # round 4: the daily sweep is the coordinator's dispatch from the kit's template, its row written with
+        # ledger-row.py daily, and the lever skips a head's own row only while that row stands
         self.assertIn(
             "A unit whose head changes a lever, a policy, credential handling or a deployed executable (the path "
             "classes of `scripts/orchestrator/sweep-scope.py`, U597) also gets one security sweep before its merge, "
-            "and main's head one full sweep per day (the operator's sweep rule C of 2026-11-18; `pr-merge.sh` refuses",
+            + DAILY_DISPATCH
+            + " (the operator's sweep rule C of 2026-11-18; `pr-merge.sh` refuses",
             verify,
         )
+        self.assertIn(DAILY_GATE, verify)
+        self.assertEqual(verify.count("daily-sweep-brief.md"), 1)
         self.assertNotIn("standing order 44", verify)
         self.assertNotIn("Every unit and every program milestone also gets one security sweep", verify)
         self.assertNotIn("trust-boundary class", verify)

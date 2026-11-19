@@ -15,6 +15,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
@@ -26,6 +27,7 @@ FAKE_GH = ROOT / "tests/fixtures/pr-levers/fake-gh.py"
 FOOTER = "🤖 Generated with [Claude Code](https://claude.com/claude-code)"
 SHA_A = "a" * 40
 SHA_B = "b" * 40
+SHA_C = "c" * 40
 # Codex review comments open with this badge (PR #480's comment 4365170609 carried P2).
 BADGE = "**<sub><sub>![{} Badge](https://img.shields.io/badge/{}-yellow?style=flat)</sub></sub>  finding**"
 
@@ -1190,16 +1192,52 @@ def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep"
     return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\t{verifier}\t{evidence}\n"
 
 
-# The one stderr line pr-merge.sh prints when the head's changed paths fall in no sweep class (U597).
+# The one stderr line pr-merge.sh prints when the head's changed paths fall in no sweep class (U597); since round 4 the
+# daily sweep's head and ts follow it on the same line.
 SKIP_LINE = "sweep: not required (no lever, policy, credential or deployed-executable path changed)"
-# The lever's read of the pull request's files (U597 round 2: the GitHub files API, both paths of a rename, no C
-# quoting; round 3: one JSON array per file, status, filename and previous_filename, parsed by the reader), then the
-# head and the changed-files count read once after the listing, keying it to the pinned head (round 3).
-FILES_JQ = ".[] | [.status, .filename, (.previous_filename // null)] | @json"
-FILES_CALL = ["api", "repos/{owner}/{repo}/pulls/7/files", "--paginate", "--jq", FILES_JQ]
-FILES_MATCH = r"^api repos/\{owner\}/\{repo\}/pulls/7/files --paginate$"
-KEYED_MATCH = r"^pr view 7 --json headRefOid,changedFiles$"
-KEYED_CALL = ["pr", "view", "7", "--json", "headRefOid,changedFiles"]
+# The lever's read of the audited head's files (U597 round 4, the mechanism change: the compare API keyed by the
+# head's sha itself, its `files` as one JSON array per file, status, filename and previous_filename passed through as
+# they are; rounds 2 and 3 read the files endpoint keyed by the pull request's number, which no reread around it
+# bound to the audited head), then the pull request's `changedFiles` count read once, a count and not a listing.
+FILES_JQ = (
+    '.files[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'
+)
+# Any compare request the fixture did not key: GitHub's answer to a basehead it does not hold is an error.
+COMPARE_OTHER_MATCH = r"^api repos/\{owner\}/\{repo\}/compare/"
+COUNT_MATCH = r"^pr view 7 --json changedFiles$"
+COUNT_CALL = ["pr", "view", "7", "--json", "changedFiles"]
+# The daily sweep file of the store (round 4): the header and one row of main's head, its ts `age` seconds before now.
+DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"
+DAILY_FINDINGS = "sweeps/daily-2026-11-19/findings.json"
+
+
+def compare_call(head=SHA_A):
+    """The lever's listing call for `head`, as the fake records it."""
+    return ["api", f"repos/{{owner}}/{{repo}}/compare/main...{head}", "--paginate", "--jq", FILES_JQ]
+
+
+def compare_match(head=SHA_A):
+    """The fake's match for the compare of `main...<head>` alone."""
+    return rf"^api repos/\{{owner\}}/\{{repo\}}/compare/main\.\.\.{head} --paginate$"
+
+
+COMPARE_CALL = compare_call()
+COMPARE_MATCH = compare_match()
+
+
+def daily_row(head=SHA_B, age=3600, verifier=None, evidence=None, ts=None):
+    """One row of `daily-sweeps.tsv` as ledger-row.py daily writes it: the ts `age` seconds before now (or `ts` as
+    given), main's head, the skill and its pin word with the seat and the run, the findings file under the store."""
+    if ts is None:
+        ts = (datetime.now(timezone.utc) - timedelta(seconds=age)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    if verifier is None:
+        verifier = (
+            f"security-audit-skill {PIN8} (full audit mode on the srt worker seat sweep-3, run-170; "
+            "TASK daily-2026-11-19)"
+        )
+    if evidence is None:
+        evidence = f"{DAILY_FINDINGS}; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
+    return f"{ts}\t{head}\t{verifier}\t{evidence}\n"
 
 
 def api_file(filename, status="modified", previous=None):
@@ -1333,6 +1371,13 @@ class PrMergeTest(PrLeverTestCase):
     def units(self, *ids):
         (self.records / "units.tsv").write_text(UNITS_HEADER + "".join(f"{i}\tR\tgate\t\t\t\t\t-\n" for i in ids))
 
+    def daily(self, *rows, text=None):
+        """The store's `daily-sweeps.tsv` (U597 round 4): the header and the given rows, or `text` as given, with the
+        findings file the fixture rows name under `sweeps/`."""
+        (self.sweeps / "daily-2026-11-19").mkdir(parents=True, exist_ok=True)
+        (self.sweeps / "daily-2026-11-19/findings.json").write_text("[]\n")
+        (self.records / "daily-sweeps.tsv").write_text(DAILY_HEADER + "".join(rows) if text is None else text)
+
     def github(
         self,
         head=SHA_A,
@@ -1348,9 +1393,9 @@ class PrMergeTest(PrLeverTestCase):
         paths=None,
         paths_exit=0,
         files=None,
-        keyed=None,
         changed_files=None,
-        keyed_exit=0,
+        count_exit=0,
+        compare_head=None,
     ):
         if checks is None:
             # every required check passes (U330), and a check that is not required may skip
@@ -1358,21 +1403,24 @@ class PrMergeTest(PrLeverTestCase):
         listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
         if checks_exit:
             listing = {"match": listing["match"], "exit": checks_exit, "stderr": "HTTP 502"}
-        # The pull request's files (U597 round 2, round 3): the files API's JSON, `files` (a list of `api_file`
-        # objects, run through the lever's `--jq` by the fake), or `paths`, the listing text as the jq form prints it,
-        # one JSON array per line, for the shapes the reader must refuse; or a failed read. After the listing the
-        # lever reads the head and the changed-files count once: `keyed` (default the head) and `changed_files`
-        # (default the listing's distinct filenames, a complete listing).
+        # The audited head's files (U597 round 4): the compare API keyed by the head's sha, `files` (a list of
+        # `api_file` objects under the API's `files` key, run through the lever's `--jq` by the fake) or `paths` (the
+        # listing text as the jq form prints it, for the shapes the reader must refuse), or a failed read, answered
+        # for `main...<compare_head or head>` alone; any other basehead is refused as GitHub refuses a sha it does
+        # not hold. Then the pull request's `changedFiles` count, read once (default the listing's distinct
+        # filenames, a complete listing).
         if files is None and paths is None:
             files = [api_file("scripts/orchestrator/pr-merge.sh")]
-        diff = {"match": FILES_MATCH, "json": files} if files is not None else {"match": FILES_MATCH, "stdout": paths}
+        keyed = compare_match(compare_head or head)
+        diff = {"match": keyed, "json": {"files": files}} if files is not None else {"match": keyed, "stdout": paths}
         if paths_exit:
-            diff = {"match": FILES_MATCH, "exit": paths_exit, "stderr": "HTTP 502"}
+            diff = {"match": keyed, "exit": paths_exit, "stderr": "HTTP 502"}
+        other = {"match": COMPARE_OTHER_MATCH, "exit": 1, "stderr": "HTTP 404: No commit found for the basehead\n"}
         if changed_files is None:
             changed_files = listed_count(files, paths)
-        keyed_read = {"match": KEYED_MATCH, "json": {"headRefOid": keyed or head, "changedFiles": changed_files}}
-        if keyed_exit:
-            keyed_read = {"match": KEYED_MATCH, "exit": keyed_exit, "stderr": "HTTP 502"}
+        count_read = {"match": COUNT_MATCH, "json": {"changedFiles": changed_files}}
+        if count_exit:
+            count_read = {"match": COUNT_MATCH, "exit": count_exit, "stderr": "HTTP 502"}
         self.answer(
             {
                 "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
@@ -1380,7 +1428,8 @@ class PrMergeTest(PrLeverTestCase):
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             diff,
-            keyed_read,
+            other,
+            count_read,
             listing,
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -2720,29 +2769,30 @@ class PrMergeTest(PrLeverTestCase):
         self.assertEqual(self.merge().returncode, 0)
 
     def test_a_head_outside_every_sweep_class_merges_without_a_sweep_row_and_names_the_skip(self):
-        """U597 (the operator's sweep rule C of 2026-11-18): the pull request's files, `gh api
-        repos/{owner}/{repo}/pulls/<pr>/files` through the lever's jq form (one JSON array per file, round 3), go to
-        the checkout's sweep-scope.py on stdin after the head and the changed-files count are read once; a head of
-        docs, tests and workflow paths alone needs no sweep row, the lever prints one stderr line naming the skip and
-        merges on the correct row and CI alone. The skip is the sweep row's alone: the same head with no correct row
-        is refused before the listing is read."""
+        """U597 (the operator's sweep rule C of 2026-11-18): the audited head's files, `gh api
+        repos/{owner}/{repo}/compare/main...<head>` through the lever's jq form (one JSON array per file; round 4
+        keyed the listing by the sha itself), go to the checkout's sweep-scope.py on stdin with the pull request's
+        `changedFiles` count read once; a head of docs, tests and workflow paths alone needs no sweep row while the
+        daily sweep of main's head stands (round 4), the lever prints one stderr line naming the skip and the daily
+        row and merges on the correct row and CI alone. The skip is the sweep row's alone: the same head with no
+        correct row is refused before the listing is read."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row at all
+        self.daily(daily_row())
         self.github(paths=files_listing("docs/plan.md", "tests/unit/test_x.py", ".github/workflows/test.yml"))
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
-        self.assertIn(f"pr-merge.sh: {SKIP_LINE}\n", run.stderr)
+        self.assertIn(f"pr-merge.sh: {SKIP_LINE}; the daily sweep of main's head {SHA_B} at ", run.stderr)
         calls = self.gh_calls()
-        self.assertIn(FILES_CALL, calls)
-        keyed = [call[: len(KEYED_CALL)] for call in calls]
-        self.assertEqual(keyed.count(KEYED_CALL), 1, "the head and the count are read once, after the listing")
-        self.assertLess(calls.index(FILES_CALL), keyed.index(KEYED_CALL))
+        self.assertIn(COMPARE_CALL, calls)
+        counted = [call[: len(COUNT_CALL)] for call in calls]
+        self.assertEqual(counted.count(COUNT_CALL), 1, "the changedFiles count is read once")
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
         self.calls.unlink()
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_B))
         self.github(paths=files_listing("docs/plan.md"))
         self.assert_refused(self.merge(), "has no row for pull request 7 at head " + SHA_A)
-        self.assertNotIn(FILES_CALL, self.gh_calls(), "the verdict gate comes before the listing")
+        self.assertNotIn(COMPARE_CALL, self.gh_calls(), "the verdict gate comes before the listing")
 
     def test_a_head_in_a_sweep_class_keeps_the_sweep_gate(self):
         """U597: one path of a class among any others keeps today's gate: no sweep row refuses naming the unit, the
@@ -2784,7 +2834,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(run, f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}")
         self.assertIn("this head changes a lever path", run.stderr)
         self.assertNotIn("sweep: not required", run.stderr)
-        self.assertIn(FILES_CALL, self.gh_calls())
+        self.assertIn(COMPARE_CALL, self.gh_calls())
         self.assertEqual(self.writes(), [])
         self.calls.unlink()
         self.ledger(ledger_row(SHA_A))  # the fixture's sweep row at the head
@@ -2801,6 +2851,7 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(self.merge(), "has no sweep row for U71")
         # the same rename within docs, and a rename into a lever directory, read by both paths too
         self.calls.unlink()
+        self.daily(daily_row())
         self.github(files=[api_file("docs/new.md", "renamed", "docs/old.md")])
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -2830,16 +2881,21 @@ class PrMergeTest(PrLeverTestCase):
                 self.assertEqual(run.stdout, "", "no receipt")
                 self.assertEqual(self.writes(), [])
 
-    def test_a_listing_of_another_head_or_another_count_than_changed_files_refuses_with_no_merge(self):
-        """U597 round 3 (verdict findings 1 and 3): the files listing is keyed by the pull request's number alone, so
-        the lever reads `gh pr view <pr> --json headRefOid,changedFiles` once after it. A head other than the pinned
-        one is refused naming both shas (the listing may be another head's), a failed read is exit 1, and a listing
-        whose count of distinct filenames differs from `changedFiles` is refused naming both counts: a listing cut
-        short, one counted too high, and a listing of 3,000 entries whose `changedFiles` says more (GitHub's cap of
-        the files endpoint read as complete). A rename counts once, by its filename. None writes, none prints the skip
-        line, and the complete listing of the same docs-only head merges."""
+    def test_the_listing_is_keyed_by_the_pinned_head_and_counted_against_changed_files(self):
+        """U597 round 4 (the mechanism change; the round-3 P1): the files are listed by the compare API keyed by the
+        head's sha itself, `gh api repos/{owner}/{repo}/compare/main...<head> --paginate`, so no listing of another
+        head can be substituted: the fake answers the compare of `main...<pinned head>` alone and refuses any other
+        basehead, the lever's one listing call names the pinned head, and when the fake holds the listing under
+        another head's key the lever's read fails (exit 1, no merge) instead of reading it; the number-keyed files
+        endpoint and the `headRefOid,changedFiles` reread are gone. The count check stays (round 3): one `gh pr view
+        <pr> --json changedFiles` read, a failed read exit 1, and a listing whose count of distinct filenames differs
+        from it refused naming both counts (cut short, counted too high, zero, a rename counted twice, 3,000 entries
+        under a count of 3,001). None writes, none prints the skip line; the complete listing merges on the daily
+        sweep, the count read once."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        self.daily(daily_row())
         docs = files_listing("docs/plan.md", "docs/other.md")
+        pinned = f"repos/{{owner}}/{{repo}}/compare/main...{SHA_A}"
 
         def check(run, code, message):
             self.assertEqual(run.returncode, code, run.stdout + run.stderr)
@@ -2847,19 +2903,24 @@ class PrMergeTest(PrLeverTestCase):
             self.assertNotIn("sweep: not required", run.stderr)
             self.assertEqual(run.stdout, "", "no receipt")
             self.assertEqual(self.writes(), [])
-            self.assertIn(FILES_CALL, self.gh_calls(), "the listing was read")
+            calls = self.gh_calls()
+            compares = [call for call in calls if call[:1] == ["api"]]
+            self.assertEqual(compares, [COMPARE_CALL], "one listing call, keyed by the pinned head")
+            self.assertEqual(compares[0][1], pinned)
+            self.assertFalse(any("pulls/7/files" in word for call in calls for word in call), "no number key")
+            self.assertNotIn(["pr", "view", "7", "--json", "headRefOid,changedFiles"], [call[:5] for call in calls])
             self.calls.unlink(missing_ok=True)
 
-        self.github(paths=docs, keyed=SHA_B)
+        # the listing held under another head's key alone: the lever asks for the pinned head's and the read fails
+        self.github(paths=docs, compare_head=SHA_B)
         check(
             self.merge(),
-            2,
-            f"refused: the head of pull request 7 is {SHA_B} after its files listing, not the pinned head {SHA_A}",
+            1,
+            f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api {pinned}); the sweep scope"
+            " is decided from them",
         )
-        self.github(paths=docs, keyed_exit=1)
-        check(
-            self.merge(), 1, "cannot read the head and the changedFiles count of pull request 7 after its files listing"
-        )
+        self.github(paths=docs, count_exit=1)
+        check(self.merge(), 1, "cannot read the changedFiles count of pull request 7")
         for name, listing, count in (
             ("a listing cut short", docs, 3),
             ("a count under the listing", docs, 1),
@@ -2876,11 +2937,14 @@ class PrMergeTest(PrLeverTestCase):
                     f"refused: the files listing names {listed} distinct filenames, not the {count} changedFiles of"
                     " the pull request",
                 )
-        # the complete listing, its count equal to changedFiles, merges without a sweep row
+        # the complete listing, its count equal to changedFiles, merges without a sweep row on the daily sweep
         self.github(paths=docs)
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
+        calls = self.gh_calls()
+        self.assertEqual([call for call in calls if call[:1] == ["api"]], [COMPARE_CALL])
+        self.assertEqual([call[: len(COUNT_CALL)] for call in calls].count(COUNT_CALL), 1, "the count read once")
         self.calls.unlink()
         self.github(paths=files_listing(*(f"docs/f{n}.md" for n in range(3000))))
         run = self.merge()
@@ -2946,6 +3010,16 @@ class PrMergeTest(PrLeverTestCase):
                 "a listed path holds a control character",
             ),
             ("an empty line between", f"{plain}\n\n{plain}\n", "line 2 of the files listing is empty"),
+            (
+                "a boolean previous_filename on a modified file",
+                '["modified", "docs/plan.md", false]\n',
+                "line 1 of the files listing has a previous_filename that is neither a string nor null: False",
+            ),
+            (
+                "a boolean previous_filename on a rename",
+                '["renamed", "docs/plan.md", false]\n',
+                "line 1 of the files listing has a previous_filename that is neither a string nor null: False",
+            ),
         ):
             with self.subTest(name):
                 self.calls.unlink(missing_ok=True)
@@ -2962,8 +3036,20 @@ class PrMergeTest(PrLeverTestCase):
         self.assert_refused(run, "refused: a listed path holds a control character")
         self.assertNotIn("sweep: not required", run.stderr)
         self.assertEqual(self.writes(), [])
+        # a boolean `false` previous_filename through the lever's own jq (round 4, the round-3 P3): the filter passes
+        # the field through as it is, `if has("previous_filename") then .previous_filename else null end`, so the
+        # reader sees `false` and refuses it, where `.previous_filename // null` mapped it to null and answered
+        self.calls.unlink()
+        self.github(files=[{"status": "modified", "filename": "docs/plan.md", "previous_filename": False}])
+        run = self.merge()
+        self.assert_refused(
+            run, "refused: line 1 of the files listing has a previous_filename that is neither a string nor null: False"
+        )
+        self.assertNotIn("sweep: not required", run.stderr)
+        self.assertEqual(self.writes(), [])
         # a rename with its source and a copy with its source through the jq, every status of the API accepted
         self.calls.unlink()
+        self.daily(daily_row())
         self.github(
             files=[
                 api_file("docs/a.md", "added"),
@@ -3000,13 +3086,17 @@ class PrMergeTest(PrLeverTestCase):
         check(
             self.merge(),
             1,
-            "cannot list the changed paths of pull request 7 (gh api repos/{owner}/{repo}/pulls/7/files)",
+            f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api"
+            f" repos/{{owner}}/{{repo}}/compare/main...{SHA_A})",
         )
         self.github(paths="")
         check(
-            self.merge(), 2, "refused: the files API (gh api repos/{owner}/{repo}/pulls/7/files) listed no changed path"
+            self.merge(),
+            2,
+            f"refused: the compare API (gh api repos/{{owner}}/{{repo}}/compare/main...{SHA_A}) listed no changed path"
+            f" of the head {SHA_A} of pull request 7",
         )
-        self.assertNotIn(KEYED_CALL, [call[: len(KEYED_CALL)] for call in self.gh_calls()])
+        self.assertNotIn(COUNT_CALL, [call[: len(COUNT_CALL)] for call in self.gh_calls()])
         for name, paths, message in (
             (
                 "a '..' component",
@@ -3043,9 +3133,11 @@ class PrMergeTest(PrLeverTestCase):
         check(self.merge(), 2, "refused: the listing could not be read")
         self.scope.write_text("import sys\nsys.exit(3)\n")
         self.github(paths=docs)
-        check(self.merge(), 1, f"{self.scope} exited 3 reading the changed paths of pull request 7")
-        # the reader restored, the docs-only head merges without a sweep row, the reader run in its files form
+        check(self.merge(), 1, f"{self.scope} exited 3 reading the changed paths of the head {SHA_A} of pull request 7")
+        # the reader restored, the docs-only head merges without a sweep row on the daily sweep, the reader run in
+        # its files form
         self.scope.write_text(real)
+        self.daily(daily_row())
         self.github(paths=docs)
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
@@ -3054,6 +3146,149 @@ class PrMergeTest(PrLeverTestCase):
             '"${scope_reader}" --files-json --changed-files "${count}" <<< "${listing}"',
             (LEVERS / "pr-merge.sh").read_text(),
         )
+
+    def test_a_head_outside_every_class_skips_its_sweep_row_only_on_a_daily_sweep_of_main_within_24_hours(self):
+        """U597 round 4 (the mechanism change, part 2; the round-2 and round-3 P2 at AGENTS.md:71): the exemption of
+        rule C is bound to its standing control. A `not-required` head skips its own sweep row only while the store's
+        `daily-sweeps.tsv`, read through the checkout's `ledger.py daily 86400`, holds a daily sweep of main's head
+        within 24 hours: a row of one hour merges and the skip line names the row's head and ts; no file, and a row
+        of 25 hours, refuse as for a required head naming both (no sweep row for the unit, and no daily sweep within
+        the window, so the per-head rule stands), with no write, no skip line and no CI read; a malformed file is the
+        reader's exit 2 naming the line and field (five columns, a wrong header, hour 25, a short head, a hand-written
+        verifier, an evidence outside `sweeps/`), never "no daily sweep"; the daily row's pin word and findings file
+        are held as a unit's sweep row's are (a pin that is no prefix, a findings file that is missing); a symlinked
+        file is refused by name; and a required head never reads the file: a lever path with its sweep row merges
+        over a file of garbage, and without its row is refused naming the class and not the file."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        docs = files_listing("docs/plan.md")
+        daily_file = self.records / "daily-sweeps.tsv"
+        no_row = f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}"
+        standing = (
+            f"this head changes no sweep-class path, but {daily_file} holds no daily sweep of main's head within the"
+            " last 86400 seconds (24 hours), so the per-head rule stands"
+        )
+        checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
+
+        def refused(run, *messages):
+            self.assert_refused(run, messages[0])
+            for message in messages[1:]:
+                self.assertIn(message, run.stderr)
+            self.assertNotIn("sweep: not required", run.stderr)
+            self.assertEqual(run.stdout, "", "no receipt")
+            self.assertEqual(self.writes(), [])
+            self.assertNotIn(checks_call, [call[: len(checks_call)] for call in self.gh_calls()], "before CI")
+            self.calls.unlink(missing_ok=True)
+
+        row = daily_row(age=3600)
+        ts = row.split("\t")[0]
+        self.daily(row)
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(
+            f"pr-merge.sh: {SKIP_LINE}; the daily sweep of main's head {SHA_B} at {ts} stands within 86400 seconds\n",
+            run.stderr,
+        )
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        self.calls.unlink()
+        # the newest row within the window is the one named, whatever the file order; an older row beside it changes
+        # nothing, and a row of exactly the window's age still stands
+        newest = daily_row(head=SHA_C, age=600)
+        self.daily(daily_row(age=25 * 3600), row, newest, daily_row(age=7200))
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(f"the daily sweep of main's head {SHA_C} at {newest.split(chr(9))[0]} stands", run.stderr)
+        self.calls.unlink()
+        # no file, and a row of 25 hours: refused naming both, the unit's missing row and the missing daily sweep
+        daily_file.unlink()
+        self.github(paths=docs)
+        refused(self.merge(), no_row, standing, "(a row with verdict sweep, pr -, head " + SHA_A + ")")
+        self.daily(daily_row(age=25 * 3600))
+        self.github(paths=docs)
+        refused(self.merge(), no_row, standing)
+        self.daily()  # the header alone
+        self.github(paths=docs)
+        refused(self.merge(), no_row, standing)
+        # a malformed file is a malformed store naming the line and the field, never "no daily sweep"
+        for name, text, message in (
+            ("five columns", DAILY_HEADER + row.rstrip("\n") + "\textra\n", f"{daily_file}:2: 5 columns, not 4"),
+            ("a wrong header", "ts\thead\n" + row, f"{daily_file}:1: the header is 'ts\\thead', not"),
+            (
+                "hour 25",
+                DAILY_HEADER + daily_row(ts="2026-11-19T25:00:00Z"),
+                f"{daily_file}:2: the ts '2026-11-19T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ",
+            ),
+            (
+                "a short head",
+                DAILY_HEADER + daily_row(head=SHA_B[:8]),
+                f"{daily_file}:2: the head_sha of a daily sweep row is not 40 hex: '{SHA_B[:8]}'",
+            ),
+            (
+                "a hand-written verifier",
+                DAILY_HEADER + daily_row(verifier="coordinator"),
+                f"{daily_file}:2: the verifier of a daily sweep row does not begin with 'security-audit-skill <pin>'",
+            ),
+            (
+                "an evidence outside sweeps/",
+                DAILY_HEADER + daily_row(evidence="verdicts/x.md"),
+                f"{daily_file}:2: the evidence of a daily sweep row does not name a findings file sweeps/<path>.json",
+            ),
+            (
+                "an empty evidence",
+                DAILY_HEADER + daily_row(evidence=""),
+                f"{daily_file}:2: column 4 (evidence) is empty",
+            ),
+            ("a malformed second row", DAILY_HEADER + row + "garbage\n", f"{daily_file}:3: 1 columns, not 4"),
+        ):
+            with self.subTest(name):
+                self.daily(text=text)
+                self.github(paths=docs)
+                run = self.merge()
+                refused(run, message)
+                self.assertNotIn("has no sweep row", run.stderr)
+        # the daily row's fields are held as a unit's sweep row's: the pin word a prefix of the manifest's pin, the
+        # findings file a regular file of this user under the store
+        bad_pin = daily_row(verifier="security-audit-skill deadbeef")
+        self.daily(bad_pin)
+        self.github(paths=docs)
+        refused(
+            self.merge(),
+            f"the daily sweep row of {bad_pin.split(chr(9))[0]} at main's head {SHA_B} names pin deadbeef, which is not"
+            f" a prefix of the manifest's assets.security-audit-skill.pin {MANIFEST_PIN}",
+        )
+        missing = daily_row(evidence="sweeps/daily-missing/findings.json; 0 findings")
+        self.daily(missing)
+        self.github(paths=docs)
+        refused(
+            self.merge(),
+            f"{self.records}/sweeps/daily-missing/findings.json, the findings file the daily sweep row of"
+            f" {missing.split(chr(9))[0]} at main's head {SHA_B} names, is not a regular file of this user",
+        )
+        # a symlinked file is refused by name before the reader runs
+        self.daily(row)
+        elsewhere = self.root / "elsewhere-daily.tsv"
+        shutil.move(daily_file, elsewhere)
+        daily_file.symlink_to(elsewhere)
+        self.github(paths=docs)
+        refused(self.merge(), f"{daily_file} is not a readable regular file of this user")
+        daily_file.unlink()
+        # a required head never reads the file: a lever path with its sweep row merges over a file of garbage, and
+        # without its row is refused naming the class, not the file
+        self.daily(text="garbage\n")
+        self.ledger(ledger_row(SHA_A))  # the fixture's sweep row at the head
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertNotIn("sweep: not required", run.stderr)
+        self.assertNotIn("daily-sweeps.tsv", run.stderr)
+        self.calls.unlink()
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        self.github()
+        run = self.merge()
+        refused(run, no_row, "this head changes a lever path")
+        self.assertNotIn("daily-sweeps.tsv", run.stderr)
+        self.assertIn("[[ -z ${sweep_reason} ]] || require_sweep_row\n", (LEVERS / "pr-merge.sh").read_text())
 
 
 class DispositionDriftTest(unittest.TestCase):

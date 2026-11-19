@@ -38,6 +38,15 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 - `receipt --pr <pr> --head <sha or -> --unit --lever <name> --receipt <line> [--note <text>]`: verdict `-`, verifier
   the lever name alone, one of `pr-update-branch.sh`, `pr-close.sh`, `records-sync.sh`; evidence the receipt then `;
   <note>`.
+- `daily --head <40 hex> --seat <seat> --run <n> --task <U<n> or daily-<YYYY-MM-DD>> --findings
+  sweeps/<dir>/findings.json --count <n>` (regime-cutover U597 round 4): not a ledger row but the one row of the
+  store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file `ledger.py daily` reads and
+  `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its own sweep row), ts the
+  clock, head main's head the sweep ran at, verifier as the `sweep` kind composes it (`security-audit-skill <pin8>
+  (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`), evidence `<findings>; <count> findings;
+  validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS` with the findings path a regular file under the
+  store; the file is made with its header when absent (`O_CREAT | O_EXCL`, the one file this lever creates), and
+  then read, checked through `ledger.parse_daily` and appended under the same lock as the ledger.
 
 Two refusals cross rows, before any write (standing order 21): a `pushed` or `receipt` row whose head is 40 hex while
 `ledger.already_audited` names an audit row of the same pull request at that head is refused naming that row's ts (the
@@ -54,7 +63,8 @@ Round 3 (U222c, verdicts/U222-0fc41a81.md): the read, the check and the write ru
 levers writing at once never lose each other's row, and every argument round-trips through strict UTF-8 before
 anything is read (Python decodes argv with surrogateescape). Round 4 (U222d, verdicts/U222-238f0f55.md): the lever
 makes no file but the ledger (rounds 2 and 3 each wrote a helper file in the store, a temporary and a lock file, and
-the store's own walks refuse a name beginning with `.`). One descriptor, `os.open(ledger, O_RDWR | O_APPEND)`,
+the store's own walks refuse a name beginning with `.`), and since U597 round 4 the `daily-sweeps.tsv` the `daily`
+kind writes, made with its header on the first daily row. One descriptor, `os.open(<file>, O_RDWR | O_APPEND)`,
 carries the lock, the read and the write: `fcntl.flock(LOCK_EX | LOCK_NB)` tried every 0.1 s for `--lock-wait`
 seconds (default 30), expiry a refusal naming the ledger (advisory: the readers, `ledger.py` and `pr-merge.sh`, open
 the file without a lock and are unaffected); under it `os.fstat` gives the length n0, `os.pread` from 0 until n0 bytes
@@ -145,6 +155,9 @@ CLASS_WORD = re.compile(r"^[A-Za-z0-9_-]+$")
 # so the directory name is `[A-Za-z0-9._-]` alone (round 2 finding 3).
 SWEEP_FINDINGS = re.compile(r"^sweeps/([A-Za-z0-9._-]+)/findings\.json$")
 SWEEP_SEAT = re.compile(r"^\S+$")
+# The task id of the coordinator's daily dispatch (U597 round 4), the kit's `daily-sweep-brief.md` template: one per
+# UTC day; a daily row may also record a sweep dispatched as a unit (U<n>).
+DAILY_TASK = re.compile(r"^daily-[0-9]{4}-[0-9]{2}-[0-9]{2}$")
 # The manifest, read as text by one indentation rule (pr-merge.sh `sweep_pin_probe`, brief-check.py `manifest_levers`):
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
@@ -287,28 +300,12 @@ def carried_row(args):
 def sweep_row(args, store):
     """`sweep`: the exact row the AGENTS.md Audit sweep rule defines, the pin word from the manifest."""
     check_head(args.head)
-    if not DIGITS.match(args.run):
-        refuse(f"the run {args.run!r} is not a decimal number")
-    if not DIGITS.match(args.count):
-        refuse(f"the count {args.count!r} is not a decimal number")
     if not UNIT.match(args.task):
         refuse(f"the task unit {args.task!r} is not U<n> or U<n><letter>")
-    if not SWEEP_SEAT.match(args.seat):
-        refuse(f"the seat {args.seat!r} is not one word")
     if args.pr is not None:
         check_pr(args.pr)
-    match = SWEEP_FINDINGS.match(args.findings)
-    if match is None or match.group(1) in (".", ".."):
-        refuse(
-            f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
-            "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
-        )
+    verifier = sweep_verifier(args)
     store_file(store, args.findings, "findings path")
-    pin = manifest_pin(*manifest_lines())[:8]
-    verifier = (
-        f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
-        f"TASK {args.task})"
-    )
     evidence = (
         f"{args.findings}; pr {'none' if args.pr is None else args.pr}; {args.count} findings; "
         "validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
@@ -376,6 +373,42 @@ def receipt_row(args):
     return compose(now(), args.unit, args.pr, args.head, "-", args.lever, with_note(args.receipt, args.note))
 
 
+def sweep_verifier(args):
+    """The verifier of a `sweep` or `daily` row: the skill, its pin word from the manifest, the seat, the run and the
+    task, after the run, the count, the seat and the findings path are checked."""
+    if not DIGITS.match(args.run):
+        refuse(f"the run {args.run!r} is not a decimal number")
+    if not DIGITS.match(args.count):
+        refuse(f"the count {args.count!r} is not a decimal number")
+    if not SWEEP_SEAT.match(args.seat):
+        refuse(f"the seat {args.seat!r} is not one word")
+    match = SWEEP_FINDINGS.match(args.findings)
+    if match is None or match.group(1) in (".", ".."):
+        refuse(
+            f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
+            "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
+        )
+    pin = manifest_pin(*manifest_lines())[:8]
+    return (
+        f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
+        f"TASK {args.task})"
+    )
+
+
+def daily_row(args, store):
+    """`daily` (U597 round 4): the one row of `daily-sweeps.tsv`, main's head the sweep ran at, the verifier of the
+    `sweep` kind, the evidence the findings file (a regular file under the store), the count and the two validators;
+    the task the coordinator's daily id `daily-<YYYY-MM-DD>` or a unit."""
+    check_head(args.head)
+    if not UNIT.match(args.task) and not DAILY_TASK.match(args.task):
+        refuse(f"the task {args.task!r} is not daily-<YYYY-MM-DD> or U<n>")
+    verifier = sweep_verifier(args)
+    store_file(store, args.findings, "findings path")
+    evidence = f"{args.findings}; {args.count} findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
+    ts = now()
+    return ledger.DailyRow(ledger.timestamp(ts), args.head, verifier, evidence, 0, ts)
+
+
 def refuse_if_audited(read, kind, row):
     """A `pushed` or `receipt` row at a 40-hex head that already has an audit row of the same pull request would
     become the newest row of an audited head and void every later carry from it (the 23:53:08Z lesson)."""
@@ -408,14 +441,22 @@ def parser():
     )
     kinds = top.add_subparsers(dest="kind", required=True)
 
-    def kind(name, help_text, pr=True, head=True):
+    def kind(name, help_text, pr=True, head=True, unit=True):
         sub = kinds.add_parser(name, help=help_text)
         if pr:
             sub.add_argument("--pr", required=True, help="the pull request's decimal number")
         if head:
             sub.add_argument("--head", required=True, help="the head, 40 hex")
-        sub.add_argument("--unit", required=True, help="the row's unit, U<n> or U<n><letter>")
+        if unit:
+            sub.add_argument("--unit", required=True, help="the row's unit, U<n> or U<n><letter>")
         return sub
+
+    def sweep_arguments(sub, task_help):
+        sub.add_argument("--seat", required=True, help="the srt worker seat the sweep ran on")
+        sub.add_argument("--run", required=True, help="the run number")
+        sub.add_argument("--task", required=True, help=task_help)
+        sub.add_argument("--findings", required=True, help="sweeps/<dir>/findings.json, a regular file under the store")
+        sub.add_argument("--count", required=True, help="the findings count")
 
     merged = kind("merged", "the merge receipt: verdict -, verifier pr-merge.sh")
     merged.add_argument("--receipt", required=True, help="the line pr-merge.sh printed")
@@ -425,12 +466,12 @@ def parser():
     carried.add_argument("--note", required=True, help="the verifier's note in parentheses")
     carried.add_argument("--evidence-note", help="appended to the evidence after '; '")
     sweep = kind("sweep", "the security-audit skill's row: pr -, verdict sweep", pr=False)
-    sweep.add_argument("--seat", required=True, help="the srt worker seat the sweep ran on")
-    sweep.add_argument("--run", required=True, help="the run number")
-    sweep.add_argument("--task", required=True, help="the sweep's own unit, U<n>")
-    sweep.add_argument("--findings", required=True, help="sweeps/<dir>/findings.json, a regular file under the store")
-    sweep.add_argument("--count", required=True, help="the findings count")
+    sweep_arguments(sweep, "the sweep's own unit, U<n>")
     sweep.add_argument("--pr", help="the pull request swept; the pr cell stays '-'")
+    daily = kind(
+        "daily", "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger", pr=False, unit=False
+    )
+    sweep_arguments(daily, "the daily dispatch's task id, daily-<YYYY-MM-DD>, or a unit U<n>")
     audit = kind("audit", "the audit verdict: the word read from the verdict file's last line")
     audit.add_argument("--verdict-file", required=True, help="verdicts/<unit>-<sha8>.md")
     audit.add_argument("--verifier", required=True, help="the verifier text, starting with pr-audit.sh")
@@ -443,6 +484,35 @@ def parser():
     receipt.add_argument("--receipt", required=True, help="the line the lever printed")
     receipt.add_argument("--note", help="appended to the evidence after '; '")
     return top
+
+
+def make_daily_file(store):
+    """`<store>/daily-sweeps.tsv` with its header when no entry of that name exists (U597 round 4): `O_CREAT |
+    O_EXCL | O_NOFOLLOW`, so an existing file, a symlink or any other entry is left to the path rule of store_file,
+    and two first writers never both create it. The one file this lever makes beside the ledger."""
+    path = os.path.join(store, ledger.DAILY_FILE)
+    try:
+        descriptor = os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o644)
+    except FileExistsError:
+        return
+    except OSError as error:
+        refuse(f"cannot create {path}: {error.strerror}")
+    header = ("\t".join(ledger.DAILY_HEADER) + "\n").encode("utf-8")
+    try:
+        written = os.write(descriptor, header)
+        if written != len(header):
+            raise OSError(errno.EIO, f"short write, {written} of {len(header)} bytes")
+        os.fsync(descriptor)
+    except OSError as error:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+        refuse(f"cannot write the header of {path}: {error.strerror or error}")
+    try:
+        os.close(descriptor)
+    except OSError as error:
+        refuse(f"cannot write the header of {path}: close: {error.strerror}")
 
 
 def store_file(store, relative, label):
@@ -589,14 +659,24 @@ def main(argv=None):
     args = parser().parse_args(argv)
     if not 0 <= args.lock_wait < math.inf:
         refuse(f"--lock-wait {args.lock_wait!r} is not a non-negative number of seconds")
-    check_unit(args.unit)
+    daily = args.kind == "daily"
+    if not daily:
+        check_unit(args.unit)
     store = os.path.realpath(args.store)
-    # The ledger first (standing order 21): its path by the store's file rule, its descriptor opened and locked
-    # before it is read, before the row is composed and before any file of the store is read for it.
-    ledger_path = store_file(store, "ledger.tsv", "ledger")
-    descriptor = open_ledger(ledger_path, args.lock_wait)
+    # The record file first (standing order 21): its path by the store's file rule, its descriptor opened and locked
+    # before it is read, before the row is composed and before any file of the store is read for it. The daily kind
+    # composes and checks its row first, since the row reads nothing from the daily file and the file is made with
+    # its header when absent (the day's first row), so a refusal makes no file; the ledger is never made.
+    composed = None
+    if daily:
+        composed = daily_row(args, store)
+        make_daily_file(store)
+        record_path = store_file(store, ledger.DAILY_FILE, "daily sweeps file")
+    else:
+        record_path = store_file(store, "ledger.tsv", "ledger")
+    descriptor = open_ledger(record_path, args.lock_wait)
     try:
-        code, text = write_row(args, store, ledger_path, descriptor)
+        code, text = write_row(args, store, record_path, descriptor, composed)
     except BaseException:  # a refusal (SystemExit) or an unexpected error: the close releases the lock
         try:
             os.close(descriptor)
@@ -607,7 +687,7 @@ def main(argv=None):
         os.close(descriptor)
     except OSError as error:
         if code == 0:
-            text = f"the ledger {ledger_path} was appended ({text}) but its close failed: {error.strerror}"
+            text = f"the ledger {record_path} was appended ({text}) but its close failed: {error.strerror}"
         else:
             text = f"{text}; the close failed too: {error.strerror}"
         code = 1
@@ -618,35 +698,44 @@ def main(argv=None):
     return code
 
 
-def write_row(args, store, ledger_path, descriptor):
-    """The critical section, under the lock the descriptor holds: the ledger read through it, the row composed and
-    checked, the whole re-read, the one line appended. Returns (0, the stdout receipt) or (1, the failure text)."""
+def write_row(args, store, ledger_path, descriptor, composed=None):
+    """The critical section, under the lock the descriptor holds: the record file read through it (the ledger, or
+    `daily-sweeps.tsv` for the `daily` kind, whose row `composed` arrives checked), the row composed and checked, the
+    whole re-read through the reader's grammar for that file, the one line appended. Returns (0, the stdout receipt)
+    or (1, the failure text)."""
     length, text = read_ledger(descriptor, ledger_path)
+    parse = ledger.parse_daily if args.kind == "daily" else ledger.parse_ledger
     try:
-        read = ledger.parse_ledger(ledger_path, text)
+        read = parse(ledger_path, text)
     except ledger.Malformed as error:
         refuse(str(error))
-    if args.kind == "merged":
-        row = merged_row(args)
-    elif args.kind == "carried":
-        row = carried_row(args)
-    elif args.kind == "sweep":
-        row = sweep_row(args, store)
-    elif args.kind == "audit":
-        row = audit_row(args, store)
-    elif args.kind == "pushed":
-        row = pushed_row(args)
+    if args.kind == "daily":
+        row = composed
+        header = ledger.DAILY_HEADER
+        cells = (row.ts_text, row.head_sha, row.verifier, row.evidence)
     else:
-        row = receipt_row(args)
-    if args.kind in ("pushed", "receipt"):
-        refuse_if_audited(read, args.kind, row)
-    cells = (row.ts_text, row.unit, row.pr, row.head_sha, row.verdict, row.verifier, row.evidence)
-    for name, value in zip(ledger.HEADER, cells):
+        if args.kind == "merged":
+            row = merged_row(args)
+        elif args.kind == "carried":
+            row = carried_row(args)
+        elif args.kind == "sweep":
+            row = sweep_row(args, store)
+        elif args.kind == "audit":
+            row = audit_row(args, store)
+        elif args.kind == "pushed":
+            row = pushed_row(args)
+        else:
+            row = receipt_row(args)
+        if args.kind in ("pushed", "receipt"):
+            refuse_if_audited(read, args.kind, row)
+        header = ledger.HEADER
+        cells = (row.ts_text, row.unit, row.pr, row.head_sha, row.verdict, row.verifier, row.evidence)
+    for name, value in zip(header, cells):
         cell_check(f"{name} cell", value)
     line = "\t".join(cells) + "\n"
     lead = "" if text == "" or text.endswith("\n") else "\n"
     try:
-        whole = ledger.parse_ledger(ledger_path, text + lead + line)
+        whole = parse(ledger_path, text + lead + line)
     except ledger.Malformed as error:
         refuse(f"the reader refuses the composed row: {error}")
     number = whole.rows[-1].line

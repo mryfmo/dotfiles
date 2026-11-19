@@ -43,6 +43,19 @@ verdict file and disposition rows; U125 for the U122 round 6 residual), or `none
 head (`pr-merge.sh`'s sweep gate for a trust-boundary unit, U147), or `none`. Each exits 2 with one stderr line
 naming the file and line when the store cannot
 be read as data (standing order 21: a failed read is never "no row").
+
+The daily sweep (regime-cutover U597 round 4; the operator's sweep rule C of 2026-11-18): main's head gets one full
+sweep of the `security-audit` skill per UTC day, the standing control a head outside every sweep class rests on, and
+its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha verifier evidence`), written by
+`ledger-row.py daily` and read here alone. `read_daily(path)` returns a `Daily` of `DailyRow`s, or None when no file
+exists at the path (the day's first sweep is not yet recorded: `none` to the lever, never a refusal), or raises
+Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts `strptime`
+reads under the one form, no empty cell, a `head_sha` of 40 hex, and the verifier and the evidence the exact fields
+of the sweep rule (`security-audit-skill <pin>`, a findings file `sweeps/<path>.json`), each fault naming the line and
+the field. `Daily.newest_within(now, max_age)` is the newest row by `(ts, line)` whose ts is not older than `max_age`
+seconds before `now`. `ledger.py <store> daily <max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>`
+of that row against the clock (UTC), or `none` (no file, or no row within the window); `pr-merge.sh` asks it with
+86400 and skips a head's own sweep row only on a row, so the exemption of rule C is bound to the control it rests on.
 """
 
 from __future__ import annotations
@@ -52,7 +65,7 @@ import os
 import re
 import sys
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 
 HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
 REQUIRED = range(1, 6)  # ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"
@@ -74,6 +87,47 @@ SHA = re.compile(r"^[0-9a-f]{40}$")
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
 NONE = "none"
+# The daily sweep file of the store (U597 round 4): main's head, one full sweep per UTC day, each run one row.
+DAILY_FILE = "daily-sweeps.tsv"
+DAILY_HEADER = ("ts", "head_sha", "verifier", "evidence")
+DAILY_REQUIRED = range(1, 5)  # every cell: a row without a verifier or an evidence is no sweep
+MAX_AGE = re.compile(r"^[1-9][0-9]*$")
+
+
+def sweep_pin_of(verifier):
+    """The pin word of a sweep verifier (`security-audit-skill <pin>`), or None when the verifier is not of that form."""
+    match = SWEEP_VERIFIER.match(verifier)
+    return match.group(1) if match else None
+
+
+def sweep_evidence_path_of(evidence):
+    """The findings file a sweep evidence names: the first `;`-separated field, stripped."""
+    return evidence.split(";", 1)[0].strip()
+
+
+def sweep_fields_fault(verifier, evidence, kind):
+    """Why a verifier and an evidence are not those of the row the AGENTS.md Audit sweep rule defines, naming the
+    field, or None: the verifier begins with `security-audit-skill <pin>`, the pin 8 or more lowercase hex, and the
+    evidence's first `;`-field is a relative `sweeps/<path>.json` with no `..` or empty component. `kind` names the
+    row in the message (`a sweep row`, `a daily sweep row`); one rule for the ledger's sweep rows and the daily file's
+    (U147 round 4; U597 round 4)."""
+    if sweep_pin_of(verifier) is None:
+        return (
+            f"the verifier of {kind} does not begin with 'security-audit-skill <pin>' "
+            f"(the pin 8 or more lowercase hex): {verifier!r}"
+        )
+    parts = sweep_evidence_path_of(evidence).split("/")
+    if (
+        parts[0] != SWEEP_EVIDENCE_DIR  # lint-comparisons: allow the row's store-relative path is judged as text
+        or len(parts) < 2
+        or not parts[-1].endswith(SWEEP_EVIDENCE_SUFFIX)
+        or any(part in ("", "..") for part in parts[1:])
+    ):
+        return (
+            f"the evidence of {kind} does not name a findings file {SWEEP_EVIDENCE_DIR}/<path>"
+            f"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {evidence!r}"
+        )
+    return None
 
 
 class Malformed(Exception):
@@ -118,36 +172,19 @@ class Row:
     def sweep_pin(self):
         """The pin word of a sweep row's verifier (`security-audit-skill <pin>`), or None when the verifier is not of
         that form."""
-        match = SWEEP_VERIFIER.match(self.verifier)
-        return match.group(1) if match else None
+        return sweep_pin_of(self.verifier)
 
     @property
     def sweep_evidence_path(self):
         """The findings file a sweep row names: the first `;`-separated field of the evidence, stripped."""
-        return self.evidence.split(";", 1)[0].strip()
+        return sweep_evidence_path_of(self.evidence)
 
     def sweep_fault(self):
         """Why this sweep row is not the row the AGENTS.md Audit sweep rule defines, naming the field, or None (U147
         round 4). The head is judged by the caller, as an audit row's is."""
         if self.pr != SWEEP_PR:
             return f"the pr of a sweep row is not {SWEEP_PR!r}: {self.pr!r}"
-        if self.sweep_pin is None:
-            return (
-                "the verifier of a sweep row does not begin with 'security-audit-skill <pin>' "
-                f"(the pin 8 or more lowercase hex): {self.verifier!r}"
-            )
-        parts = self.sweep_evidence_path.split("/")
-        if (
-            parts[0] != SWEEP_EVIDENCE_DIR  # lint-comparisons: allow the row's store-relative path is judged as text
-            or len(parts) < 2
-            or not parts[-1].endswith(SWEEP_EVIDENCE_SUFFIX)
-            or any(part in ("", "..") for part in parts[1:])
-        ):
-            return (
-                f"the evidence of a sweep row does not name a findings file {SWEEP_EVIDENCE_DIR}/<path>"
-                f"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {self.evidence!r}"
-            )
-        return None
+        return sweep_fields_fault(self.verifier, self.evidence, "a sweep row")
 
 
 def newest(rows):
@@ -247,6 +284,90 @@ def read_ledger(path):
     return parse_ledger(path, read_text(path))
 
 
+@dataclass(frozen=True)
+class DailyRow:
+    """One data row of `daily-sweeps.tsv`: the ts parsed and as written, the four cells, and the line number."""
+
+    ts: datetime
+    head_sha: str
+    verifier: str
+    evidence: str
+    line: int
+    ts_text: str
+
+    @property
+    def sweep_pin(self):
+        return sweep_pin_of(self.verifier)
+
+    @property
+    def sweep_evidence_path(self):
+        return sweep_evidence_path_of(self.evidence)
+
+
+@dataclass(frozen=True)
+class Daily:
+    name: str
+    rows: tuple
+
+    def newest_within(self, now, max_age):
+        """The newest row by `(ts, line)` whose ts is not older than `max_age` seconds before `now` (a naive UTC
+        datetime, as the rows' ts are), or None: the daily sweep a head outside every class rests on."""
+        floor = now - timedelta(seconds=max_age)
+        return newest(row for row in self.rows if row.ts >= floor)
+
+
+def parse_daily(name, text):
+    """The Daily of one `daily-sweeps.tsv` text, or Malformed naming `name`, the line and the field, with the
+    ledger's strictness: the header exact, four cells split on the tab alone, a ts under the one form, no empty cell,
+    a 40-hex head, and the verifier and the evidence the exact fields of the sweep rule (U597 round 4)."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    expected = "\t".join(DAILY_HEADER)
+    if not lines or lines[0].rstrip("\r") != expected:
+        found = lines[0] if lines else ""
+        raise Malformed(f"{name}:1: the header is {found!r}, not {expected!r}")
+    rows = []
+    for number, line in enumerate(lines[1:], 2):
+        fields = line.rstrip("\r").split("\t")
+        if len(fields) != len(DAILY_HEADER):
+            raise Malformed(f"{name}:{number}: {len(fields)} columns, not {len(DAILY_HEADER)}")
+        at = timestamp(fields[0])
+        if at is None:
+            raise Malformed(f"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}")
+        for column in DAILY_REQUIRED:
+            if fields[column - 1] == "":
+                raise Malformed(f"{name}:{number}: column {column} ({DAILY_HEADER[column - 1]}) is empty")
+        if not SHA.match(fields[1]):
+            raise Malformed(f"{name}:{number}: the head_sha of a daily sweep row is not 40 hex: {fields[1]!r}")
+        fault = sweep_fields_fault(fields[2], fields[3], "a daily sweep row")
+        if fault is not None:
+            raise Malformed(f"{name}:{number}: {fault}")
+        rows.append(DailyRow(at, *fields[1:], number, fields[0]))
+    return Daily(name, tuple(rows))
+
+
+def read_daily(path):
+    """The Daily of the file at `path`, None when no file exists there (FileNotFoundError alone: the day's first
+    sweep is not yet recorded), or Malformed (a file that exists and cannot be read, or is not UTF-8, included:
+    standing order 21)."""
+    try:
+        with open(path, encoding="utf-8", newline="") as handle:
+            text = handle.read()
+    except FileNotFoundError:
+        return None
+    except OSError as error:
+        raise Malformed(f"{path}: cannot read: {error.strerror}") from None
+    except UnicodeDecodeError as error:
+        raise Malformed(f"{path}: not UTF-8: {error.reason}") from None
+    return parse_daily(path, text)
+
+
+def utc_now():
+    """The clock as a naive UTC datetime, the form the rows' ts parse to."""
+    return datetime.now(timezone.utc).replace(tzinfo=None)
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("store", help="the program store directory holding ledger.tsv")
@@ -269,8 +390,16 @@ def main(argv=None):
     )
     sweep.add_argument("unit", help="the body's unit, U<n>; its fix units U<n>[a-z] count with it")
     sweep.add_argument("head", help="the audited head, 40 hex")
+    daily = forms.add_parser(
+        "daily",
+        help=(
+            "the newest daily sweep of main's head within the window, from daily-sweeps.tsv: "
+            "<ts>\\t<head_sha>\\t<verifier>\\t<evidence>, or none"
+        ),
+    )
+    daily.add_argument("max_age", help="the window in seconds before now; a row older than it is not within")
     args = parser.parse_args(argv)
-    if not SHA.match(args.head):
+    if args.form != "daily" and not SHA.match(args.head):
         parser.error(f"the head {args.head!r} is not 40 hex")
     if args.form == "verdict" and not PULL_REQUEST.match(args.pr):
         parser.error(f"the pull request {args.pr!r} is not a decimal number")
@@ -278,8 +407,15 @@ def main(argv=None):
         parser.error(f"the unit {args.unit!r} is not U<n>")
     if args.form == "carry-source" and args.pr is not None and not PULL_REQUEST.match(args.pr):
         parser.error(f"the pull request {args.pr!r} is not a decimal number")
+    if args.form == "daily" and not MAX_AGE.match(args.max_age):
+        parser.error(f"the window {args.max_age!r} is not a positive number of seconds")
     store = args.store.rstrip("/") or args.store
     try:
+        if args.form == "daily":
+            read = read_daily(os.path.join(store, DAILY_FILE))
+            row = None if read is None else read.newest_within(utc_now(), int(args.max_age))
+            print(NONE if row is None else "\t".join((row.ts_text, row.head_sha, row.verifier, row.evidence)))
+            return 0
         ledger = read_ledger(os.path.join(store, "ledger.tsv"))
         if args.form == "verdict":
             row = ledger.newest_for_head(args.pr, args.head)

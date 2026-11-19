@@ -5,13 +5,19 @@ three audit questions, a sweep row with a short head is a malformed store naming
 `ledger.py <store> sweep <unit> <head>` prints `<ts>\\t<unit>\\t<verifier>\\t<evidence>` or `none`. Since round 4
 (Codex thread 4457544811) only the exact row of the rule answers: pr `-`, verifier `security-audit-skill <pin>` (the pin
 8 or more lowercase hex), evidence whose first `;`-field is a relative `sweeps/<path>.json` without `..`; any other
-`sweep` row of the unit is a malformed store naming the line and the field, never "no sweep row"."""
+`sweep` row of the unit is a malformed store naming the line and the field, never "no sweep row". The daily question
+(U597 round 4): `read_daily` and `Daily.newest_within(now, max_age)` over the store's `daily-sweeps.tsv` with the
+ledger's strictness (a missing file None, a malformed row naming the line and the field), and the CLI form `ledger.py
+<store> daily <max-age-seconds>` printing `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of the newest row within the
+window against the clock, or `none`."""
 
 import importlib.util
+import os
 import subprocess
 import sys
 import tempfile
 import unittest
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -269,4 +275,238 @@ class LedgerSweepTest(unittest.TestCase):
         run = self.cli("-h")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("sweep", run.stdout)
-        self.assertIn("{verdict,carry-source,sweep}", run.stdout)
+        self.assertIn("{verdict,carry-source,sweep,daily}", run.stdout)
+
+
+DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"
+C = "c" * 40
+
+
+def daily(ts, head, verifier=SKILL, evidence="sweeps/daily-2026-11-19/findings.json; 0 findings"):
+    """One row of `daily-sweeps.tsv` as ledger-row.py daily writes it."""
+    return "\t".join((ts, head, verifier, evidence)) + "\n"
+
+
+def ago(seconds):
+    """A ts `seconds` before now, in the store's form."""
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+class LedgerDailyTest(unittest.TestCase):
+    """U597 round 4: the daily sweep of main's head, the standing control a head outside every sweep class rests on,
+    read from the store's `daily-sweeps.tsv` with the ledger's strictness and chosen by its ts against the window."""
+
+    def setUp(self):
+        self.temp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temp.cleanup)
+        self.store = Path(self.temp.name) / "regime-cutover"
+        self.store.mkdir()
+        self.daily_file = self.store / "daily-sweeps.tsv"
+        self.reader = load_reader()
+
+    def write(self, *rows, header=DAILY_HEADER):
+        self.daily_file.write_text(header + "".join(rows))
+        return self.reader.read_daily(str(self.daily_file))
+
+    def cli(self, *args):
+        return subprocess.run(
+            [sys.executable, "-I", "-S", str(READER), str(self.store), *args],
+            capture_output=True,
+            text=True,
+            check=False,
+            timeout=60,
+        )
+
+    def test_newest_within_is_the_newest_row_by_ts_within_the_window_and_a_missing_file_is_none(self):
+        now = datetime(2026, 11, 19, 12, 0, 0)
+        read = self.write(
+            daily("2026-11-18T11:00:00Z", A),  # line 2: 25 hours before now
+            daily("2026-11-19T10:00:00Z", B),  # line 3: 2 hours
+            daily("2026-11-19T09:00:00Z", A),  # line 4: 3 hours
+            daily("2026-11-19T10:00:00Z", C),  # line 5: 2 hours, the later line at the equal ts
+        )
+        self.assertEqual(read.name, str(self.daily_file))
+        self.assertEqual([row.line for row in read.rows], [2, 3, 4, 5])
+        self.assertEqual((read.rows[0].ts_text, read.rows[0].head_sha), ("2026-11-18T11:00:00Z", A))
+        self.assertEqual(read.rows[0].sweep_pin, "c1c8a8c1")
+        self.assertEqual(read.rows[0].sweep_evidence_path, "sweeps/daily-2026-11-19/findings.json")
+        newest = read.newest_within(now, 86400)
+        self.assertEqual((newest.line, newest.head_sha), (5, C), "the later line at an equal ts")
+        self.assertEqual(read.newest_within(now, 7200).line, 5, "a row at the window's edge is within it")
+        self.assertIsNone(read.newest_within(now, 7199), "a row one second older than the window is not")
+        self.assertIsNone(read.newest_within(now, 3600))
+        self.assertEqual(
+            read.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line, 5, "a future ts stands (the clock's)"
+        )
+        only_past = self.write(daily("2026-11-18T11:00:00Z", A), daily("2026-11-17T11:00:00Z", B))
+        self.assertEqual(only_past.newest_within(datetime(2026, 11, 18, 12, 0, 0), 3600).line, 2, "the window moves")
+        self.assertIsNone(only_past.newest_within(datetime(2026, 11, 18, 12, 0, 1), 3600), "one second past it")
+        read = self.write(
+            daily("2026-11-18T11:00:00Z", A),
+            daily("2026-11-19T10:00:00Z", B),
+            daily("2026-11-19T09:00:00Z", A),
+            daily("2026-11-19T10:00:00Z", C),
+        )
+        self.assertIsNone(self.reader.read_daily(str(self.store / "absent.tsv")), "no file is None, not a refusal")
+        header_alone = self.write()
+        self.assertEqual(header_alone.rows, ())
+        self.assertIsNone(header_alone.newest_within(now, 86400))
+        with_cr = self.write(
+            daily("2026-11-19T10:00:00Z", B).replace("\n", "\r\n"), header=DAILY_HEADER.replace("\n", "\r\n")
+        )
+        self.assertEqual(with_cr.rows[0].evidence, "sweeps/daily-2026-11-19/findings.json; 0 findings", "CR stripped")
+
+    def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
+        ts = "2026-11-19T10:00:00Z"
+        name = str(self.daily_file)
+        verifier_text = (
+            "the verifier of a daily sweep row does not begin with 'security-audit-skill <pin>' "
+            "(the pin 8 or more lowercase hex): {!r}"
+        )
+        evidence_text = (
+            "the evidence of a daily sweep row does not name a findings file sweeps/<path>.json under the store "
+            "(no '..' or empty component): {!r}"
+        )
+        for case, header, rows, message in (
+            (
+                "a wrong header",
+                "ts\thead\n",
+                (daily(ts, A),),
+                f"{name}:1: the header is 'ts\\thead', not 'ts\\thead_sha\\tverifier\\tevidence'",
+            ),
+            ("the ledger's header", HEADER, (daily(ts, A),), f"{name}:1: the header is"),
+            ("an empty file", "", (), f"{name}:1: the header is '', not"),
+            ("three columns", DAILY_HEADER, ("\t".join((ts, A, SKILL)) + "\n",), f"{name}:2: 3 columns, not 4"),
+            ("five columns", DAILY_HEADER, (daily(ts, A).rstrip("\n") + "\tx\n",), f"{name}:2: 5 columns, not 4"),
+            (
+                "hour 25",
+                DAILY_HEADER,
+                (daily("2026-11-19T25:00:00Z", A),),
+                f"{name}:2: the ts '2026-11-19T25:00:00Z' is not YYYY-MM-DDThh:mm:ssZ",
+            ),
+            (
+                "a date without its time",
+                DAILY_HEADER,
+                (daily("2026-11-19", A),),
+                f"{name}:2: the ts '2026-11-19' is not",
+            ),
+            ("an empty ts", DAILY_HEADER, (daily("", A),), f"{name}:2: the ts '' is not"),
+            ("an empty head", DAILY_HEADER, (daily(ts, ""),), f"{name}:2: column 2 (head_sha) is empty"),
+            (
+                "an empty verifier",
+                DAILY_HEADER,
+                (daily(ts, A, verifier=""),),
+                f"{name}:2: column 3 (verifier) is empty",
+            ),
+            (
+                "an empty evidence",
+                DAILY_HEADER,
+                (daily(ts, A, evidence=""),),
+                f"{name}:2: column 4 (evidence) is empty",
+            ),
+            (
+                "a short head",
+                DAILY_HEADER,
+                (daily(ts, A[:8]),),
+                f"{name}:2: the head_sha of a daily sweep row is not 40 hex: {A[:8]!r}",
+            ),
+            (
+                "verifier coordinator",
+                DAILY_HEADER,
+                (daily(ts, A, verifier="coordinator"),),
+                f"{name}:2: {verifier_text.format('coordinator')}",
+            ),
+            (
+                "a short pin",
+                DAILY_HEADER,
+                (daily(ts, A, verifier="security-audit-skill c1c8a8"),),
+                f"{name}:2: {verifier_text.format('security-audit-skill c1c8a8')}",
+            ),
+            (
+                "evidence under verdicts/",
+                DAILY_HEADER,
+                (daily(ts, A, evidence="verdicts/x.md"),),
+                f"{name}:2: {evidence_text.format('verdicts/x.md')}",
+            ),
+            (
+                "evidence with ..",
+                DAILY_HEADER,
+                (daily(ts, A, evidence="sweeps/../x.json"),),
+                f"{name}:2: {evidence_text.format('sweeps/../x.json')}",
+            ),
+            (
+                "a malformed third row",
+                DAILY_HEADER,
+                (daily(ts, A), daily(ts, B), "garbage\n"),
+                f"{name}:4: 1 columns, not 4",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(*rows, header=header)
+                self.assertIn(message, str(caught.exception))
+        self.daily_file.write_bytes(
+            DAILY_HEADER.encode() + b"2026-11-19T10:00:00Z\t" + A.encode() + b"\t\xff\tsweeps/x.json\n"
+        )
+        with self.assertRaises(self.reader.Malformed) as caught:
+            self.reader.read_daily(str(self.daily_file))
+        self.assertIn(f"{name}: not UTF-8", str(caught.exception))
+        if os.geteuid() != 0:
+            self.write(daily(ts, A))
+            self.daily_file.chmod(0)
+            with self.assertRaises(self.reader.Malformed) as caught:
+                self.reader.read_daily(str(self.daily_file))
+            self.assertIn(f"{name}: cannot read:", str(caught.exception))
+            self.daily_file.chmod(0o600)
+        # a note after the pin word and after a `;` in the evidence is the exact row still
+        read = self.write(
+            daily(ts, A, verifier=f"{SKILL} (seat sweep-3, run-170)", evidence=" sweeps/d/findings.json ; 2 findings")
+        )
+        self.assertEqual(
+            (read.rows[0].sweep_pin, read.rows[0].sweep_evidence_path), ("c1c8a8c1", "sweeps/d/findings.json")
+        )
+
+    def test_the_cli_prints_the_newest_row_within_the_window_or_none_and_exits_2_on_a_malformed_file(self):
+        one_hour, two_hours, day_and_more = ago(3600), ago(7200), ago(25 * 3600)
+        self.write(daily(day_and_more, A), daily(two_hours, B), daily(one_hour, C))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, daily(one_hour, C))
+        run = self.cli("daily", "5400")
+        self.assertEqual(run.stdout, daily(one_hour, C), "the two-hour row is outside a 90-minute window")
+        run = self.cli("daily", "1800")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "no row within 30 minutes")
+        self.write(daily(day_and_more, A))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "25 hours is outside one day")
+        self.daily_file.unlink()
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""), "no file is none")
+        self.daily_file.write_text(DAILY_HEADER + daily(one_hour, A) + "garbage\n")
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertEqual(run.stderr, f"ledger: {self.daily_file}:3: 1 columns, not 4\n")
+        self.daily_file.write_text(DAILY_HEADER + daily(one_hour, A, verifier="coordinator"))
+        run = self.cli("daily", "86400")
+        self.assertEqual(run.returncode, 2, run.stdout + run.stderr)
+        self.assertIn(f"ledger: {self.daily_file}:2: the verifier of a daily sweep row does not begin with", run.stderr)
+        # the ledger's own questions never read the daily file, and the daily question never reads the ledger
+        (self.store / "ledger.tsv").write_text(HEADER + row("2026-10-30T01:00:00Z", "U7", "7", A, "correct"))
+        run = self.cli("sweep", "U7", A)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        (self.store / "ledger.tsv").write_text("ts\tunit\n")
+        self.write(daily(one_hour, A))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(one_hour, A), ""))
+        for args in (
+            ("daily",),
+            ("daily", "0"),
+            ("daily", "-1"),
+            ("daily", "x"),
+            ("daily", "86400", "x"),
+            ("daily", "1.5"),
+        ):
+            with self.subTest(args=args):
+                run = self.cli(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("error:", run.stderr)

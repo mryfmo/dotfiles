@@ -531,7 +531,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "6c7f3ff20bbaad62855e177afe38499547aba5519d164f9a0a9faf579f3a3028"
+      "sha256": "c826d3315698324893ab696f83a829ac305b579be4831994164e8c608b808903"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -1031,6 +1031,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "stall-check.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "sweep-scope.py"
     },
     {
       "source": "home/dot_local/bin/common",

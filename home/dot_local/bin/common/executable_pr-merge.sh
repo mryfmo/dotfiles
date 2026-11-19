@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head, and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head when the head's changed paths touch a sweep class (a lever, a policy, credential handling or a deployed executable), and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -75,7 +75,8 @@
 #   directory of this user and no symlink, and `--records` must resolve to exactly the store `store_resolve` chose for
 #   the body's program (the derived store, or the checkout's own store while no derived one exists). The
 #   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
-#   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`). CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
+#   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`); the head's changed paths, which
+#   decide whether the sweep is required (below), are `gh pr diff <pr> --name-only`, a `gh` read like the others. CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
 #   one check, every bucket `pass` or `skipping`, every name of REQUIRED_CHECKS listed with bucket `pass`, and `gh`
 #   exiting 0; a pending, failed or cancelled check is a refusal naming it, and a required check that is not listed, or
@@ -97,23 +98,33 @@
 #   else made after the pinned one failed) is a failure with no receipt that names both shas. The
 #   thread check (`pr-threads-check.sh`) stays a separate step before this lever (`hcom-orchestration` SKILL step 6).
 #   Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
-#   Since regime-cutover U147 the lever also requires the unit's `security-audit` sweep at the audited head, and since
-#   U244 of every unit (the AGENTS.md Audit sweep rule: every unit and every program milestone gets one sweep before
-#   its pull request merges; U147 read the unit's brief for the trust-boundary mark to tell a trust-boundary unit from
-#   the rest, and with one class that reading is gone). After `require_verdict_row` and before the checks read and the one
-#   write, the checkout's `ledger.py sweep <unit> <audited head>` prints the newest row of the unit or a fix unit of it
-#   at the audited head whose verdict starts with the word `sweep` (pr `-`, verifier the skill and its pin, evidence
-#   the findings file under the store), or `none`, which is a refusal naming the unit, the head and the rule; an exit-0
-#   answer that is neither `none` nor one row of four tab-separated fields with a ts is a refusal naming the reader and
-#   the answer. The row must be the exact row the rule defines: pr `-`, verifier the two words `security-audit-skill
-#   <pin>` with the pin word, 8 or more lowercase hex, a prefix of the `assets.security-audit-skill.pin` of the
-#   manifest the self-check read (one probe, `sweep_pin_probe`, run as `python3 -I -S -c` over `LEVER_MANIFEST`), and
-#   evidence whose first `;`-separated field names a findings file `sweeps/<path>.json` that is a regular file of this
-#   user under the store (never opened); the reader refuses any other `sweep` row as a malformed store, and a pin that
-#   is no prefix or a findings file that is missing, a symlink or another user's is a refusal naming it, so a row
-#   written by hand with another verifier admits nothing. The audited head is the one `require_verdict_row` set, so a
-#   head moved under a `carried` row needs no second sweep. The lever reads no brief, never the findings file a sweep
-#   row names, and judges no sweep's content.
+#   Since regime-cutover U147 the lever also requires the unit's `security-audit` sweep at the audited head, since
+#   U244 of every unit, and since U597 of a head whose changed paths touch a sweep class (the AGENTS.md Audit sweep
+#   rule as the operator set it on 2026-11-18, sweep rule C: a lever, a policy, credential handling or a deployed
+#   executable; every other head merges on its Codex audit and CI alone, and main's head gets one full sweep per
+#   day, which this lever never reads; U147 read the unit's brief for the trust-boundary mark, and with one class
+#   that reading is gone). After `require_dispositions` the lever lists the head's changed paths with `gh pr diff
+#   <pr> --name-only` (a failed listing is a failure, an empty one a refusal: a pull request that changes nothing is
+#   nothing to merge, and a listing cut short is never "not required", standing order 21) and asks the checkout's
+#   `scripts/orchestrator/sweep-scope.py --stdin`, the one definition of the classes (one frozen tuple of path
+#   prefixes per class), run as `python3 -I -S` with the listing on stdin and its status read: exit 2 is a refusal
+#   carrying its line, any other non-zero status a failure, and an exit-0 answer is read by its shape: `not-required`
+#   skips the sweep row and prints one stderr line, `sweep: not required (no lever, policy, credential or
+#   deployed-executable path changed)`; `required <class>` (the class one lowercase word) keeps the gate below; any
+#   other answer is a refusal naming the reader and the answer. When the sweep is required, and before the checks
+#   read and the one write, the checkout's `ledger.py sweep <unit> <audited head>` prints the newest row of the unit
+#   or a fix unit of it at the audited head whose verdict starts with the word `sweep` (pr `-`, verifier the skill
+#   and its pin, evidence the findings file under the store), or `none`, which is a refusal naming the unit, the head
+#   and the rule; an exit-0 answer that is neither `none` nor one row of four tab-separated fields with a ts is a
+#   refusal naming the reader and the answer. The row must be the exact row the rule defines: pr `-`, verifier the
+#   two words `security-audit-skill <pin>` with the pin word, 8 or more lowercase hex, a prefix of the
+#   `assets.security-audit-skill.pin` of the manifest the self-check read (one probe, `sweep_pin_probe`, run as
+#   `python3 -I -S -c` over `LEVER_MANIFEST`), and evidence whose first `;`-separated field names a findings file
+#   `sweeps/<path>.json` that is a regular file of this user under the store (never opened); the reader refuses any
+#   other `sweep` row as a malformed store, and a pin that is no prefix or a findings file that is missing, a symlink
+#   or another user's is a refusal naming it, so a row written by hand with another verifier admits nothing. The
+#   audited head is the one `require_verdict_row` set, so a head moved under a `carried` row needs no second sweep.
+#   The lever reads no brief, never the findings file a sweep row names, and judges no sweep's content.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the store `store_resolve` chose: `${REGIME_STORE_ROOT}/<program>` when it exists, else
@@ -121,16 +132,21 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read, the manifest pin probe (any status but 0 or 2), or the merge, failed.
-# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, no `sweep` row of
-#   the unit or a fix unit of it at the audited head, a sweep answer of the reader that is neither `none` nor one row
-#   of four tab-separated fields with a ts, a sweep row whose verifier is not `security-audit-skill <pin>` with the
+# @exitcode 1 A `gh` or `git` read (the changed-paths listing included), the manifest pin probe or the scope reader
+#   (any status but 0 or 2), or the merge, failed.
+# @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, a changed-paths
+#   listing that names no path, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2) or that is
+#   neither `not-required` nor `required <class>`, no `sweep` row of
+#   the unit or a fix unit of it at the audited head when the sweep is required, a sweep answer of the reader that is
+#   neither `none` nor one row of four tab-separated fields with a ts, a sweep row whose verifier is not
+#   `security-audit-skill <pin>` with the
 #   pin word a prefix (8 or more characters) of the manifest's `assets.security-audit-skill.pin`, whose evidence does
 #   not name a regular file of this user `sweeps/<path>.json` under the store, or a manifest without that one pin, a
 #   ledger the checkout's `ledger.py` cannot read as data (a ts outside `YYYY-MM-DDThh:mm:ssZ` or outside the
 #   calendar, a wrong header or column count, an empty required cell, a sweep or audit row whose head is not 40 hex, a
 #   `sweep` row that is not the exact row of the Audit sweep rule, pr `-`, verifier `security-audit-skill <pin>` and
-#   evidence `sweeps/<path>.json`: the reader's exit 2), no python3 or no `scripts/orchestrator/ledger.py` in the
+#   evidence `sweeps/<path>.json`: the reader's exit 2), no python3 or no `scripts/orchestrator/ledger.py` or
+#   `scripts/orchestrator/sweep-scope.py` in the
 #   checkout, a `carried` row whose evidence names no `carried <earlier> <head> <sha256>` for this head or whose
 #   earlier head has no `correct` row, no verdict file for the audited head, a P2 or P3 finding of weight 10 or more
 #   without its `residual` disposition row, a malformed verdict file, `dispositions.tsv` or `units.tsv`, a store path
@@ -646,9 +662,48 @@ require_dispositions() {
     done
 }
 
+# @description Decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C of
+#   2026-11-18): the head's changed paths, `gh pr diff <pr> --name-only` (a `gh` read bounded like the others; this
+#   lever reads no local git object, so no planted replace ref or graft can narrow the listing), go on stdin to the
+#   checkout's `sweep-scope.py --stdin`, the one definition of the classes, run as `python3 -I -S` as the ledger
+#   reader is, with its status read as ledger_verdict reads it: 2 a refusal carrying its line, any other non-zero a
+#   failure. A listing that fails is a failure and one that names no path a refusal (standing order 21: a pull request
+#   that changes nothing is nothing to merge, and a listing cut short is never "not required"). The exit-0 answer is
+#   read by its shape: `not-required` alone sets `sweep_class` empty and prints one stderr line; `required <class>`
+#   with the class one lowercase word (letters and hyphens) sets `sweep_class` to it; anything else, a second line
+#   included, is a refusal naming the reader and the answer. The lever reads the paths as text it passes on and judges
+#   no class itself.
+# @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), or empty when none does.
+require_sweep_scope() {
+    local status=0 paths answer class
+    paths=$(gh_bounded pr diff "${pr}" --name-only) || fail "cannot list the changed paths of pull request ${pr} (gh pr diff --name-only); the sweep scope is decided from them"
+    [[ -n ${paths} ]] ||
+        refuse "gh pr diff ${pr} --name-only listed no changed path; a pull request that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
+    answer=$("${python}" -I -S "${scope_reader}" --stdin <<< "${paths}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${answer#sweep-scope: }" ;;
+    *) fail "${scope_reader} exited ${status} reading the changed paths of pull request ${pr}: ${answer:-no output}" ;;
+    esac
+    case ${answer} in
+    not-required)
+        sweep_class=''
+        echo "${lever}: sweep: not required (no lever, policy, credential or deployed-executable path changed)" >&2
+        ;;
+    'required '*)
+        class=${answer#required }
+        [[ ${class} =~ ^[a-z][a-z-]*$ ]] ||
+            refuse "${scope_reader} answered the sweep scope question for pull request ${pr} with 'required ${class}', not required <class> with the class one lowercase word"
+        sweep_class=${class}
+        ;;
+    *) refuse "${scope_reader} answered the sweep scope question for pull request ${pr} with neither not-required nor required <class>: ${answer:-nothing}" ;;
+    esac
+}
+
 # @description Refuse unless the ledger holds the unit's sweep row at `audited_head` (regime-cutover U147, every unit
-#   since U244; the AGENTS.md Audit sweep rule: every unit and every program milestone gets one sweep of the
-#   `security-audit` skill before its pull request merges). The row is asked of the checkout's ledger.py (`sweep <unit>
+#   since U244, and since U597 only when require_sweep_scope found a class, `sweep_class`; the AGENTS.md Audit sweep
+#   rule: a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one
+#   sweep of the `security-audit` skill before its pull request merges). The row is asked of the checkout's ledger.py (`sweep <unit>
 #   <head>`, the one reader, its status read as ledger_verdict reads it and its exit-0 answer read by its shape, `none`
 #   or one row of four tab-separated fields with a ts, as require_verdict_row reads a row) at `audited_head`: the head
 #   itself, or for a `carried` row the earlier head whose verdict file the merge reads, so a head moved under a
@@ -671,7 +726,7 @@ require_sweep_row() {
     *) fail "${ledger_reader} exited ${status} reading ${ledger} for the sweep row of ${unit}: ${row:-no output}" ;;
     esac
     [[ ${row} != none ]] ||
-        refuse "${ledger} has no sweep row for ${unit} (or a fix unit of it) at the audited head ${audited_head}; the AGENTS.md Audit sweep rule says every unit and every program milestone gets one sweep of the security-audit skill before its pull request merges (a row with verdict sweep, pr -, head ${audited_head}); run the sweep and write its row, or wait for it"
+        refuse "${ledger} has no sweep row for ${unit} (or a fix unit of it) at the audited head ${audited_head}; the AGENTS.md Audit sweep rule says a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one sweep of the security-audit skill before its pull request merges, and this head changes a ${sweep_class} path (a row with verdict sweep, pr -, head ${audited_head}); run the sweep and write its row, or wait for it"
     # The answer is read by its shape, as require_verdict_row reads a row (round 2, finding 3): one line of four
     # tab-separated fields, `<ts> <unit> <verifier> <evidence>`, with a ts. The tab count is the row with every other
     # byte removed, read as a word; the ts is the text before the first tab.
@@ -851,6 +906,9 @@ regime_env pr-merge.sh --unbound-ok || exit 2
 # checkout's rounds-check.py and audit-carry.py; the lever's awk reader is gone with it.
 ledger_reader=${toplevel}/scripts/orchestrator/ledger.py
 [[ -f ${ledger_reader} ]] || refuse "no ${ledger_reader} in the checkout; the ledger is read through it alone"
+# The one definition of the sweep classes (U597), run from the checkout as the ledger reader is.
+scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py
+[[ -f ${scope_reader} ]] || refuse "no ${scope_reader} in the checkout; whether a head needs its sweep row is read through it alone"
 
 view=$(gh_bounded pr view "${pr}" --json state,baseRefName,headRefOid,isDraft \
     --jq '[.state, .baseRefName, .headRefOid, (.isDraft | tostring)] | @tsv') || fail "cannot read pull request ${pr}"
@@ -863,7 +921,8 @@ resolve_store
 
 require_verdict_row "${head}"
 require_dispositions "${audited_head}" "${audited_unit}" "${head}"
-require_sweep_row
+require_sweep_scope
+[[ -z ${sweep_class} ]] || require_sweep_row
 
 status=0
 checks=$(gh_bounded pr checks "${pr}" --json bucket,name --jq '.[] | [.bucket, .name] | @tsv') || status=$?

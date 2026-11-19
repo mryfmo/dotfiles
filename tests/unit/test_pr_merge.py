@@ -1,5 +1,6 @@
 """Exercise the sweep gate and the CI gate of scripts/orchestrator/pr-merge.sh. The sweep gate (regime-cutover U147,
-every unit since U244): a pull request merges only with a `sweep` ledger row of its unit or a fix unit of it at the
+every unit since U244, since U597 a head whose changed paths touch a sweep class, the fixture listing a lever path so
+the gate stands): a pull request merges only with a `sweep` ledger row of its unit or a fix unit of it at the
 audited head, read through scripts/orchestrator/ledger.py and read by its shape, whatever the unit's brief says; the
 lever reads no brief and no brief checker. The admitted row is the exact row of the AGENTS.md Audit sweep rule alone
 (pr `-`, verifier `security-audit-skill <pin>` with the pin word a prefix of the manifest's
@@ -38,8 +39,11 @@ DIGEST = "d" * 64
 # brief, so this unit needs its row like every other.
 PLAIN_BRIEF = "GOAL\nfixture\n"
 RULE = (
-    "every unit and every program milestone gets one sweep of the security-audit skill before its pull request merges"
+    "a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one sweep "
+    "of the security-audit skill before its pull request merges"
 )
+# The changed paths the fake `gh pr diff 7 --name-only` lists: a lever path, so the sweep is required (U597).
+LEVER_PATHS = "scripts/orchestrator/pr-merge.sh\n"
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
 CHECKS_CALL = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -73,6 +77,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.reader = self.repo / "scripts/orchestrator/ledger.py"
         self.reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", self.reader)
+        shutil.copy2(LEVERS / "sweep-scope.py", self.reader.parent / "sweep-scope.py")
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         self.briefs = self.records / "briefs"
         self.briefs.mkdir()
@@ -108,6 +113,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            {"match": r"^pr diff 7 --name-only$", "stdout": LEVER_PATHS},
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -442,6 +448,7 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
         reader = self.repo / "scripts/orchestrator/ledger.py"
         reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", reader)
+        shutil.copy2(LEVERS / "sweep-scope.py", reader.parent / "sweep-scope.py")
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         (self.records / "sweeps").mkdir()
         (self.records / f"sweeps/U71-{SHA_A[:8]}.json").write_text("{}\n")
@@ -459,6 +466,7 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            {"match": r"^pr diff 7 --name-only$", "stdout": LEVER_PATHS},
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",

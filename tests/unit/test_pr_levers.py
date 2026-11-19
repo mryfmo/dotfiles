@@ -1190,6 +1190,11 @@ def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep"
     return f"{ts}\t{unit}\t{pr}\t{head}\t{verdict}\t{verifier}\t{evidence}\n"
 
 
+# The one stderr line pr-merge.sh prints when the head's changed paths fall in no sweep class (U597).
+SKIP_LINE = "sweep: not required (no lever, policy, credential or deployed-executable path changed)"
+DIFF_CALL = ["pr", "diff", "7", "--name-only"]
+
+
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
 UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
 # A `## Findings` line as pr-audit.sh's reader writes it since U125, `- P<n> (<confidence>) [f<n> s<n>] <path>:<line>:
@@ -1240,6 +1245,10 @@ class PrMergeTest(PrLeverTestCase):
         self.reader = self.repo / "scripts/orchestrator/ledger.py"
         self.reader.parent.mkdir(parents=True)
         shutil.copy2(LEVERS / "ledger.py", self.reader)
+        # The one definition of the sweep classes (U597), read from the checkout like the ledger reader; the fixture
+        # listing names a lever path, so the sweep gate stands for every test that does not say otherwise.
+        self.scope = self.repo / "scripts/orchestrator/sweep-scope.py"
+        shutil.copy2(LEVERS / "sweep-scope.py", self.scope)
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         self.sweeps = self.records / "sweeps"
         self.ledger(ledger_row(SHA_A))
@@ -1291,6 +1300,8 @@ class PrMergeTest(PrLeverTestCase):
         again_base="main",
         merged_base="main",
         merged_head=None,
+        paths="scripts/orchestrator/pr-merge.sh\n",
+        paths_exit=0,
     ):
         if checks is None:
             # every required check passes (U330), and a check that is not required may skip
@@ -1298,12 +1309,17 @@ class PrMergeTest(PrLeverTestCase):
         listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
         if checks_exit:
             listing = {"match": listing["match"], "exit": checks_exit, "stderr": "HTTP 502"}
+        # The changed paths of the head (U597): `gh pr diff 7 --name-only`, one per line, or a failed read.
+        diff = {"match": r"^pr diff 7 --name-only$", "stdout": paths}
+        if paths_exit:
+            diff = {"match": diff["match"], "exit": paths_exit, "stderr": "HTTP 502"}
         self.answer(
             {
                 "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": draft},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            diff,
             listing,
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -2641,6 +2657,109 @@ class PrMergeTest(PrLeverTestCase):
         self.calls.unlink()
         self.github()
         self.assertEqual(self.merge().returncode, 0)
+
+    def test_a_head_outside_every_sweep_class_merges_without_a_sweep_row_and_names_the_skip(self):
+        """U597 (the operator's sweep rule C of 2026-11-18): the head's changed paths, `gh pr diff <pr> --name-only`,
+        go to the checkout's sweep-scope.py on stdin; a head of docs, tests and workflow paths alone needs no sweep
+        row, the lever prints one stderr line naming the skip and merges on the correct row and CI alone. The skip is
+        the sweep row's alone: the same head with no correct row is refused before the listing is read."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row at all
+        self.github(paths="docs/plan.md\ntests/unit/test_x.py\n.github/workflows/test.yml\n")
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
+        self.assertIn(f"pr-merge.sh: {SKIP_LINE}\n", run.stderr)
+        self.assertIn(DIFF_CALL, self.gh_calls())
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        self.calls.unlink()
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_B))
+        self.github(paths="docs/plan.md\n")
+        self.assert_refused(self.merge(), "has no row for pull request 7 at head " + SHA_A)
+        self.assertNotIn(DIFF_CALL, self.gh_calls(), "the verdict gate comes before the listing")
+
+    def test_a_head_in_a_sweep_class_keeps_the_sweep_gate(self):
+        """U597: one path of a class among any others keeps today's gate: no sweep row refuses naming the unit, the
+        head, the rule and the class, with no skip line; the row of the rule merges."""
+        for name, paths in (
+            ("credential", "home/dot_local/bin/common/executable_hcom-seat\n"),
+            ("policy", "docs/x.md\nhome/dot_agents/omp/policies/worker.yml\n"),
+            ("lever", "scripts/orchestrator/pr-merge.sh\ndocs/x.md\n"),
+            ("deployed-executable", "install/bootstrap.sh\n"),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+                self.github(paths=paths)
+                run = self.merge()
+                self.assert_refused(run, f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}")
+                self.assertIn(f"this head changes a {name} path", run.stderr)
+                self.assertNotIn("sweep: not required", run.stderr)
+                self.ledger(ledger_row(SHA_A))  # the fixture's sweep row at the head
+                self.github(paths=paths)
+                run = self.merge()
+                self.assertEqual(run.returncode, 0, run.stderr)
+                self.assertNotIn("sweep: not required", run.stderr)
+
+    def test_an_unreadable_sweep_scope_never_skips_the_sweep_row(self):
+        """U597, standing order 21: a changed-paths listing that fails is exit 1; one that names no path, a path the
+        reader refuses, a reader missing from the checkout, a reader that exits 2 and an exit-0 answer of another
+        shape (empty, another word, `required` without its class, a class that is no lowercase word, a second line)
+        are refusals naming the reader; a reader that exits with another status is exit 1. None writes, and none
+        prints the skip line."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        docs = "docs/plan.md\n"
+
+        def check(run, code, message):
+            self.assertEqual(run.returncode, code, run.stdout + run.stderr)
+            self.assertIn(message, run.stderr)
+            self.assertNotIn("sweep: not required", run.stderr)
+            self.assertEqual(run.stdout, "", "no receipt")
+            self.assertEqual(self.writes(), [])
+            self.calls.unlink(missing_ok=True)
+
+        self.github(paths=docs, paths_exit=1)
+        check(self.merge(), 1, "cannot list the changed paths of pull request 7 (gh pr diff --name-only)")
+        self.github(paths="")
+        check(self.merge(), 2, "refused: gh pr diff 7 --name-only listed no changed path")
+        for name, paths, message in (
+            ("a '..' component", "docs/plan.md\n../etc/passwd\n", "a listed path holds a '.', '..' or empty component"),
+            ("an empty line", "docs/plan.md\n\nREADME.md\n", "the listing holds an empty line"),
+            ("an absolute path", "/etc/passwd\n", "a listed path is absolute"),
+            ("a control character", "docs/pl\x01an.md\n", "a listed path holds a control character"),
+        ):
+            with self.subTest(name):
+                self.github(paths=paths)
+                check(self.merge(), 2, f"refused: {message}")
+        real = self.scope.read_text()
+        self.scope.unlink()
+        self.github(paths=docs)
+        check(self.merge(), 2, f"refused: no {self.scope} in the checkout")
+        for name, answer in (
+            ("an empty answer", ""),
+            ("another word", "maybe\n"),
+            ("required without its class", "required\n"),
+            ("required with a class that is no lowercase word", "required Lever\n"),
+            ("not-required with a second line", "not-required\nnote\n"),
+            ("required with a second line", "required lever\nnote\n"),
+        ):
+            with self.subTest(name):
+                self.scope.write_text(f"import sys\nsys.stdout.write({answer!r})\n")
+                self.github(paths=docs)
+                check(self.merge(), 2, f"refused: {self.scope} answered the sweep scope question for pull request 7")
+        self.scope.write_text(
+            "import sys\nsys.stderr.write('sweep-scope: the listing could not be read\\n')\nsys.exit(2)\n"
+        )
+        self.github(paths=docs)
+        check(self.merge(), 2, "refused: the listing could not be read")
+        self.scope.write_text("import sys\nsys.exit(3)\n")
+        self.github(paths=docs)
+        check(self.merge(), 1, f"{self.scope} exited 3 reading the changed paths of pull request 7")
+        # the reader restored, the docs-only head merges without a sweep row
+        self.scope.write_text(real)
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
 
 
 class DispositionDriftTest(unittest.TestCase):

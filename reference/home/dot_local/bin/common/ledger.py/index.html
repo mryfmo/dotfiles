@@ -14,7 +14,7 @@
         <link rel="prev" href="../executable_worktree-gc/">
       
       
-        <link rel="next" href="../../server/cuda/">
+        <link rel="next" href="../sweep-scope.py/">
       
       
         
@@ -2978,6 +2978,34 @@
   
 </nav>
       
+    </li>
+  
+
+              
+            
+              
+                
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../sweep-scope.py/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    home/dot_local/bin/common/sweep-scope.py
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -6060,11 +6088,21 @@
 <span class="s2">`read_ledger(path)` (or `parse_ledger(name, text)` for a text read elsewhere, as `rounds-check.py --head` reads a</span>
 <span class="s2">git blob) returns a `Ledger` of `Row`s or raises `Malformed` naming the file and line: the first line must be the</span>
 <span class="s2">header `ts unit pr head_sha verdict verifier evidence`; every other line is split on the tab alone (an empty field</span>
-<span class="s2">is still a field; U119 round 3), must have the header's column count, a ts `datetime.strptime` reads under</span>
-<span class="s2">`%Y-%m-%dT%H:%M:%SZ` and nothing else (no shape pattern stands beside it: hour 25 is a ValueError, so a malformed</span>
-<span class="s2">row), and no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request</span>
-<span class="s2">and read as "</span>no<span class="w"> </span>row<span class="s2">"). A `Row` carries its ts parsed (`ts`, a datetime, the order every choice of a newest row is</span>
-<span class="s2">made in) and as written (`ts_text`, for the lines that name the row), its seven cells and its line number.</span>
+<span class="s2">is still a field; U119 round 3), must have the header's column count, a ts of the one shape `YYYY-MM-DDThh:mm:ssZ`</span>
+<span class="s2">(`TS_SHAPE`: four digits, then two in every other field; U597 round 6, where `strptime` alone read `2026-11-9T4:5:6Z`</span>
+<span class="s2">under a form that spells two digits) that `datetime.strptime` then reads under `%Y-%m-%dT%H:%M:%SZ` (hour 25 is a</span>
+<span class="s2">ValueError, so a malformed row), no cell holding a control character (`CONTROL`, `\\x00` to `\\x1f` and `\\x7f`; U597</span>
+<span class="s2">round 7, where a NUL in a daily row's evidence path was data to the reader and dropped by the lever's `</span><span class="k">$(</span>...<span class="k">)</span><span class="s2">`), and</span>
+<span class="s2">no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request and read as</span>
+<span class="s2">"</span>no<span class="w"> </span>row<span class="s2">"). The rows are split on the line feed; the ledger's reader then drops exactly one trailing carriage return</span>
+<span class="s2">from each line, the header's included, before the cells are checked (`parse_rows(..., trailing_cr=True)`; U597 round</span>
+<span class="s2">10, verdict U597-67e1eea8 P2 at :381: the base of this unit read a CR LF ledger, and installed stores written that way</span>
+<span class="s2">must keep reading, so a CR LF ledger parses as before the unit, while a second carriage return, CR CR LF, is a control</span>
+<span class="s2">character in the last cell and Malformed naming the line and the field as round 8 made it), where the daily file's</span>
+<span class="s2">reader drops none (the file is new to this unit, so no store holds a CR LF one; a daily row ends in LF alone). A `Row`</span>
+<span class="s2">carries its ts parsed (`ts`, a datetime, the order every</span>
+<span class="s2">choice of a newest row is made in) and as written (`ts_text`, for the lines that name the row), its seven cells and</span>
+<span class="s2">its line number.</span>
 
 <span class="s2">The four questions, each the newest row by `(ts, line)` (the later line at an equal ts, the file position deciding</span>
 <span class="s2">nothing else; round 5): `newest_for_head(pr, head)` is the newest row of the pull request at the full sha, whatever</span>
@@ -6091,6 +6129,69 @@
 <span class="s2">head (`pr-merge.sh`'s sweep gate for a trust-boundary unit, U147), or `none`. Each exits 2 with one stderr line</span>
 <span class="s2">naming the file and line when the store cannot</span>
 <span class="s2">be read as data (standing order 21: a failed read is never "</span>no<span class="w"> </span>row<span class="s2">").</span>
+
+<span class="s2">Two more questions since regime-cutover U597 round 11, for the merge lever's first gate (main's tip swept or exempt</span>
+<span class="s2">before the next merge lands on it, read from immutable commits and store rows alone): `newest_sweep_any(head)` is the</span>
+<span class="s2">newest sweep row of any unit at the head (the sweep of main's tip may be the merged unit's or the coordinator's sweep</span>
+<span class="s2">of a merge commit), with the strictness of `newest_sweep` over every sweep row of the ledger (one of another shape, of</span>
+<span class="s2">any unit, is Malformed naming the line and the field); `merge_of(commit)` is the head the squash at `commit` came</span>
+<span class="s2">from, the `head_sha` of the newest merge row whose receipt names `commit=&lt;commit&gt;`, a merge row being the row</span>
+<span class="s2">`ledger-row.py merged` writes (verifier exactly `pr-merge.sh`, `MERGE_VERIFIER`, the word rounds-check.py reads a merge</span>
+<span class="s2">row by since U222; evidence starting with the lever's receipt `merged pr=&lt;n&gt; head=&lt;sha&gt; commit=&lt;40 hex&gt;`,</span>
+<span class="s2">`MERGE_RECEIPT`), whose verdict cell must be `-`, whose pr cell must be a decimal number (`PULL_REQUEST`; round 13,</span>
+<span class="s2">the round-12 P3 at :371: the writer, `ledger-row.py merged`, refuses a non-decimal pr, so a row carrying one was</span>
+<span class="s2">written by hand), whose `head_sha` must be 40 hex, whose receipt's `pr=` must be that decimal pr cell and whose</span>
+<span class="s2">receipt's `head=` must be the row's head cell or its first 8 (round 12, the round-11 P2 at :362: an audit verdict</span>
+<span class="s2">with a `pr-merge.sh` verifier and a receipt naming another pull request supplied the tip gate's provenance; each</span>
+<span class="s2">inconsistency is Malformed naming the line and the field); a `pr-merge.sh` row of another evidence shape (the rows</span>
+<span class="s2">written by hand before U222, `merged as &lt;sha&gt; (squash) ...`, and a refusal recorded as a row) is no merge row to this</span>
+<span class="s2">question, so the installed ledgers that hold them keep reading. `ledger.py &lt;store&gt; sweep-any &lt;head&gt;` prints the sweep</span>
+<span class="s2">row's four columns or `none`; `ledger.py &lt;store&gt; merge-of &lt;commit&gt;` prints `&lt;head&gt;` or `none`.</span>
+
+<span class="s2">A third question since round 13 (the round-12 P2 at pr-merge.sh:1201), for the same gate: `carried_from(head)` is the</span>
+<span class="s2">earlier head a `carried` row at `head` names, a carried row being one whose verdict starts with the word `carried`</span>
+<span class="s2">(`CARRIED_VERDICT`, standing order 38: the row the coordinator writes from `audit-carry.py`'s line when the head's diff</span>
+<span class="s2">against its merge base equals the earlier head's) and whose evidence holds that line, `carried &lt;earlier&gt; &lt;head&gt;</span>
+<span class="s2">&lt;sha256&gt;` (`CARRIED_EVIDENCE`, the grammar of pr-merge.sh's `carried_evidence_re`: the digest a whole word before the</span>
+<span class="s2">end or a space, `;`, `,`, `.` or `)`), the newest such row at the head by `(ts, line)`, or None when none is there.</span>
+<span class="s2">The relation means the two heads' diffs are one, so the merge lever, having found main's tip squashed from a head with</span>
+<span class="s2">no sweep row of its own, follows it to the earlier head and reads the sweep row there. A carried row at the head whose</span>
+<span class="s2">evidence names no such line for that head, or names the head itself as the earlier head, is Malformed naming the line</span>
+<span class="s2">and the field (the merge lever refuses the same row at its own gate; standing order 21). `ledger.py &lt;store&gt;</span>
+<span class="s2">carried-from &lt;head&gt;` prints `&lt;earlier&gt;` or `none`.</span>
+
+<span class="s2">The daily sweep (regime-cutover U597 round 4; the operator's sweep rule C of 2026-11-18): main's head gets one full</span>
+<span class="s2">sweep of the `security-audit` skill per UTC day, the standing control a head outside every sweep class rests on, and</span>
+<span class="s2">its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha verifier evidence`), written by</span>
+<span class="s2">`ledger-row.py daily` and read here alone. `read_daily(path)` returns a `Daily` of `DailyRow`s, or None when no file</span>
+<span class="s2">exists at the path (the day's first sweep is not yet recorded: `none` to the lever, never a refusal), or raises</span>
+<span class="s2">Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts of the one</span>
+<span class="s2">shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where</span>
+<span class="s2">round 5's `strptime` alone read it), no cell holding a control character (round 7; a carriage return included and</span>
+<span class="s2">never stripped from a daily row, round 8 and round 10, so a daily row ends in LF alone), no empty cell, a `head_sha`</span>
+<span class="s2">of 40 hex, the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill &lt;pin&gt;`, a findings</span>
+<span class="s2">file `sweeps/&lt;path&gt;.json`), and, since round 9 (verdict U597-c37800e3 P2 at :393, where the daily reader applied the</span>
+<span class="s2">sweep row's grammar alone and a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing</span>
+<span class="s2">findings path, read back as the day's sweep of main's head), the daily row's own grammar, the exact fields</span>
+<span class="s2">`ledger-row.py daily` writes: the verifier `security-audit-skill &lt;pin&gt; (full audit mode on the srt worker seat &lt;seat&gt;,</span>
+<span class="s2">run-&lt;n&gt;; TASK daily-&lt;YYYY-MM-DD&gt;)` (`DAILY_VERIFIER`, the task the daily dispatch's id alone, its day the ts's UTC day</span>
+<span class="s2">or the day before, a sweep that crosses midnight) and the evidence's seven `; `-separated fields in the writer's order,</span>
+<span class="s2">`&lt;findings&gt;; &lt;n&gt; findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 &lt;8 hex&gt;</span>
+<span class="s2">&lt;8 hex&gt; &lt;8 hex&gt;; artifacts sha256 &lt;8 hex&gt; &lt;8 hex&gt;; recorded &lt;ts&gt;` (`daily_fields_fault`: the count, the two</span>
+<span class="s2">validators' PASS words, the first 8 hex of the three pins the writer held its private copies of validate-findings.cjs,</span>
+<span class="s2">validate-coverage-ledger.cjs and report-schema.json to (round 10: the schema's pin too, verdict U597-67e1eea8 P2 at</span>
+<span class="s2">ledger-row.py:575), the first 8 hex of the sha256 of the writer's private copies of the findings file and the coverage</span>
+<span class="s2">ledger beside it, the bytes the count and the PASS words were earned over (round 10, the P2 at ledger-row.py:574), and</span>
+<span class="s2">the recording time under the one ts form), each fault naming the line and the field, so a row shaped like a unit's</span>
+<span class="s2">sweep row is Malformed, never a daily row. `DailyRow` exposes the parsed fields (`seat`, `run`, `task_day`,</span>
+<span class="s2">`validator_digests`, `artifact_digests`, `recorded`). `Daily.newest_within(now, max_age)` is the newest row by `(ts,</span>
+<span class="s2">line)` whose ts lies within the window `now - max_age &lt;= ts &lt;= now + DAILY_FUTURE_SLACK` (60 seconds, the reader's</span>
+<span class="s2">allowance for a row another host's clock wrote; the writer refuses a ts after its own clock, round 7; round 5: a row</span>
+<span class="s2">dated further in the future is not within the window, so it does not count and is not refused as malformed, where</span>
+<span class="s2">round 4's floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py &lt;store&gt; daily</span>
+<span class="s2">&lt;max-age-seconds&gt;` prints `&lt;ts&gt;\\t&lt;head_sha&gt;\\t&lt;verifier&gt;\\t&lt;evidence&gt;` of that row against the clock (UTC), or `none`</span>
+<span class="s2">(no file, or no row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a</span>
+<span class="s2">row, so the exemption of rule C is bound to the control it rests on.</span>
 <span class="s2">"""</span>
 
 from<span class="w"> </span>__future__<span class="w"> </span>import<span class="w"> </span>annotations
@@ -6100,12 +6201,23 @@ import<span class="w"> </span>os
 import<span class="w"> </span>re
 import<span class="w"> </span>sys
 from<span class="w"> </span>dataclasses<span class="w"> </span>import<span class="w"> </span>dataclass
-from<span class="w"> </span>datetime<span class="w"> </span>import<span class="w"> </span>datetime
+from<span class="w"> </span>datetime<span class="w"> </span>import<span class="w"> </span>datetime,<span class="w"> </span>timedelta,<span class="w"> </span>timezone
 
 <span class="nv">HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"ts"</span>,<span class="w"> </span><span class="s2">"unit"</span>,<span class="w"> </span><span class="s2">"pr"</span>,<span class="w"> </span><span class="s2">"head_sha"</span>,<span class="w"> </span><span class="s2">"verdict"</span>,<span class="w"> </span><span class="s2">"verifier"</span>,<span class="w"> </span><span class="s2">"evidence"</span><span class="o">)</span>
 <span class="nv">REQUIRED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>range<span class="o">(</span><span class="m">1</span>,<span class="w"> </span><span class="m">6</span><span class="o">)</span><span class="w">  </span><span class="c1"># ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"</span>
 <span class="nv">TS_FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"%Y-%m-%dT%H:%M:%SZ"</span><span class="w">  </span><span class="c1"># the one timestamp form of the store, read by strptime alone</span>
 <span class="nv">TS_FORM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"YYYY-MM-DDThh:mm:ssZ"</span><span class="w">  </span><span class="c1"># the same form as the refusals spell it</span>
+<span class="c1"># The shape every ts cell has before the calendar check (U597 round 6): four ASCII digits, then two in each of the five</span>
+<span class="c1"># other fields, the literals in their places; `strptime` alone accepts one digit where the form spells two.</span>
+<span class="nv">TS_SHAPE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="c1"># No cell of either file holds a control character (U597 round 7: `\x00` to `\x1f` and `\x7f`; a tab is the separator</span>
+<span class="c1"># and a line feed the row's end, so neither is in a cell, and a NUL in an evidence path is dropped by bash's `$(...)`</span>
+<span class="c1"># when pr-merge.sh captures the row, so the lever would check another file than the one the row names). A cell that</span>
+<span class="c1"># holds one is Malformed naming the line and the field. A carriage return is one of them wherever it stands in a cell</span>
+<span class="c1"># (round 8, verdict U597-a28e4793 P3 at :373: the parsers stripped every trailing CR before the cells were checked, so</span>
+<span class="c1"># a row ending in CR CR LF carried an extra control byte and passed); which reader drops one trailing CR from a line</span>
+<span class="c1"># before the cells are read is parse_rows's `trailing_cr` (round 10: the ledger's does, the daily file's does not).</span>
+<span class="nv">CONTROL</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"[\x00-\x1f\x7f]"</span><span class="o">)</span>
 <span class="c1"># A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).</span>
 <span class="nv">AUDIT_VERDICT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(correct|incorrect)(?:</span>$<span class="s2">|[\s(;,])"</span><span class="o">)</span>
 <span class="c1"># A verdict column that starts with the word `sweep` (the security-audit skill's advisory row, AGENTS.md Audit sweep</span>
@@ -6118,10 +6230,160 @@ from<span class="w"> </span>datetime<span class="w"> </span>import<span class="w
 <span class="nv">SWEEP_PR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"-"</span>
 <span class="nv">SWEEP_EVIDENCE_DIR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"sweeps"</span>
 <span class="nv">SWEEP_EVIDENCE_SUFFIX</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">".json"</span>
+<span class="c1"># A merge row (regime-cutover U597 round 11): the row `ledger-row.py merged` writes, verifier exactly `pr-merge.sh`</span>
+<span class="c1"># (rounds-check.py's merge row since U222) and evidence starting with the lever's receipt `merged pr=&lt;n&gt; head=&lt;sha&gt;</span>
+<span class="c1"># commit=&lt;40 hex&gt;` (the writer's MERGE_RECEIPT, whose head word is the row's head_sha or its first 8). `merge_of`</span>
+<span class="c1"># answers the head the squash at a commit came from. A `pr-merge.sh` row of another evidence shape (the rows written by</span>
+<span class="c1"># hand before U222, `merged as &lt;sha&gt; (squash) ...`, and a refusal recorded as a row) is no merge row to this question,</span>
+<span class="c1"># so the installed ledgers that hold them keep reading; a receipt row whose verdict is not `-`, whose head_sha is not</span>
+<span class="c1"># 40 hex, whose receipt names another pull request than its pr cell or another head than its head_sha is Malformed</span>
+<span class="c1"># naming the line and the field (standing order 21; round 12, the round-11 P2 at :362).</span>
+<span class="nv">MERGE_VERDICT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"-"</span>
+<span class="nv">MERGE_VERIFIER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"pr-merge.sh"</span>
+<span class="nv">MERGE_RECEIPT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^merged pr=(\S+) head=(\S+) commit=([0-9a-f]{40})(?:</span>$<span class="s2">|[\s;,.)])"</span><span class="o">)</span>
+<span class="c1"># A carried row (regime-cutover U122, standing order 38; U597 round 13 reads it here for the merge lever's tip gate):</span>
+<span class="c1"># a verdict starting with the word `carried` (AUDIT_VERDICT's boundary) and an evidence holding the line audit-carry.py</span>
+<span class="c1"># printed, `carried &lt;earlier&gt; &lt;head&gt; &lt;sha256&gt;`, as pr-merge.sh's carried_evidence_re reads it: the line starts the</span>
+<span class="c1"># column or follows whitespace, and the digest is a whole word before the end, whitespace or one of `;`, `,`, `.` and</span>
+<span class="c1"># `)` (U180: a note may follow). The two shas are the earlier head and the row's own head.</span>
+<span class="nv">CARRIED_VERDICT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^carried(?:</span>$<span class="s2">|[\s(;,])"</span><span class="o">)</span>
+<span class="nv">CARRIED_EVIDENCE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"(?:^|\s)carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})(?:</span>$<span class="s2">|[\s;,.)])"</span><span class="o">)</span>
 <span class="nv">SHA</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^[0-9a-f]{40}</span>$<span class="s2">"</span><span class="o">)</span>
 <span class="nv">UNIT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^U[0-9]+</span>$<span class="s2">"</span><span class="o">)</span>
 <span class="nv">PULL_REQUEST</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^[1-9][0-9]{0,9}</span>$<span class="s2">"</span><span class="o">)</span>
 <span class="nv">NONE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"none"</span>
+<span class="c1"># The daily sweep file of the store (U597 round 4): main's head, one full sweep per UTC day, each run one row.</span>
+<span class="nv">DAILY_FILE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"daily-sweeps.tsv"</span>
+<span class="nv">DAILY_HEADER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"ts"</span>,<span class="w"> </span><span class="s2">"head_sha"</span>,<span class="w"> </span><span class="s2">"verifier"</span>,<span class="w"> </span><span class="s2">"evidence"</span><span class="o">)</span>
+<span class="nv">DAILY_REQUIRED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>range<span class="o">(</span><span class="m">1</span>,<span class="w"> </span><span class="m">5</span><span class="o">)</span><span class="w">  </span><span class="c1"># every cell: a row without a verifier or an evidence is no sweep</span>
+<span class="c1"># The window's upper bound (round 5): a daily row may be dated this many seconds after now and no further; a row dated</span>
+<span class="c1"># later is not within the window. The allowance is the reader's alone, for a row another host's clock wrote and this</span>
+<span class="c1"># host reads (the clocks' skew): the writer, `ledger-row.py daily`, refuses a `--swept-at` after its own clock (round</span>
+<span class="c1"># 7), so a row this host wrote is never dated ahead.</span>
+<span class="nv">DAILY_FUTURE_SLACK</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">60</span>
+<span class="nv">MAX_AGE</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^[1-9][0-9]*</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="c1"># The daily row's own grammar (U597 round 9; verdict U597-c37800e3 P2 at :393): the verifier as `ledger-row.py daily`</span>
+<span class="c1"># composes it, the skill, its pin word (8 or more lowercase hex, SWEEP_VERIFIER's group), the seat (one word), the run</span>
+<span class="c1"># and the task `daily-&lt;YYYY-MM-DD&gt;`, the daily dispatch's id alone (a unit id is a `sweep` row's task, never a daily</span>
+<span class="c1"># row's), whose day is the ts's UTC day or the day before it (the writer's rule: a sweep that crosses midnight keeps</span>
+<span class="c1"># the id it was dispatched under); and the evidence's seven `; `-separated fields in the writer's order: the findings</span>
+<span class="c1"># file (the sweep rule's field, no whitespace around it), `&lt;n&gt; findings`, the two validators' PASS words, `validators</span>
+<span class="c1"># sha256 &lt;8 hex&gt; &lt;8 hex&gt; &lt;8 hex&gt;` (the first 8 hex of the pins the writer held its private copies of</span>
+<span class="c1"># validate-findings.cjs, validate-coverage-ledger.cjs and report-schema.json to, in that order; round 10 added the</span>
+<span class="c1"># schema's, verdict U597-67e1eea8 P2 at ledger-row.py:575; pr-merge.sh compares each with the manifest's</span>
+<span class="c1"># `validators_sha256` pins), `artifacts sha256 &lt;8 hex&gt; &lt;8 hex&gt;` (the first 8 hex of the sha256 of the writer's private</span>
+<span class="c1"># copies of the findings file and the coverage ledger beside it, the one set of bytes the count and the PASS words</span>
+<span class="c1"># attest; round 10, the P2 at ledger-row.py:574; pr-merge.sh requires the field by shape and never opens the files) and</span>
+<span class="c1"># `recorded &lt;ts&gt;` (the clock at the write, the one ts form). A row of another shape is Malformed naming the field.</span>
+<span class="nv">DAILY_VERIFIER</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>
+<span class="w">    </span>r<span class="s2">"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "</span>
+<span class="w">    </span>r<span class="s2">"TASK daily-([0-9]{4}-[0-9]{2}-[0-9]{2})\)</span>$<span class="s2">"</span>
+<span class="o">)</span>
+<span class="nv">DAILY_VERIFIER_FORM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="s2">"security-audit-skill &lt;pin&gt; (full audit mode on the srt worker seat &lt;seat&gt;, run-&lt;n&gt;; TASK daily-&lt;YYYY-MM-DD&gt;)"</span>
+<span class="o">)</span>
+<span class="nv">DAILY_EVIDENCE_FORM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>
+<span class="w">    </span><span class="s2">"sweeps/&lt;path&gt;.json; &lt;n&gt; findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "</span>
+<span class="w">    </span><span class="s2">"validators sha256 &lt;8 hex&gt; &lt;8 hex&gt; &lt;8 hex&gt;; artifacts sha256 &lt;8 hex&gt; &lt;8 hex&gt;; recorded &lt;ts&gt;"</span>
+<span class="o">)</span>
+<span class="nv">DAILY_SEPARATOR</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"; "</span>
+<span class="nv">DAILY_FIELDS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="m">7</span>
+<span class="nv">DAILY_COUNT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^(0|[1-9][0-9]*) findings</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">DAILY_PASSES</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span><span class="s2">"validate-findings.cjs PASS"</span>,<span class="w"> </span><span class="s2">"validate-coverage-ledger.cjs PASS"</span><span class="o">)</span>
+<span class="nv">DAILY_DIGESTS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}) ([0-9a-f]{8})</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">DAILY_DIGESTS_FORM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"validators sha256 &lt;8 hex&gt; &lt;8 hex&gt; &lt;8 hex&gt;"</span>
+<span class="nv">DAILY_ARTIFACTS</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>r<span class="s2">"^artifacts sha256 ([0-9a-f]{8}) ([0-9a-f]{8})</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="nv">DAILY_ARTIFACTS_FORM</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"artifacts sha256 &lt;8 hex&gt; &lt;8 hex&gt;"</span>
+<span class="nv">DAILY_RECORDED</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"recorded "</span>
+<span class="nv">DAY_FORMAT</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"%Y-%m-%d"</span>
+
+
+def<span class="w"> </span>sweep_pin_of<span class="o">(</span>verifier<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The pin word of a sweep verifier (`security-audit-skill &lt;pin&gt;`), or None when the verifier is not of that form."""</span>
+<span class="w">    </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>SWEEP_VERIFIER.match<span class="o">(</span>verifier<span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+
+
+def<span class="w"> </span>sweep_evidence_path_of<span class="o">(</span>evidence<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The findings file a sweep evidence names: the first `;`-separated field, stripped."""</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>evidence.split<span class="o">(</span><span class="s2">";"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span>.strip<span class="o">()</span>
+
+
+def<span class="w"> </span>sweep_fields_fault<span class="o">(</span>verifier,<span class="w"> </span>evidence,<span class="w"> </span>kind<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Why a verifier and an evidence are not those of the row the AGENTS.md Audit sweep rule defines, naming the</span>
+<span class="s2">    field, or None: the verifier begins with `security-audit-skill &lt;pin&gt;`, the pin 8 or more lowercase hex, and the</span>
+<span class="s2">    evidence's first `;`-field is a relative `sweeps/&lt;path&gt;.json` with no `..` or empty component. `kind` names the</span>
+<span class="s2">    row in the message (`a sweep row`, `a daily sweep row`); one rule for the ledger's sweep rows and the daily file's</span>
+<span class="s2">    (U147 round 4; U597 round 4)."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>sweep_pin_of<span class="o">(</span>verifier<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"the verifier of {kind} does not begin with 'security-audit-skill &lt;pin&gt;' "</span>
+<span class="w">            </span>f<span class="s2">"(the pin 8 or more lowercase hex): {verifier!r}"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sweep_evidence_path_of<span class="o">(</span>evidence<span class="o">)</span>.split<span class="o">(</span><span class="s2">"/"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
+<span class="w">        </span>parts<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>SWEEP_EVIDENCE_DIR<span class="w">  </span><span class="c1"># lint-comparisons: allow the row's store-relative path is judged as text</span>
+<span class="w">        </span>or<span class="w"> </span>len<span class="o">(</span>parts<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span><span class="m">2</span>
+<span class="w">        </span>or<span class="w"> </span>not<span class="w"> </span>parts<span class="o">[</span>-1<span class="o">]</span>.endswith<span class="o">(</span>SWEEP_EVIDENCE_SUFFIX<span class="o">)</span>
+<span class="w">        </span>or<span class="w"> </span>any<span class="o">(</span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">""</span>,<span class="w"> </span><span class="s2">".."</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>
+<span class="w">    </span><span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"the evidence of {kind} does not name a findings file {SWEEP_EVIDENCE_DIR}/&lt;path&gt;"</span>
+<span class="w">            </span>f<span class="s2">"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {evidence!r}"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>None
+
+
+def<span class="w"> </span>daily_fields_fault<span class="o">(</span>verifier,<span class="w"> </span>evidence,<span class="w"> </span>at<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Why a verifier and an evidence are not those of the daily row `ledger-row.py daily` writes (U597 round 9),</span>
+<span class="s2">    naming the field, or None, after sweep_fields_fault held the fields the sweep rule's rows share: the verifier</span>
+<span class="s2">    matches DAILY_VERIFIER with a task day that is the ts `at`'s UTC day or the day before it, and the evidence has</span>
+<span class="s2">    exactly DAILY_FIELDS `; `-separated fields, the findings file unpadded, `&lt;n&gt; findings`, the two PASS words, the</span>
+<span class="s2">    three 8-hex validator digests, the two 8-hex artifact digests (round 10) and `recorded &lt;ts&gt;` under the one ts</span>
+<span class="s2">    form."""</span>
+<span class="w">    </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DAILY_VERIFIER.match<span class="o">(</span>verifier<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"the verifier of a daily sweep row is not {DAILY_VERIFIER_FORM!r} (the daily dispatch's task alone, a "</span>
+<span class="w">            </span>f<span class="s2">"unit id never): {verifier!r}"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span>try:
+<span class="w">        </span><span class="nv">task_day</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>datetime.strptime<span class="o">(</span>match.group<span class="o">(</span><span class="m">4</span><span class="o">)</span>,<span class="w"> </span>DAY_FORMAT<span class="o">)</span>
+<span class="w">    </span>except<span class="w"> </span>ValueError:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the TASK day of a daily sweep row is no calendar day: daily-{match.group(4)}"</span>
+<span class="w">    </span><span class="nv">behind</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">(</span>datetime<span class="o">(</span>at.year,<span class="w"> </span>at.month,<span class="w"> </span>at.day<span class="o">)</span><span class="w"> </span>-<span class="w"> </span>task_day<span class="o">)</span>.days
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>behind<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="m">0</span>,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"the TASK day daily-{match.group(4)} of a daily sweep row is neither the UTC day of its ts "</span>
+<span class="w">            </span>f<span class="s2">"{at.strftime(TS_FORMAT)} nor the day before it"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>evidence.split<span class="o">(</span>DAILY_SEPARATOR<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>fields<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>DAILY_FIELDS:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"the evidence of a daily sweep row has {len(fields)} '; '-separated fields, not {DAILY_FIELDS} "</span>
+<span class="w">            </span>f<span class="s2">"({DAILY_EVIDENCE_FORM!r}): {evidence!r}"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>fields<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>fields<span class="o">[</span><span class="m">0</span><span class="o">]</span>.strip<span class="o">()</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"field 1 of the evidence of a daily sweep row, the findings file, is padded with spaces: {fields[0]!r}"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>DAILY_COUNT.match<span class="o">(</span>fields<span class="o">[</span><span class="m">1</span><span class="o">])</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"field 2 of the evidence of a daily sweep row is not '&lt;n&gt; findings': {fields[1]!r}"</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>expected<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>DAILY_PASSES,<span class="w"> </span><span class="m">3</span><span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>fields<span class="o">[</span>number<span class="w"> </span>-<span class="w"> </span><span class="m">1</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"field {number} of the evidence of a daily sweep row is not {expected!r}: {fields[number - 1]!r}"</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>DAILY_DIGESTS.match<span class="o">(</span>fields<span class="o">[</span><span class="m">4</span><span class="o">])</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"field 5 of the evidence of a daily sweep row is not {DAILY_DIGESTS_FORM!r} (the first 8 hex of the "</span>
+<span class="w">            </span><span class="s2">"three pins the writer held its copies of validate-findings.cjs, validate-coverage-ledger.cjs and "</span>
+<span class="w">            </span>f<span class="s2">"report-schema.json to): {fields[4]!r}"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>DAILY_ARTIFACTS.match<span class="o">(</span>fields<span class="o">[</span><span class="m">5</span><span class="o">])</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
+<span class="w">            </span>f<span class="s2">"field 6 of the evidence of a daily sweep row is not {DAILY_ARTIFACTS_FORM!r} (the first 8 hex of the "</span>
+<span class="w">            </span>f<span class="s2">"sha256 of the writer's copies of the findings file and the coverage ledger it validated): {fields[5]!r}"</span>
+<span class="w">        </span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>fields<span class="o">[</span><span class="m">6</span><span class="o">]</span>.startswith<span class="o">(</span>DAILY_RECORDED<span class="o">)</span><span class="w"> </span>or<span class="w"> </span>timestamp<span class="o">(</span>fields<span class="o">[</span><span class="m">6</span><span class="o">][</span>len<span class="o">(</span>DAILY_RECORDED<span class="o">)</span><span class="w"> </span>:<span class="o">])</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"field 7 of the evidence of a daily sweep row is not 'recorded &lt;{TS_FORM}&gt;': {fields[6]!r}"</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>None
 
 
 class<span class="w"> </span>Malformed<span class="o">(</span>Exception<span class="o">)</span>:
@@ -6129,8 +6391,12 @@ class<span class="w"> </span>Malformed<span class="o">(</span>Exception<span cla
 
 
 def<span class="w"> </span>timestamp<span class="o">(</span>text<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""The ts cell as a time, or None: `datetime.strptime` under TS_FORMAT and nothing else, so a text outside the</span>
-<span class="s2">    form and a time no calendar holds (hour 25, month 13) are both None, a malformed row to every reader."""</span>
+<span class="w">    </span><span class="s2">"""The ts cell as a time, or None: the shape TS_SHAPE first (U597 round 6: `strptime` reads one digit as well as</span>
+<span class="s2">    two under `%m`, `%d`, `%H`, `%M` and `%S`, so `2026-11-9T4:5:6Z` passed a form that spells two), then</span>
+<span class="s2">    `datetime.strptime` under TS_FORMAT, so a text outside the form and a time no calendar holds (hour 25, month 13)</span>
+<span class="s2">    are both None, a malformed row to every reader."""</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>TS_SHAPE.match<span class="o">(</span>text<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
 <span class="w">    </span>try:
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>datetime.strptime<span class="o">(</span>text,<span class="w"> </span>TS_FORMAT<span class="o">)</span>
 <span class="w">    </span>except<span class="w"> </span>ValueError:
@@ -6166,35 +6432,64 @@ class<span class="w"> </span>Row:
 <span class="w">    </span>def<span class="w"> </span>sweep_pin<span class="o">(</span>self<span class="o">)</span>:
 <span class="w">        </span><span class="s2">"""The pin word of a sweep row's verifier (`security-audit-skill &lt;pin&gt;`), or None when the verifier is not of</span>
 <span class="s2">        that form."""</span>
-<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>SWEEP_VERIFIER.match<span class="o">(</span>self.verifier<span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>sweep_pin_of<span class="o">(</span>self.verifier<span class="o">)</span>
 
 <span class="w">    </span>@property
 <span class="w">    </span>def<span class="w"> </span>sweep_evidence_path<span class="o">(</span>self<span class="o">)</span>:
 <span class="w">        </span><span class="s2">"""The findings file a sweep row names: the first `;`-separated field of the evidence, stripped."""</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>self.evidence.split<span class="o">(</span><span class="s2">";"</span>,<span class="w"> </span><span class="m">1</span><span class="o">)[</span><span class="m">0</span><span class="o">]</span>.strip<span class="o">()</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>sweep_evidence_path_of<span class="o">(</span>self.evidence<span class="o">)</span>
 
 <span class="w">    </span>def<span class="w"> </span>sweep_fault<span class="o">(</span>self<span class="o">)</span>:
 <span class="w">        </span><span class="s2">"""Why this sweep row is not the row the AGENTS.md Audit sweep rule defines, naming the field, or None (U147</span>
 <span class="s2">        round 4). The head is judged by the caller, as an audit row's is."""</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>self.pr<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>SWEEP_PR:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the pr of a sweep row is not {SWEEP_PR!r}: {self.pr!r}"</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>self.sweep_pin<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>sweep_fields_fault<span class="o">(</span>self.verifier,<span class="w"> </span>self.evidence,<span class="w"> </span><span class="s2">"a sweep row"</span><span class="o">)</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>merge_commit<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The 40-hex commit a merge row's receipt names (`commit=&lt;sha&gt;`), or None when this is no merge row (U597</span>
+<span class="s2">        round 11): the verifier MERGE_VERIFIER and an evidence starting with MERGE_RECEIPT."""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>self.verifier<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>MERGE_VERIFIER:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MERGE_RECEIPT.match<span class="o">(</span>self.evidence<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">3</span><span class="o">)</span>
+
+<span class="w">    </span>def<span class="w"> </span>merge_fault<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""Why this merge row is not the row `ledger-row.py merged` composes, naming the field, or None: the verdict</span>
+<span class="s2">        cell `-`, a decimal pr cell (round 13, the round-12 P3 at :371: the writer refuses a non-decimal pr, and the</span>
+<span class="s2">        reader accepted one when the receipt agreed with it), a 40-hex head_sha, a receipt whose pr word is that pr</span>
+<span class="s2">        cell and whose head word is that sha or its first 8 (the writer's own refusals; round 12 added the verdict</span>
+<span class="s2">        and the pr, the round-11 P2 at :362, where an audit verdict carrying a receipt of another pull request</span>
+<span class="s2">        answered `merge_of`)."""</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>self.verdict<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>MERGE_VERDICT:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the verdict of a merge row is not {MERGE_VERDICT!r}: {self.verdict!r}"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>PULL_REQUEST.match<span class="o">(</span>self.pr<span class="o">)</span>:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the pr of a merge row is not a decimal number: {self.pr!r}"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>SHA.match<span class="o">(</span>self.head_sha<span class="o">)</span>:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the head_sha of a merge row is not 40 hex: {self.head_sha!r}"</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>MERGE_RECEIPT.match<span class="o">(</span>self.evidence<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>self.pr:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>f<span class="s2">"the receipt of a merge row names pr={match.group(1)}, not its pr cell {self.pr!r}"</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)</span><span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span>self.head_sha,<span class="w"> </span>self.head_sha<span class="o">[</span>:8<span class="o">])</span>:
 <span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
-<span class="w">                </span><span class="s2">"the verifier of a sweep row does not begin with 'security-audit-skill &lt;pin&gt;' "</span>
-<span class="w">                </span>f<span class="s2">"(the pin 8 or more lowercase hex): {self.verifier!r}"</span>
+<span class="w">                </span>f<span class="s2">"the receipt of a merge row names head={match.group(2)}, neither its head_sha {self.head_sha} nor "</span>
+<span class="w">                </span><span class="s2">"its first 8"</span>
 <span class="w">            </span><span class="o">)</span>
-<span class="w">        </span><span class="nv">parts</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.sweep_evidence_path.split<span class="o">(</span><span class="s2">"/"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span><span class="o">(</span>
-<span class="w">            </span>parts<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>SWEEP_EVIDENCE_DIR<span class="w">  </span><span class="c1"># lint-comparisons: allow the row's store-relative path is judged as text</span>
-<span class="w">            </span>or<span class="w"> </span>len<span class="o">(</span>parts<span class="o">)</span><span class="w"> </span>&lt;<span class="w"> </span><span class="m">2</span>
-<span class="w">            </span>or<span class="w"> </span>not<span class="w"> </span>parts<span class="o">[</span>-1<span class="o">]</span>.endswith<span class="o">(</span>SWEEP_EVIDENCE_SUFFIX<span class="o">)</span>
-<span class="w">            </span>or<span class="w"> </span>any<span class="o">(</span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">""</span>,<span class="w"> </span><span class="s2">".."</span><span class="o">)</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>part<span class="w"> </span><span class="k">in</span><span class="w"> </span>parts<span class="o">[</span><span class="m">1</span>:<span class="o">])</span>
-<span class="w">        </span><span class="o">)</span>:
-<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="o">(</span>
-<span class="w">                </span>f<span class="s2">"the evidence of a sweep row does not name a findings file {SWEEP_EVIDENCE_DIR}/&lt;path&gt;"</span>
-<span class="w">                </span>f<span class="s2">"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {self.evidence!r}"</span>
-<span class="w">            </span><span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>carried<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""True when the verdict starts with the word `carried` (a carried row, standing order 38; U597 round 13)."""</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>CARRIED_VERDICT.match<span class="o">(</span>self.verdict<span class="o">)</span><span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>carried_source<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The earlier head a carried row's evidence names for this row's head (`carried &lt;earlier&gt; &lt;head&gt; &lt;sha256&gt;`</span>
+<span class="s2">        with `&lt;head&gt;` the row's head_sha), or None when the evidence holds no such line for it (U597 round 13)."""</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>match<span class="w"> </span><span class="k">in</span><span class="w"> </span>CARRIED_EVIDENCE.finditer<span class="o">(</span>self.evidence<span class="o">)</span>:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>self.head_sha:
+<span class="w">                </span><span class="k">return</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>None
 
 
@@ -6235,48 +6530,134 @@ class<span class="w"> </span>Ledger:
 <span class="s2">        ledger judged is never carried)."""</span>
 <span class="w">        </span><span class="k">return</span><span class="w"> </span>newest<span class="o">(</span>row<span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.audits<span class="o">(</span>unit,<span class="w"> </span>pr<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>row.head_sha<span class="w"> </span><span class="o">==</span><span class="w"> </span>head<span class="o">)</span>
 
-<span class="w">    </span>def<span class="w"> </span>newest_sweep<span class="o">(</span>self,<span class="w"> </span>unit,<span class="w"> </span>head<span class="o">)</span>:
-<span class="w">        </span><span class="s2">"""The newest sweep row of `unit` or a fix unit of it (`U&lt;n&gt;[a-z]`) at `head`, or None (U147: the merge gate's</span>
-<span class="s2">        sweep row for a trust-boundary unit); a sweep row of those units whose head_sha is not 40 hex, or that is not</span>
-<span class="s2">        the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier `security-audit-skill &lt;pin&gt;`, evidence</span>
-<span class="s2">        a findings file under `sweeps/`; round 4), is Malformed naming the line and the field, as an audit row is, so</span>
-<span class="s2">        neither a short sha nor a hand-written row is ever read as "</span>no<span class="w"> </span>sweep<span class="s2">" (standing order 21)."""</span>
-<span class="w">        </span><span class="nv">own</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>rf<span class="s2">"^{re.escape(unit)}[a-z]?</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="w">    </span>def<span class="w"> </span>sweep_rows<span class="o">(</span>self,<span class="w"> </span><span class="nv">own</span><span class="o">=</span>None<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""Every sweep row of the units `own` matches (a compiled pattern), or of every unit when None, in file order,</span>
+<span class="s2">        each held to a 40-hex head and to the exact row the AGENTS.md Audit sweep rule defines (pr `-`, verifier</span>
+<span class="s2">        `security-audit-skill &lt;pin&gt;`, evidence a findings file under `sweeps/`; round 4) and Malformed naming the line</span>
+<span class="s2">        and the field otherwise, as an audit row is, so neither a short sha nor a hand-written row is ever read as "</span>no
+<span class="w">        </span>sweep<span class="s2">" (standing order 21)."""</span>
 <span class="w">        </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">        </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.rows:
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>row.sweep<span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>own.match<span class="o">(</span>row.unit<span class="o">)</span>:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>row.sweep<span class="w"> </span>or<span class="w"> </span><span class="o">(</span>own<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>own.match<span class="o">(</span>row.unit<span class="o">))</span>:
 <span class="w">                </span><span class="k">continue</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>SHA.match<span class="o">(</span>row.head_sha<span class="o">)</span>:
 <span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{self.name}:{row.line}: the head_sha of a sweep row is not 40 hex: {row.head_sha!r}"</span><span class="o">)</span>
 <span class="w">            </span><span class="nv">fault</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>row.sweep_fault<span class="o">()</span>
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>fault<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
 <span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{self.name}:{row.line}: {fault}"</span><span class="o">)</span>
-<span class="w">            </span><span class="k">if</span><span class="w"> </span>row.head_sha<span class="w"> </span><span class="o">==</span><span class="w"> </span>head:
+<span class="w">            </span>found.append<span class="o">(</span>row<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>found
+
+<span class="w">    </span>def<span class="w"> </span>newest_sweep<span class="o">(</span>self,<span class="w"> </span>unit,<span class="w"> </span>head<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The newest sweep row of `unit` or a fix unit of it (`U&lt;n&gt;[a-z]`) at `head`, or None (U147: the merge gate's</span>
+<span class="s2">        sweep row for a trust-boundary unit); the units' sweep rows are held by sweep_rows."""</span>
+<span class="w">        </span><span class="nv">own</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>re.compile<span class="o">(</span>rf<span class="s2">"^{re.escape(unit)}[a-z]?</span>$<span class="s2">"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>newest<span class="o">(</span>row<span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.sweep_rows<span class="o">(</span>own<span class="o">)</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>row.head_sha<span class="w"> </span><span class="o">==</span><span class="w"> </span>head<span class="o">)</span>
+
+<span class="w">    </span>def<span class="w"> </span>newest_sweep_any<span class="o">(</span>self,<span class="w"> </span>head<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The newest sweep row of any unit at `head`, or None (U597 round 11: the merge gate's question about main's</span>
+<span class="s2">        tip, whose sweep may be the merged unit's or the coordinator's sweep of a merge commit); every sweep row of the</span>
+<span class="s2">        ledger is held by sweep_rows, so a hand-written sweep row of any unit is Malformed, never "</span>no<span class="w"> </span>sweep<span class="s2">"."""</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>newest<span class="o">(</span>row<span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.sweep_rows<span class="o">()</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>row.head_sha<span class="w"> </span><span class="o">==</span><span class="w"> </span>head<span class="o">)</span>
+
+<span class="w">    </span>def<span class="w"> </span>merge_of<span class="o">(</span>self,<span class="w"> </span>commit<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The head the squash at `commit` came from, the `head_sha` of the newest merge row (`Row.merge_commit`: the</span>
+<span class="s2">        row `ledger-row.py merged` writes) whose receipt names `commit=&lt;commit&gt;`, or None (U597 round 11); a merge row</span>
+<span class="s2">        whose verdict is not `-`, whose head_sha is not 40 hex or whose receipt names another pull request or another</span>
+<span class="s2">        head than its cells is Malformed naming the line and the field (round 12)."""</span>
+<span class="w">        </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.rows:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>row.merge_commit<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">                </span><span class="k">continue</span>
+<span class="w">            </span><span class="nv">fault</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>row.merge_fault<span class="o">()</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>fault<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{self.name}:{row.line}: {fault}"</span><span class="o">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>row.merge_commit<span class="w"> </span><span class="o">==</span><span class="w"> </span>commit:
 <span class="w">                </span>found.append<span class="o">(</span>row<span class="o">)</span>
-<span class="w">        </span><span class="k">return</span><span class="w"> </span>newest<span class="o">(</span>found<span class="o">)</span>
+<span class="w">        </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>newest<span class="o">(</span>found<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>row.head_sha
+
+<span class="w">    </span>def<span class="w"> </span>carried_from<span class="o">(</span>self,<span class="w"> </span>head<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The earlier head the newest `carried` row at `head` names (U597 round 13, the round-12 P2 at</span>
+<span class="s2">        pr-merge.sh:1201): a carried row (`Row.carried`) at the head whose evidence holds `carried &lt;earlier&gt; &lt;head&gt;</span>
+<span class="s2">        &lt;sha256&gt;` (`Row.carried_source`), the newest by `(ts, line)`, or None when no carried row is at the head; a</span>
+<span class="s2">        carried row at the head whose evidence names no such line for it, or names the head itself as the earlier</span>
+<span class="s2">        head, is Malformed naming the line and the field (the merge lever refuses the same row at its own gate)."""</span>
+<span class="w">        </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.rows:
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>row.carried<span class="w"> </span>or<span class="w"> </span>row.head_sha<span class="w"> </span>!<span class="o">=</span><span class="w"> </span>head:
+<span class="w">                </span><span class="k">continue</span>
+<span class="w">            </span><span class="nv">earlier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>row.carried_source
+<span class="w">            </span><span class="k">if</span><span class="w"> </span>earlier<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>
+<span class="w">                    </span>f<span class="s2">"{self.name}:{row.line}: the evidence of a carried row at {head} holds no 'carried &lt;earlier&gt; "</span>
+<span class="w">                    </span>f<span class="s2">"{head} &lt;sha256&gt;' line for that head: {row.evidence!r}"</span>
+<span class="w">                </span><span class="o">)</span>
+<span class="w">            </span><span class="k">if</span><span class="w"> </span><span class="nv">earlier</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>head:
+<span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>
+<span class="w">                    </span>f<span class="s2">"{self.name}:{row.line}: the evidence of a carried row at {head} names the head itself as the "</span>
+<span class="w">                    </span><span class="s2">"earlier head"</span>
+<span class="w">                </span><span class="o">)</span>
+<span class="w">            </span>found.append<span class="o">(</span>row<span class="o">)</span>
+<span class="w">        </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>newest<span class="o">(</span>found<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>row.carried_source
 
 
-def<span class="w"> </span>parse_ledger<span class="o">(</span>name,<span class="w"> </span>text<span class="o">)</span>:
-<span class="w">    </span><span class="s2">"""The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line."""</span>
+def<span class="w"> </span>control_check<span class="o">(</span>name,<span class="w"> </span>number,<span class="w"> </span>header,<span class="w"> </span>fields<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""Malformed naming the line, the column and the character when a cell holds a control character (U597 round 7;</span>
+<span class="s2">    CONTROL): one rule for the ledger's rows and the daily file's."""</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>column,<span class="w"> </span>field<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>fields,<span class="w"> </span><span class="m">1</span><span class="o">)</span>:
+<span class="w">        </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>CONTROL.search<span class="o">(</span>field<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>found<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span>raise<span class="w"> </span>Malformed<span class="o">(</span>
+<span class="w">                </span>f<span class="s2">"{name}:{number}: column {column} ({header[column - 1]}) holds a control character "</span>
+<span class="w">                </span>f<span class="s2">"U+{ord(found.group()):04X}; no cell holds one"</span>
+<span class="w">            </span><span class="o">)</span>
+
+
+def<span class="w"> </span>parse_rows<span class="o">(</span>name,<span class="w"> </span>text,<span class="w"> </span>header,<span class="w"> </span>required,<span class="w"> </span>trailing_cr<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The data rows of one tab-separated store file as `(number, ts, fields)` tuples, or Malformed naming `name` and</span>
+<span class="s2">    the line: the one row reader of `ledger.tsv` and `daily-sweeps.tsv` (U597 round 10), stating once how a line</span>
+<span class="s2">    becomes cells. The text is split on the line feed (a trailing one closes the last row); when `trailing_cr` is</span>
+<span class="s2">    true exactly one carriage return is dropped from the end of each line, the header's included, before anything is</span>
+<span class="s2">    read, else none. Why the two files differ (round 10, verdict U597-67e1eea8 P2 at :381): the ledger has installed</span>
+<span class="s2">    stores to keep reading, and the base of this unit read a CR LF `ledger.tsv` (its readers stripped the trailing</span>
+<span class="s2">    carriage returns), so a CR LF ledger must parse as before the unit; the daily file is new to this unit, no store</span>
+<span class="s2">    holds a CR LF one, and its rows end in LF alone. Either way the cells are then held to CONTROL (round 7), so a</span>
+<span class="s2">    second carriage return, CR CR LF (round 8, the P3 at :373), is a control character in the last cell and</span>
+<span class="s2">    Malformed naming the line and the field. Then the header must be `header` exactly, every other line must split</span>
+<span class="s2">    on the tab into `header`'s column count, hold no control character in a cell, carry a ts of the one form in its</span>
+<span class="s2">    first cell and no empty cell among `required` (1-based column numbers)."""</span>
 <span class="w">    </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>text.split<span class="o">(</span><span class="s2">"\n"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>lines<span class="w"> </span>and<span class="w"> </span>lines<span class="o">[</span>-1<span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">""</span>:
 <span class="w">        </span>lines.pop<span class="o">()</span>
-<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">(</span>HEADER<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>lines<span class="w"> </span>or<span class="w"> </span>lines<span class="o">[</span><span class="m">0</span><span class="o">]</span>.rstrip<span class="o">(</span><span class="s2">"\r"</span><span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>trailing_cr:
+<span class="w">        </span><span class="nv">lines</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>line<span class="o">[</span>:-1<span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>line.endswith<span class="o">(</span><span class="s2">"\r"</span><span class="o">)</span><span class="w"> </span><span class="k">else</span><span class="w"> </span>line<span class="w"> </span><span class="k">for</span><span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>lines<span class="o">]</span>
+<span class="w">    </span><span class="nv">expected</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">(</span>header<span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>lines<span class="w"> </span>or<span class="w"> </span>lines<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>expected:
 <span class="w">        </span><span class="nv">found</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>lines<span class="o">[</span><span class="m">0</span><span class="o">]</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>lines<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">""</span>
 <span class="w">        </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:1: the header is {found!r}, not {expected!r}"</span><span class="o">)</span>
-<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
 <span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>line<span class="w"> </span><span class="k">in</span><span class="w"> </span>enumerate<span class="o">(</span>lines<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>,<span class="w"> </span><span class="m">2</span><span class="o">)</span>:
-<span class="w">        </span><span class="nv">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.rstrip<span class="o">(</span><span class="s2">"\r"</span><span class="o">)</span>.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>fields<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>len<span class="o">(</span>HEADER<span class="o">)</span>:
-<span class="w">            </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: {len(fields)} columns, not {len(HEADER)}"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>line.split<span class="o">(</span><span class="s2">"\t"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>fields<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>len<span class="o">(</span>header<span class="o">)</span>:
+<span class="w">            </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: {len(fields)} columns, not {len(header)}"</span><span class="o">)</span>
+<span class="w">        </span>control_check<span class="o">(</span>name,<span class="w"> </span>number,<span class="w"> </span>header,<span class="w"> </span>fields<span class="o">)</span>
 <span class="w">        </span><span class="nv">at</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>timestamp<span class="o">(</span>fields<span class="o">[</span><span class="m">0</span><span class="o">])</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>at<span class="w"> </span>is<span class="w"> </span>None:
 <span class="w">            </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: the ts {fields[0]!r} is not {TS_FORM}"</span><span class="o">)</span>
-<span class="w">        </span><span class="k">for</span><span class="w"> </span>column<span class="w"> </span><span class="k">in</span><span class="w"> </span>REQUIRED:
+<span class="w">        </span><span class="k">for</span><span class="w"> </span>column<span class="w"> </span><span class="k">in</span><span class="w"> </span>required:
 <span class="w">            </span><span class="k">if</span><span class="w"> </span>fields<span class="o">[</span>column<span class="w"> </span>-<span class="w"> </span><span class="m">1</span><span class="o">]</span><span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">""</span>:
-<span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: column {column} ({HEADER[column - 1]}) is empty"</span><span class="o">)</span>
-<span class="w">        </span>rows.append<span class="o">(</span>Row<span class="o">(</span>at,<span class="w"> </span>*fields<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>,<span class="w"> </span>number,<span class="w"> </span>fields<span class="o">[</span><span class="m">0</span><span class="o">]))</span>
+<span class="w">                </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: column {column} ({header[column - 1]}) is empty"</span><span class="o">)</span>
+<span class="w">        </span>yield<span class="w"> </span>number,<span class="w"> </span>at,<span class="w"> </span>fields
+
+
+def<span class="w"> </span>parse_ledger<span class="o">(</span>name,<span class="w"> </span>text<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The Ledger of one `ledger.tsv` text, or Malformed naming `name` and the line (parse_rows with the ledger's</span>
+<span class="s2">    header and required cells, one trailing carriage return per line dropped: the base's tolerance of a CR LF ledger,</span>
+<span class="s2">    kept for the installed stores; round 10)."""</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[</span>
+<span class="w">        </span>Row<span class="o">(</span>at,<span class="w"> </span>*fields<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>,<span class="w"> </span>number,<span class="w"> </span>fields<span class="o">[</span><span class="m">0</span><span class="o">])</span><span class="w"> </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>at,<span class="w"> </span>fields<span class="w"> </span><span class="k">in</span><span class="w"> </span>parse_rows<span class="o">(</span>name,<span class="w"> </span>text,<span class="w"> </span>HEADER,<span class="w"> </span>REQUIRED,<span class="w"> </span>True<span class="o">)</span>
+<span class="w">    </span><span class="o">]</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>Ledger<span class="o">(</span>name,<span class="w"> </span>tuple<span class="o">(</span>rows<span class="o">))</span>
 
 
@@ -6293,6 +6674,122 @@ def<span class="w"> </span>read_text<span class="o">(</span>path<span class="o">
 def<span class="w"> </span>read_ledger<span class="o">(</span>path<span class="o">)</span>:
 <span class="w">    </span><span class="s2">"""The Ledger of the file at `path`, or Malformed (a file that cannot be read or is not UTF-8 included)."""</span>
 <span class="w">    </span><span class="k">return</span><span class="w"> </span>parse_ledger<span class="o">(</span>path,<span class="w"> </span>read_text<span class="o">(</span>path<span class="o">))</span>
+
+
+@dataclass<span class="o">(</span><span class="nv">frozen</span><span class="o">=</span>True<span class="o">)</span>
+class<span class="w"> </span>DailyRow:
+<span class="w">    </span><span class="s2">"""One data row of `daily-sweeps.tsv`: the ts parsed and as written, the four cells, and the line number."""</span>
+
+<span class="w">    </span>ts:<span class="w"> </span>datetime
+<span class="w">    </span>head_sha:<span class="w"> </span>str
+<span class="w">    </span>verifier:<span class="w"> </span>str
+<span class="w">    </span>evidence:<span class="w"> </span>str
+<span class="w">    </span>line:<span class="w"> </span>int
+<span class="w">    </span>ts_text:<span class="w"> </span>str
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>sweep_pin<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>sweep_pin_of<span class="o">(</span>self.verifier<span class="o">)</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>sweep_evidence_path<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>sweep_evidence_path_of<span class="o">(</span>self.evidence<span class="o">)</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>seat<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The srt worker seat the verifier names (DAILY_VERIFIER), or None for a verifier of another shape."""</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DAILY_VERIFIER.match<span class="o">(</span>self.verifier<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>run<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The run number the verifier names, as written, or None."""</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DAILY_VERIFIER.match<span class="o">(</span>self.verifier<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">3</span><span class="o">)</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>task_day<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The `YYYY-MM-DD` of the verifier's `TASK daily-&lt;day&gt;`, or None."""</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DAILY_VERIFIER.match<span class="o">(</span>self.verifier<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>match.group<span class="o">(</span><span class="m">4</span><span class="o">)</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>validator_digests<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The three 8-hex digest prefixes of the evidence's `validators sha256` field (validate-findings.cjs,</span>
+<span class="s2">        validate-coverage-ledger.cjs, report-schema.json; round 10 added the schema's), or None."""</span>
+<span class="w">        </span><span class="nv">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.evidence.split<span class="o">(</span>DAILY_SEPARATOR<span class="o">)</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DAILY_DIGESTS.match<span class="o">(</span>fields<span class="o">[</span><span class="m">4</span><span class="o">])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>fields<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>DAILY_FIELDS<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>,<span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">)</span>,<span class="w"> </span>match.group<span class="o">(</span><span class="m">3</span><span class="o">))</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>artifact_digests<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The two 8-hex digest prefixes of the evidence's `artifacts sha256` field (the findings file, the coverage</span>
+<span class="s2">        ledger; round 10), or None."""</span>
+<span class="w">        </span><span class="nv">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.evidence.split<span class="o">(</span>DAILY_SEPARATOR<span class="o">)</span>
+<span class="w">        </span><span class="nv">match</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>DAILY_ARTIFACTS.match<span class="o">(</span>fields<span class="o">[</span><span class="m">5</span><span class="o">])</span><span class="w"> </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>fields<span class="o">)</span><span class="w"> </span><span class="o">==</span><span class="w"> </span>DAILY_FIELDS<span class="w"> </span><span class="k">else</span><span class="w"> </span>None
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span>match<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="o">(</span>match.group<span class="o">(</span><span class="m">1</span><span class="o">)</span>,<span class="w"> </span>match.group<span class="o">(</span><span class="m">2</span><span class="o">))</span>
+
+<span class="w">    </span>@property
+<span class="w">    </span>def<span class="w"> </span>recorded<span class="o">(</span>self<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The recording time of the evidence's `recorded &lt;ts&gt;` field as a datetime, or None."""</span>
+<span class="w">        </span><span class="nv">fields</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>self.evidence.split<span class="o">(</span>DAILY_SEPARATOR<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>len<span class="o">(</span>fields<span class="o">)</span><span class="w"> </span>!<span class="o">=</span><span class="w"> </span>DAILY_FIELDS<span class="w"> </span>or<span class="w"> </span>not<span class="w"> </span>fields<span class="o">[</span><span class="m">6</span><span class="o">]</span>.startswith<span class="o">(</span>DAILY_RECORDED<span class="o">)</span>:
+<span class="w">            </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>timestamp<span class="o">(</span>fields<span class="o">[</span><span class="m">6</span><span class="o">][</span>len<span class="o">(</span>DAILY_RECORDED<span class="o">)</span><span class="w"> </span>:<span class="o">])</span>
+
+
+@dataclass<span class="o">(</span><span class="nv">frozen</span><span class="o">=</span>True<span class="o">)</span>
+class<span class="w"> </span>Daily:
+<span class="w">    </span>name:<span class="w"> </span>str
+<span class="w">    </span>rows:<span class="w"> </span>tuple
+
+<span class="w">    </span>def<span class="w"> </span>newest_within<span class="o">(</span>self,<span class="w"> </span>now,<span class="w"> </span>max_age<span class="o">)</span>:
+<span class="w">        </span><span class="s2">"""The newest row by `(ts, line)` whose ts lies within `now - max_age &lt;= ts &lt;= now + DAILY_FUTURE_SLACK`</span>
+<span class="s2">        (`now` a naive UTC datetime, as the rows' ts are), or None: the daily sweep a head outside every class rests</span>
+<span class="s2">        on. A row dated more than DAILY_FUTURE_SLACK seconds after now is not within the window (round 5)."""</span>
+<span class="w">        </span><span class="nv">floor</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>now<span class="w"> </span>-<span class="w"> </span>timedelta<span class="o">(</span><span class="nv">seconds</span><span class="o">=</span>max_age<span class="o">)</span>
+<span class="w">        </span><span class="nv">ceiling</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>now<span class="w"> </span>+<span class="w"> </span>timedelta<span class="o">(</span><span class="nv">seconds</span><span class="o">=</span>DAILY_FUTURE_SLACK<span class="o">)</span>
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>newest<span class="o">(</span>row<span class="w"> </span><span class="k">for</span><span class="w"> </span>row<span class="w"> </span><span class="k">in</span><span class="w"> </span>self.rows<span class="w"> </span><span class="k">if</span><span class="w"> </span>floor<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>row.ts<span class="w"> </span>&lt;<span class="o">=</span><span class="w"> </span>ceiling<span class="o">)</span>
+
+
+def<span class="w"> </span>parse_daily<span class="o">(</span>name,<span class="w"> </span>text<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The Daily of one `daily-sweeps.tsv` text, or Malformed naming `name`, the line and the field, with the</span>
+<span class="s2">    ledger's strictness (parse_rows with the daily header, every cell required and no trailing carriage return</span>
+<span class="s2">    dropped: a daily row ends in LF alone, round 8 and round 10), a 40-hex head, the verifier and the evidence the</span>
+<span class="s2">    exact fields of the sweep rule (U597 round 4) and the daily row's own grammar (round 9: daily_fields_fault, so a</span>
+<span class="s2">    row of a unit's sweep shape is Malformed, never a daily row)."""</span>
+<span class="w">    </span><span class="nv">rows</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="o">[]</span>
+<span class="w">    </span><span class="k">for</span><span class="w"> </span>number,<span class="w"> </span>at,<span class="w"> </span>fields<span class="w"> </span><span class="k">in</span><span class="w"> </span>parse_rows<span class="o">(</span>name,<span class="w"> </span>text,<span class="w"> </span>DAILY_HEADER,<span class="w"> </span>DAILY_REQUIRED,<span class="w"> </span>False<span class="o">)</span>:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>SHA.match<span class="o">(</span>fields<span class="o">[</span><span class="m">1</span><span class="o">])</span>:
+<span class="w">            </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: the head_sha of a daily sweep row is not 40 hex: {fields[1]!r}"</span><span class="o">)</span>
+<span class="w">        </span><span class="nv">fault</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>sweep_fields_fault<span class="o">(</span>fields<span class="o">[</span><span class="m">2</span><span class="o">]</span>,<span class="w"> </span>fields<span class="o">[</span><span class="m">3</span><span class="o">]</span>,<span class="w"> </span><span class="s2">"a daily sweep row"</span><span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>fault<span class="w"> </span>is<span class="w"> </span>None:
+<span class="w">            </span><span class="nv">fault</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>daily_fields_fault<span class="o">(</span>fields<span class="o">[</span><span class="m">2</span><span class="o">]</span>,<span class="w"> </span>fields<span class="o">[</span><span class="m">3</span><span class="o">]</span>,<span class="w"> </span>at<span class="o">)</span>
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>fault<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None:
+<span class="w">            </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{name}:{number}: {fault}"</span><span class="o">)</span>
+<span class="w">        </span>rows.append<span class="o">(</span>DailyRow<span class="o">(</span>at,<span class="w"> </span>*fields<span class="o">[</span><span class="m">1</span>:<span class="o">]</span>,<span class="w"> </span>number,<span class="w"> </span>fields<span class="o">[</span><span class="m">0</span><span class="o">]))</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>Daily<span class="o">(</span>name,<span class="w"> </span>tuple<span class="o">(</span>rows<span class="o">))</span>
+
+
+def<span class="w"> </span>read_daily<span class="o">(</span>path<span class="o">)</span>:
+<span class="w">    </span><span class="s2">"""The Daily of the file at `path`, None when no file exists there (FileNotFoundError alone: the day's first</span>
+<span class="s2">    sweep is not yet recorded), or Malformed (a file that exists and cannot be read, or is not UTF-8, included:</span>
+<span class="s2">    standing order 21)."""</span>
+<span class="w">    </span>try:
+<span class="w">        </span>with<span class="w"> </span>open<span class="o">(</span>path,<span class="w"> </span><span class="nv">encoding</span><span class="o">=</span><span class="s2">"utf-8"</span>,<span class="w"> </span><span class="nv">newline</span><span class="o">=</span><span class="s2">""</span><span class="o">)</span><span class="w"> </span>as<span class="w"> </span>handle:
+<span class="w">            </span><span class="nv">text</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>handle.read<span class="o">()</span>
+<span class="w">    </span>except<span class="w"> </span>FileNotFoundError:
+<span class="w">        </span><span class="k">return</span><span class="w"> </span>None
+<span class="w">    </span>except<span class="w"> </span>OSError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{path}: cannot read: {error.strerror}"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
+<span class="w">    </span>except<span class="w"> </span>UnicodeDecodeError<span class="w"> </span>as<span class="w"> </span>error:
+<span class="w">        </span>raise<span class="w"> </span>Malformed<span class="o">(</span>f<span class="s2">"{path}: not UTF-8: {error.reason}"</span><span class="o">)</span><span class="w"> </span>from<span class="w"> </span>None
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>parse_daily<span class="o">(</span>path,<span class="w"> </span>text<span class="o">)</span>
+
+
+def<span class="w"> </span>utc_now<span class="o">()</span>:
+<span class="w">    </span><span class="s2">"""The clock as a naive UTC datetime, the form the rows' ts parse to."""</span>
+<span class="w">    </span><span class="k">return</span><span class="w"> </span>datetime.now<span class="o">(</span>timezone.utc<span class="o">)</span>.replace<span class="o">(</span><span class="nv">tzinfo</span><span class="o">=</span>None<span class="o">)</span>
 
 
 def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</span><span class="o">=</span>None<span class="o">)</span>:
@@ -6317,8 +6814,41 @@ def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</sp
 <span class="w">    </span><span class="o">)</span>
 <span class="w">    </span>sweep.add_argument<span class="o">(</span><span class="s2">"unit"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the body's unit, U&lt;n&gt;; its fix units U&lt;n&gt;[a-z] count with it"</span><span class="o">)</span>
 <span class="w">    </span>sweep.add_argument<span class="o">(</span><span class="s2">"head"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the audited head, 40 hex"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">sweep_any</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>forms.add_parser<span class="o">(</span>
+<span class="w">        </span><span class="s2">"sweep-any"</span>,
+<span class="w">        </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the newest sweep row of any unit at the head: &lt;ts&gt;\\t&lt;unit&gt;\\t&lt;verifier&gt;\\t&lt;evidence&gt;, or none"</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span>sweep_any.add_argument<span class="o">(</span>
+<span class="w">        </span><span class="s2">"head"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the head, 40 hex (main's tip, the merge gate's first question since U597 round 11)"</span>
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">merge_of</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>forms.add_parser<span class="o">(</span>
+<span class="w">        </span><span class="s2">"merge-of"</span>,
+<span class="w">        </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the head the squash at the commit came from (the newest pr-merge.sh receipt row naming commit=&lt;sha&gt;): &lt;head&gt;, or none"</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span>merge_of.add_argument<span class="o">(</span><span class="s2">"commit"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the merge commit, 40 hex (main's tip)"</span><span class="o">)</span>
+<span class="w">    </span><span class="nv">carried_from</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>forms.add_parser<span class="o">(</span>
+<span class="w">        </span><span class="s2">"carried-from"</span>,
+<span class="w">        </span><span class="nv">help</span><span class="o">=(</span>
+<span class="w">            </span><span class="s2">"the earlier head the newest carried row at the head names (carried &lt;earlier&gt; &lt;head&gt; &lt;sha256&gt;, standing"</span>
+<span class="w">            </span><span class="s2">" order 38): &lt;earlier&gt;, or none"</span>
+<span class="w">        </span><span class="o">)</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span>carried_from.add_argument<span class="o">(</span>
+<span class="w">        </span><span class="s2">"head"</span>,
+<span class="w">        </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the head, 40 hex (the head main's tip was squashed from, the merge gate's question since U597 round 13)"</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span><span class="nv">daily</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>forms.add_parser<span class="o">(</span>
+<span class="w">        </span><span class="s2">"daily"</span>,
+<span class="w">        </span><span class="nv">help</span><span class="o">=(</span>
+<span class="w">            </span><span class="s2">"the newest daily sweep of main's head within the window, from daily-sweeps.tsv: "</span>
+<span class="w">            </span><span class="s2">"&lt;ts&gt;\\t&lt;head_sha&gt;\\t&lt;verifier&gt;\\t&lt;evidence&gt;, or none"</span>
+<span class="w">        </span><span class="o">)</span>,
+<span class="w">    </span><span class="o">)</span>
+<span class="w">    </span>daily.add_argument<span class="o">(</span><span class="s2">"max_age"</span>,<span class="w"> </span><span class="nv">help</span><span class="o">=</span><span class="s2">"the window in seconds before now; a row older than it is not within"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">args</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>parser.parse_args<span class="o">(</span>argv<span class="o">)</span>
-<span class="w">    </span><span class="k">if</span><span class="w"> </span>not<span class="w"> </span>SHA.match<span class="o">(</span>args.head<span class="o">)</span>:
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"merge-of"</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>SHA.match<span class="o">(</span>args.commit<span class="o">)</span>:
+<span class="w">        </span>parser.error<span class="o">(</span>f<span class="s2">"the commit {args.commit!r} is not 40 hex"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span>not<span class="w"> </span><span class="k">in</span><span class="w"> </span><span class="o">(</span><span class="s2">"daily"</span>,<span class="w"> </span><span class="s2">"merge-of"</span><span class="o">)</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>SHA.match<span class="o">(</span>args.head<span class="o">)</span>:
 <span class="w">        </span>parser.error<span class="o">(</span>f<span class="s2">"the head {args.head!r} is not 40 hex"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"verdict"</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>PULL_REQUEST.match<span class="o">(</span>args.pr<span class="o">)</span>:
 <span class="w">        </span>parser.error<span class="o">(</span>f<span class="s2">"the pull request {args.pr!r} is not a decimal number"</span><span class="o">)</span>
@@ -6326,8 +6856,15 @@ def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</sp
 <span class="w">        </span>parser.error<span class="o">(</span>f<span class="s2">"the unit {args.unit!r} is not U&lt;n&gt;"</span><span class="o">)</span>
 <span class="w">    </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"carry-source"</span><span class="w"> </span>and<span class="w"> </span>args.pr<span class="w"> </span>is<span class="w"> </span>not<span class="w"> </span>None<span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>PULL_REQUEST.match<span class="o">(</span>args.pr<span class="o">)</span>:
 <span class="w">        </span>parser.error<span class="o">(</span>f<span class="s2">"the pull request {args.pr!r} is not a decimal number"</span><span class="o">)</span>
+<span class="w">    </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"daily"</span><span class="w"> </span>and<span class="w"> </span>not<span class="w"> </span>MAX_AGE.match<span class="o">(</span>args.max_age<span class="o">)</span>:
+<span class="w">        </span>parser.error<span class="o">(</span>f<span class="s2">"the window {args.max_age!r} is not a positive number of seconds"</span><span class="o">)</span>
 <span class="w">    </span><span class="nv">store</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>args.store.rstrip<span class="o">(</span><span class="s2">"/"</span><span class="o">)</span><span class="w"> </span>or<span class="w"> </span>args.store
 <span class="w">    </span>try:
+<span class="w">        </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"daily"</span>:
+<span class="w">            </span><span class="nb">read</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_daily<span class="o">(</span>os.path.join<span class="o">(</span>store,<span class="w"> </span>DAILY_FILE<span class="o">))</span>
+<span class="w">            </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>None<span class="w"> </span><span class="k">if</span><span class="w"> </span><span class="nb">read</span><span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>read.newest_within<span class="o">(</span>utc_now<span class="o">()</span>,<span class="w"> </span>int<span class="o">(</span>args.max_age<span class="o">))</span>
+<span class="w">            </span>print<span class="o">(</span>NONE<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">((</span>row.ts_text,<span class="w"> </span>row.head_sha,<span class="w"> </span>row.verifier,<span class="w"> </span>row.evidence<span class="o">)))</span>
+<span class="w">            </span><span class="k">return</span><span class="w"> </span><span class="m">0</span>
 <span class="w">        </span><span class="nv">ledger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>read_ledger<span class="o">(</span>os.path.join<span class="o">(</span>store,<span class="w"> </span><span class="s2">"ledger.tsv"</span><span class="o">))</span>
 <span class="w">        </span><span class="k">if</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"verdict"</span>:
 <span class="w">            </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ledger.newest_for_head<span class="o">(</span>args.pr,<span class="w"> </span>args.head<span class="o">)</span>
@@ -6335,6 +6872,15 @@ def<span class="w"> </span>main<span class="o">(</span><span class="nv">argv</sp
 <span class="w">        </span><span class="k">elif</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"sweep"</span>:
 <span class="w">            </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ledger.newest_sweep<span class="o">(</span>args.unit,<span class="w"> </span>args.head<span class="o">)</span>
 <span class="w">            </span>print<span class="o">(</span>NONE<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">((</span>row.ts_text,<span class="w"> </span>row.unit,<span class="w"> </span>row.verifier,<span class="w"> </span>row.evidence<span class="o">)))</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"sweep-any"</span>:
+<span class="w">            </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ledger.newest_sweep_any<span class="o">(</span>args.head<span class="o">)</span>
+<span class="w">            </span>print<span class="o">(</span>NONE<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">((</span>row.ts_text,<span class="w"> </span>row.unit,<span class="w"> </span>row.verifier,<span class="w"> </span>row.evidence<span class="o">)))</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"merge-of"</span>:
+<span class="w">            </span><span class="nv">head</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ledger.merge_of<span class="o">(</span>args.commit<span class="o">)</span>
+<span class="w">            </span>print<span class="o">(</span>NONE<span class="w"> </span><span class="k">if</span><span class="w"> </span>head<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>head<span class="o">)</span>
+<span class="w">        </span><span class="k">elif</span><span class="w"> </span>args.form<span class="w"> </span><span class="o">==</span><span class="w"> </span><span class="s2">"carried-from"</span>:
+<span class="w">            </span><span class="nv">earlier</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ledger.carried_from<span class="o">(</span>args.head<span class="o">)</span>
+<span class="w">            </span>print<span class="o">(</span>NONE<span class="w"> </span><span class="k">if</span><span class="w"> </span>earlier<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span>earlier<span class="o">)</span>
 <span class="w">        </span><span class="k">else</span>:
 <span class="w">            </span><span class="nv">row</span><span class="w"> </span><span class="o">=</span><span class="w"> </span>ledger.newest_audit_at_another_head<span class="o">(</span>args.unit,<span class="w"> </span>args.head,<span class="w"> </span>args.pr<span class="o">)</span>
 <span class="w">            </span>print<span class="o">(</span>NONE<span class="w"> </span><span class="k">if</span><span class="w"> </span>row<span class="w"> </span>is<span class="w"> </span>None<span class="w"> </span><span class="k">else</span><span class="w"> </span><span class="s2">"\t"</span>.join<span class="o">((</span>row.head_sha,<span class="w"> </span>row.verdict,<span class="w"> </span>row.unit<span class="o">)))</span>

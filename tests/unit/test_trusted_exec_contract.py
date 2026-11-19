@@ -587,6 +587,36 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertIn(f"opened for reading reader not identified (no {no_tree.PROC_ROOT})", str(unnamed.exception))
         self.assertEqual([], no_tree.unattributed)
 
+    def test_an_open_with_no_holder_and_every_table_readable_is_the_consumers_read(self):
+        """U625 round 2 (verdict on 21e0da60, P1): with zero unreadable tables the scan read every descriptor table
+        on the host and none holds the sentinel, so there is no process the holder could be but one of this user's,
+        whose open had not returned, or had closed again, inside the scan's poll window; that open is the consumer's
+        read, recorded as before U625 (`by no process whose descriptors this user can read (0 unreadable)`), and
+        assert_untouched fails on it. The tree is the scratch PROC_ROOT of the unattributed test with its 0000 table
+        made readable: one pid whose descriptor table this user can list and that holds another file, and the real
+        holder (this process's own thread) absent from the tree. Against the round-1 probe (21e0da60) this test
+        fails, because that probe sent every no-holder open to `unattributed` and assert_untouched passed."""
+        import contextlib
+        import io
+
+        probe = self.worker_root_probe()
+        proc = probe.base / "proc"
+        probe.PROC_ROOT = str(proc)
+        bystander = proc / "4343" / "fd"
+        bystander.mkdir(parents=True)
+        os.symlink(probe.output, bystander / "3")  # a readable table on another file: read, not counted unreadable
+        self.assertEqual(["3"], os.listdir(bystander))
+        with contextlib.redirect_stderr(io.StringIO()) as printed:
+            self.assertEqual(b"", probe.consume(lambda: in_thread(lambda: Path(probe.input).read_bytes())))
+        with self.assertRaisesRegex(AssertionError, "worker root: read ") as zero:
+            probe.assert_untouched()
+        record = f"{probe.input} opened for reading by no process whose descriptors this user can read (0 unreadable)"
+        self.assertIn(f"read {record}", str(zero.exception))
+        self.assertGreaterEqual(len(probe.reads), 1)  # the reader's close may span a poll
+        self.assertEqual([record] * len(probe.reads), probe.reads)
+        self.assertEqual(([], []), (probe.unattributed, probe.errors))
+        self.assertNotIn("unattributed open", printed.getvalue())
+
     def test_the_holder_scan_tolerates_a_pid_that_exits_mid_scan(self):
         # Round 1 finding f1 s4: a pid that exits between its fd listing and its field reads answers ESRCH, which
         # escaped the scan and aborted the attempt, losing the read it had already detected. The three fields fail

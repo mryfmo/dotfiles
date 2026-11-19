@@ -151,17 +151,24 @@ class WorkerRoot:
     descriptor table this user can read is this user's (the consumer step's thread, a subprocess it started, or any
     other process of this user), and the lever under test and its descendants run as this user, so a read the lever
     makes always has a nameable holder. An open that still has no nameable holder after HOLDER_WAIT_S, on a host
-    whose PROC_ROOT lists this user's processes, is not the lever's: it goes to `unattributed` with the count of
-    descriptor tables the scan could not read and the UTC time, is printed on stderr so a recurrence is diagnosable
-    from the job log, and does not fail assert_untouched. Nine Unit test jobs on GitHub's Ubuntu runners between
-    2026-10-28 and 2026-11-19 (both flavours, never a macOS leg) saw such an open of the compliant consumer's
-    sentinel with 146 to 159 unreadable tables; the base directory is 0700 (tempfile.mkdtemp), so the holder was
-    root's or otherwise unreadable to this user, and no place for the FIFO keeps such a process out. On a host
-    without /proc (macOS) nothing can name a holder, so every detected open stays a read of the consumer's, as
-    before (the record ends `reader not identified (no /proc)`). The rule does not cover a lever that handed the
-    input to a process of another user, which trusted_exec has no way to do (the lever runs as this user, with no
-    privilege step), nor a reader of this user whose open had not returned, or that closed again, within
-    HOLDER_WAIT_S (the residual below).
+    whose PROC_ROOT lists this user's processes, is `unattributed` only when the scan found at least one descriptor
+    table this user could not read (`unreadable >= 1`): the holder can then be a process of another user, which is
+    not the lever's; the open goes to `unattributed` with the count of descriptor tables the scan could not read and
+    the UTC time, is printed on stderr so a recurrence is diagnosable from the job log, and does not fail
+    assert_untouched. With zero unreadable tables the scan read every descriptor table on the host and none holds
+    the sentinel, so there is no process the holder could be but one of this user's, whose open had not returned or
+    had closed again inside the scan's poll window: that open is recorded as a read exactly as before this unit
+    (`by no process whose descriptors this user can read (0 unreadable)`) and assert_untouched fails on it. Nine
+    Unit test jobs on GitHub's Ubuntu runners between 2026-10-28 and 2026-11-19 (both flavours, never a macOS leg)
+    saw such an open of the compliant consumer's sentinel with 146 to 159 unreadable tables; the base directory is
+    0700 (tempfile.mkdtemp), so the holder was root's or otherwise unreadable to this user, and no place for the
+    FIFO keeps such a process out. On a host without /proc (macOS) nothing can name a holder, so every detected open
+    stays a read of the consumer's, as before (the record ends `reader not identified (no /proc)`). The rule does
+    not cover a lever that handed the input to a process of another user, which trusted_exec has no way to do (the
+    lever runs as this user, with no privilege step). A reader of this user whose open had not returned, or that
+    closed again, within HOLDER_WAIT_S while at least one table was unreadable is the residual below: the scan's
+    poll window, the same window the probe had before this unit; with zero unreadable tables that reader is caught,
+    as before.
 
     Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
     the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
@@ -252,8 +259,8 @@ class WorkerRoot:
 
     def _attribution(self, writer):
         """The record of _holders and, beside it, the number of descriptor tables the scan could not read when the
-        tree was listed and no holder is named (the open is then unattributed), or None when a holder is named or
-        the tree itself cannot be listed (the open then stays the consumer's read)."""
+        tree was listed and no holder is named (_record_read decides on that count), or None when a holder is named
+        or the tree itself cannot be listed (the open then stays the consumer's read)."""
         root = self.PROC_ROOT
         me = str(os.getpid())
 
@@ -310,13 +317,16 @@ class WorkerRoot:
             time.sleep(self.POLL_S)
 
     def _record_read(self, writer):
-        """One detected open of the sentinel, attributed: the consumer's read when a holder is named or when no tree
-        can name one; unattributed when the tree listed this user's processes and none holds the sentinel after
-        HOLDER_WAIT_S (the class docstring says why that is not the lever's read). The unattributed record carries
-        the unreadable count, the UTC time and the attempt, and is printed at once so the job log keeps it."""
+        """One detected open of the sentinel, attributed: the consumer's read when a holder is named, when no tree
+        can name one, or when the tree listed this user's processes, none holds the sentinel after HOLDER_WAIT_S and
+        every descriptor table was readable (zero unreadable: no process the holder could be but this user's, so the
+        record is the pre-U625 `(0 unreadable)` string and assert_untouched fails on it); unattributed only when at
+        least one descriptor table could not be read (the class docstring says why that is not the lever's read). The
+        unattributed record carries the unreadable count, the UTC time and the attempt, and is printed at once so
+        the job log keeps it."""
         record, unreadable = self._attribution(writer)
         entry = f"{self.input} opened for reading {record}"
-        if unreadable is None:
+        if unreadable is None or unreadable == 0:
             self.reads.append(entry)
             return
         when = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())

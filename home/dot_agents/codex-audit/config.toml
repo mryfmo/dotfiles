@@ -3,8 +3,8 @@
 # key resolved to absolute paths; the run refuses unless `audit` is the default permission profile.
 
 default_permissions = "audit"
-model = "gpt-6.1-sol"
-model_reasoning_effort = "xhigh"
+model = "gpt-6.2-sol"
+model_reasoning_effort = "high"
 web_search = "disabled"
 project_doc_max_bytes = 0
 project_doc_fallback_filenames = []

@@ -647,9 +647,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             }
             for name in ("express", "standard", "review", "deep", "security", "audit")
         }
-        profiles["security"]["codex"].update(model="gpt-6-astra", sandbox_mode="read-only")
-        profiles["audit"]["codex"].update(model="gpt-6-astra", model_reasoning_effort="xhigh", sandbox_mode="read-only")
-        profiles["standard"]["claude"]["advisor"] = "fable"
+        profiles["security"]["codex"].update(model="gpt-6.2-astra", sandbox_mode="read-only")
+        profiles["audit"]["codex"].update(model="gpt-6.2-sol", model_reasoning_effort="high", sandbox_mode="read-only")
+        profiles["deep"]["claude"]["advisor"] = "fable"
         bridge = "~/.local/lib/omp-extensions/pi-claude-bridge"
         siwc = "~/.agents/omp/extensions/openai-siwc"
         manifest = {
@@ -838,11 +838,12 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                     self.module.validate_agent_manifest()
                 self.assertIn("INV-7", stderr.getvalue())
 
-    def test_agent_manifest_requires_fable_advisor_on_the_standard_profile(self) -> None:
+    def test_agent_manifest_requires_fable_advisor_on_the_deep_profile(self) -> None:
+        """Operator decision 2026-11-18: the Fable advisor rides the deep preset alone, not the standard profile."""
         for advisor in (None, "opus"):
             with self.subTest(advisor=advisor):
                 manifest = self.write_valid_agent_manifest()
-                claude = manifest["model_profiles"]["standard"]["claude"]
+                claude = manifest["model_profiles"]["deep"]["claude"]
                 if advisor is None:
                     del claude["advisor"]
                 else:
@@ -851,7 +852,7 @@ class ValidateAgentAssetsTest(unittest.TestCase):
                 with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
                     self.module.validate_agent_manifest()
                 self.assertIn(
-                    "worker profile 'standard' must set claude.advisor: fable",
+                    "profile 'deep' must set claude.advisor: fable",
                     stderr.getvalue(),
                 )
 
@@ -1254,9 +1255,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         for key, wrong in (
             ("model", "gpt-5.6-sol"),
             ("model", "gpt-6.1-sol"),
-            ("model", "gpt-6-sol"),
+            ("model", "gpt-6-astra"),
             ("model_reasoning_effort", "medium"),
-            ("model_reasoning_effort", "high"),
+            ("model_reasoning_effort", "xhigh"),
             ("sandbox_mode", "workspace-write"),
             ("sandbox_mode", None),
         ):

@@ -225,12 +225,15 @@ class HcomSeatSkillsTest(unittest.TestCase):
     def test_step_four_names_the_sweep_as_a_worker_task_whose_findings_are_advisory_rows(self):
         verify = step(ORCHESTRATION.read_text(), "The loop", 4)
         self.assertIn(SWEEP_TASK, verify)
-        # U597: the sweep rule by path class; the every-unit sentence is gone
+        # U597: the sweep rule by path class; the every-unit sentence is gone, and the daily sweep and the classes
+        # cite the operator's sweep rule C of 2026-11-18, not standing order 44, which governs executed tests (round 3)
         self.assertIn(
             "A unit whose head changes a lever, a policy, credential handling or a deployed executable (the path "
-            "classes of `scripts/orchestrator/sweep-scope.py`, U597) also gets one security sweep before its merge",
+            "classes of `scripts/orchestrator/sweep-scope.py`, U597) also gets one security sweep before its merge, "
+            "and main's head one full sweep per day (the operator's sweep rule C of 2026-11-18; `pr-merge.sh` refuses",
             verify,
         )
+        self.assertNotIn("standing order 44", verify)
         self.assertNotIn("Every unit and every program milestone also gets one security sweep", verify)
         self.assertNotIn("trust-boundary class", verify)
         # the sweep is one sentence of step 4, after the audit route it never replaces

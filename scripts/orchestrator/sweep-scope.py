@@ -10,9 +10,10 @@ executable; every other head merges on its Codex audit and CI alone; and main's 
 standing control, which `pr-merge.sh` never reads.
 
 `sweep_required(paths)` is the predicate, defined here alone and read by `pr-merge.sh` (as `python3 -I -S
-scripts/orchestrator/sweep-scope.py --stdin` over the changed paths the GitHub pull request files API lists, `gh api
-'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | .filename, (.previous_filename // empty)'`, one path
-per line and both paths of a rename, the lever reading no local git object) and by `tests/unit/test_sweep_scope.py`.
+scripts/orchestrator/sweep-scope.py --files-json --changed-files <n>` over the pull request's files as the GitHub
+files API lists them, `gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | [.status, .filename,
+(.previous_filename // null)] | @json'`, one JSON array per file, both paths of a rename counting, the lever reading
+no local git object) and by `tests/unit/test_sweep_scope.py`.
 The classes are one frozen tuple of path prefixes each (CLASSES, in order of precedence): `credential` (the seat
 launcher, the broker, the token placer and the login preflight, in `scripts/orchestrator/` and as their deployed
 twins, and `home/.chezmoiscripts/`), `policy`
@@ -24,18 +25,29 @@ falls in; a path matching no class requires nothing, and a head of such paths al
 
 CLI: `sweep-scope.py <base> <head>` lists the head's changed paths as `git diff --name-only --no-renames
 <base>...<head>` (the paths changed since the merge base, renames shown as both paths, run in the current directory's
-repository with replace refs off) and prints `required <class>` or `not-required`, exit 0; `sweep-scope.py --stdin`
-reads the changed paths one per line from stdin, as the lever's files API read prints them, and answers the same.
-Exit 2 with one stderr line (`sweep-scope: ...`) on usage, a git that fails or cannot run, a listing that names no
-path, an empty line, a path that is absolute or holds a control character or a `.`, `..` or empty component (not a
-path git lists), a path that starts with `"` or holds a backslash (a C-quoted name, as git prints a path with a tab
-or a non-ASCII byte under `core.quotePath`, is not the path itself; the files API never quotes, so this guard is the
-reader's own, round 2 of U597), or stdin that is not UTF-8: a failed or unreadable listing is never `not-required`
-(standing order 21), and the lever refuses on exit 2 and fails on any other status.
+repository with replace refs off, and with `-c diff.relative=false` and `--no-relative` so a `diff.relative` setting
+or a run from a subdirectory neither narrows the listing nor strips a prefix; round 3) and prints `required <class>`
+or `not-required`, exit 0; `sweep-scope.py --files-json [--changed-files <n>]` reads the pull request's files from
+stdin as the lever's files API read prints them, one JSON array `[status, filename, previous_filename]` per line:
+`status` one of `added`, `removed`, `modified`, `renamed`, `copied`, `changed`, `unchanged`; `filename` a path;
+`previous_filename` a path for `renamed` and `copied` and `null` for every other status; both paths of a rename or a
+copy count; and with `--changed-files <n>` the count of distinct `filename` entries must equal `n`, the pull
+request's `changedFiles` (a listing cut short, a page lost, or GitHub's 3,000-file cap of the files endpoint read as
+complete is never `not-required`), and it answers the same. Exit 2 with one stderr line (`sweep-scope: ...`) on
+usage, a git that fails or cannot run, a listing that names no path, an empty line, a line that is not JSON or not
+an array of three, an unknown status, a rename or copy without its source, a source on any other status, a count that
+differs from `--changed-files`, a path that is absolute or holds a control character (an embedded newline included,
+since the decoded string holds it) or a `.`, `..` or empty component (not a path git lists), a path that starts with
+`"` or holds a backslash (a C-quoted name, as git prints a path with a tab or a non-ASCII byte under
+`core.quotePath`, is not the path itself; the files API never quotes, so this guard is the reader's own, round 2 of
+U597), or stdin that is not UTF-8: a failed or unreadable listing is never `not-required` (standing order 21), and the
+lever refuses on exit 2 and fails on any other status.
 """
 
 from __future__ import annotations
 
+import json
+import re
 import subprocess
 import sys
 
@@ -74,17 +86,26 @@ CLASSES = (
 CLASS_NAMES = tuple(name for name, _ in CLASSES)
 REQUIRED = "required"
 NOT_REQUIRED = "not-required"
-USAGE = "usage: sweep-scope.py <base> <head> | sweep-scope.py --stdin"
-# The git listing: NUL-separated names, renames as both paths, no external diff, no colour, replace refs off.
+USAGE = "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json [--changed-files <n>]"
+# The statuses the GitHub pull request files API gives a file, and the two that carry the file's source as
+# `previous_filename` (docs.github.com, REST API, pulls, list pull requests files).
+STATUSES = frozenset(("added", "removed", "modified", "renamed", "copied", "changed", "unchanged"))
+SOURCED_STATUSES = frozenset(("renamed", "copied"))
+COUNT = re.compile(r"[0-9]+")
+# The git listing: NUL-separated names, renames as both paths, no external diff, no colour, replace refs off, and
+# paths from the toplevel whatever `diff.relative` says or where the command runs (round 3).
 GIT_DIFF = (
     "git",
     "--no-replace-objects",
     "-c",
     "core.quotePath=false",
+    "-c",
+    "diff.relative=false",
     "diff",
     "-z",
     "--name-only",
     "--no-renames",
+    "--no-relative",
     "--no-ext-diff",
     "--no-color",
     "--ignore-submodules=none",
@@ -171,16 +192,85 @@ def changed_paths_from_git(base: str, head: str) -> list[str]:
     return paths_from_listing(text, "\0")
 
 
-def changed_paths_from_stdin() -> list[str]:
-    """The paths on stdin, one per line, as the lever's files API read (`gh api 'repos/{owner}/{repo}/pulls/<pr>/files'
-    --paginate --jq '.[] | .filename, (.previous_filename // empty)'`) prints them."""
+def file_entry(line: str, number: int) -> tuple[str, str, str | None]:
+    """Line `number` of the files listing as the files API's `[status, filename, previous_filename]`, each checked:
+    the status one of STATUSES, the filename a path, the source a path for a rename or a copy and null otherwise.
+    Any other shape is Unreadable naming the line."""
+    where = f"line {number} of the files listing"
+    shown = line if len(line) <= 200 else line[:200] + "..."
+    try:
+        entry = json.loads(line)
+    except ValueError:
+        raise Unreadable(f"{where} is not JSON: {shown!r}; it is not the files API read as data") from None
+    if not isinstance(entry, list) or len(entry) != 3:
+        raise Unreadable(f"{where} is not an array of three (status, filename, previous_filename): {shown!r}")
+    status, filename, previous = entry
+    if not isinstance(status, str) or status not in STATUSES:
+        raise Unreadable(
+            f"{where} has the status {status!r}, not one of {', '.join(sorted(STATUSES))}; it is not the files API read"
+            " as data"
+        )
+    if not isinstance(filename, str):
+        raise Unreadable(f"{where} has no filename string: {shown!r}; it is not the files API read as data")
+    check_path(filename)
+    if status in SOURCED_STATUSES:
+        if not isinstance(previous, str):
+            raise Unreadable(
+                f"{where} is {status} without its source (previous_filename): {shown!r}; a rename or a copy lists both"
+                " paths"
+            )
+        check_path(previous)
+    elif previous is not None:
+        raise Unreadable(
+            f"{where} is {status} yet carries a previous_filename: {shown!r}; only a rename or a copy has a source"
+        )
+    return status, filename, previous
+
+
+def paths_from_files_json(text: str, count: int | None) -> list[str]:
+    """The paths of the files listing, one JSON array per line with one trailing newline at most: every filename and
+    every rename's or copy's source. An empty listing or an empty line is Unreadable, as is a count of distinct
+    filenames other than `count` when one is given (the pull request's `changedFiles`)."""
+    lines = text.split("\n")
+    if lines and lines[-1] == "":
+        lines.pop()
+    if not lines:
+        raise Unreadable("the files listing names no file; an empty listing is a failed read, never not-required")
+    paths: list[str] = []
+    filenames: set[str] = set()
+    for number, line in enumerate(lines, 1):
+        if not line:
+            raise Unreadable(f"line {number} of the files listing is empty; it is not the files API read as data")
+        _, filename, previous = file_entry(line, number)
+        filenames.add(filename)
+        paths.append(filename)
+        if previous is not None:
+            paths.append(previous)
+    if count is not None and len(filenames) != count:
+        raise Unreadable(
+            f"the files listing names {len(filenames)} distinct filenames, not the {count} changedFiles of the pull"
+            " request; a listing cut short, a page lost or GitHub's 3,000-file cap read as complete is never"
+            " not-required"
+        )
+    return paths
+
+
+def changed_paths_from_files_json(options: list[str]) -> list[str]:
+    """The files listing on stdin as the lever's files API read prints it (`gh api
+    'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | [.status, .filename, (.previous_filename // null)]
+    | @json'`), `options` empty or `--changed-files <n>`."""
+    count = None
+    if options:
+        if len(options) != 2 or options[0] != "--changed-files" or not COUNT.fullmatch(options[1]):
+            raise Unreadable(USAGE)
+        count = int(options[1])
     try:
         text = sys.stdin.buffer.read().decode()
     except OSError as error:
         raise Unreadable(f"cannot read stdin: {error.strerror}") from None
     except UnicodeDecodeError:
         raise Unreadable("stdin is not UTF-8") from None
-    return paths_from_listing(text, "\n")
+    return paths_from_files_json(text, count)
 
 
 def answer(paths) -> str:
@@ -191,8 +281,8 @@ def answer(paths) -> str:
 
 def main(argv: list[str]) -> int:
     try:
-        if argv == ["--stdin"]:
-            paths = changed_paths_from_stdin()
+        if argv and argv[0] == "--files-json":
+            paths = changed_paths_from_files_json(argv[1:])
         elif len(argv) == 2 and not argv[0].startswith("-"):
             paths = changed_paths_from_git(argv[0], argv[1])
         else:

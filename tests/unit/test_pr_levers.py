@@ -1192,11 +1192,52 @@ def sweep_row(head=SHA_A, unit="U71", ts="2026-10-25T09:30:00Z", verdict="sweep"
 
 # The one stderr line pr-merge.sh prints when the head's changed paths fall in no sweep class (U597).
 SKIP_LINE = "sweep: not required (no lever, policy, credential or deployed-executable path changed)"
-# The lever's read of the pull request's files (U597 round 2): the GitHub files API, both paths of a rename, no C
-# quoting; `gh pr diff --name-only` printed a rename's destination alone and kept git's quoting.
-FILES_JQ = ".[] | .filename, (.previous_filename // empty)"
+# The lever's read of the pull request's files (U597 round 2: the GitHub files API, both paths of a rename, no C
+# quoting; round 3: one JSON array per file, status, filename and previous_filename, parsed by the reader), then the
+# head and the changed-files count read once after the listing, keying it to the pinned head (round 3).
+FILES_JQ = ".[] | [.status, .filename, (.previous_filename // null)] | @json"
 FILES_CALL = ["api", "repos/{owner}/{repo}/pulls/7/files", "--paginate", "--jq", FILES_JQ]
 FILES_MATCH = r"^api repos/\{owner\}/\{repo\}/pulls/7/files --paginate$"
+KEYED_MATCH = r"^pr view 7 --json headRefOid,changedFiles$"
+KEYED_CALL = ["pr", "view", "7", "--json", "headRefOid,changedFiles"]
+
+
+def api_file(filename, status="modified", previous=None):
+    """One file of the files API's listing: `status`, `filename` and, for a rename or a copy, `previous_filename`
+    (the API's other fields are not read)."""
+    entry = {"status": status, "filename": filename}
+    if previous is not None:
+        entry["previous_filename"] = previous
+    return entry
+
+
+def listed_count(files=None, paths=None):
+    """The count of distinct filenames a fixture listing names, as `changedFiles` reports it for a complete one: the
+    `filename` of each `files` entry, or of each `paths` line that parses as the jq form's array (any other line
+    counts as itself, so a malformed line is refused for its shape, not for the count)."""
+    if files is not None:
+        return len({entry.get("filename") for entry in files})
+    names = set()
+    for line in (paths or "").splitlines():
+        try:
+            entry = json.loads(line)
+        except ValueError:
+            entry = None
+        names.add(entry[1] if isinstance(entry, list) and len(entry) > 1 and isinstance(entry[1], str) else line)
+    return len(names)
+
+
+def files_listing_of(files):
+    """`files` (api_file objects) as the lever's jq form prints them: one JSON array `[status, filename,
+    previous_filename]` per line, a trailing newline."""
+    return "".join(
+        json.dumps([entry["status"], entry["filename"], entry.get("previous_filename")]) + "\n" for entry in files
+    )
+
+
+def files_listing(*paths):
+    """A listing of modified files at `paths`, as the lever's jq form prints it."""
+    return files_listing_of([api_file(path) for path in paths])
 
 
 DISPOSITIONS_HEADER = "ts\tunit\thead_sha\tpriority\tpath\tline\tdisposition\treference\n"
@@ -1307,6 +1348,9 @@ class PrMergeTest(PrLeverTestCase):
         paths=None,
         paths_exit=0,
         files=None,
+        keyed=None,
+        changed_files=None,
+        keyed_exit=0,
     ):
         if checks is None:
             # every required check passes (U330), and a check that is not required may skip
@@ -1314,14 +1358,21 @@ class PrMergeTest(PrLeverTestCase):
         listing = {"match": r"^pr checks 7 --json bucket,name$", "json": checks}
         if checks_exit:
             listing = {"match": listing["match"], "exit": checks_exit, "stderr": "HTTP 502"}
-        # The pull request's files (U597 round 2): the files API's JSON, `files` (a list of `{"filename": ...,
-        # "previous_filename": ...}` objects, run through the lever's `--jq` by the fake), or `paths`, the listing text
-        # as the jq form prints it, one per line, for the shapes the reader must refuse; or a failed read.
+        # The pull request's files (U597 round 2, round 3): the files API's JSON, `files` (a list of `api_file`
+        # objects, run through the lever's `--jq` by the fake), or `paths`, the listing text as the jq form prints it,
+        # one JSON array per line, for the shapes the reader must refuse; or a failed read. After the listing the
+        # lever reads the head and the changed-files count once: `keyed` (default the head) and `changed_files`
+        # (default the listing's distinct filenames, a complete listing).
         if files is None and paths is None:
-            files = [{"filename": "scripts/orchestrator/pr-merge.sh"}]
+            files = [api_file("scripts/orchestrator/pr-merge.sh")]
         diff = {"match": FILES_MATCH, "json": files} if files is not None else {"match": FILES_MATCH, "stdout": paths}
         if paths_exit:
             diff = {"match": FILES_MATCH, "exit": paths_exit, "stderr": "HTTP 502"}
+        if changed_files is None:
+            changed_files = listed_count(files, paths)
+        keyed_read = {"match": KEYED_MATCH, "json": {"headRefOid": keyed or head, "changedFiles": changed_files}}
+        if keyed_exit:
+            keyed_read = {"match": KEYED_MATCH, "exit": keyed_exit, "stderr": "HTTP 502"}
         self.answer(
             {
                 "match": r"^pr view 7 --json state,baseRefName,headRefOid,isDraft$",
@@ -1329,6 +1380,7 @@ class PrMergeTest(PrLeverTestCase):
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             diff,
+            keyed_read,
             listing,
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -2669,21 +2721,26 @@ class PrMergeTest(PrLeverTestCase):
 
     def test_a_head_outside_every_sweep_class_merges_without_a_sweep_row_and_names_the_skip(self):
         """U597 (the operator's sweep rule C of 2026-11-18): the pull request's files, `gh api
-        repos/{owner}/{repo}/pulls/<pr>/files` through the lever's jq form, go to the checkout's sweep-scope.py on
-        stdin; a head of docs, tests and workflow paths alone needs no sweep
-        row, the lever prints one stderr line naming the skip and merges on the correct row and CI alone. The skip is
-        the sweep row's alone: the same head with no correct row is refused before the listing is read."""
+        repos/{owner}/{repo}/pulls/<pr>/files` through the lever's jq form (one JSON array per file, round 3), go to
+        the checkout's sweep-scope.py on stdin after the head and the changed-files count are read once; a head of
+        docs, tests and workflow paths alone needs no sweep row, the lever prints one stderr line naming the skip and
+        merges on the correct row and CI alone. The skip is the sweep row's alone: the same head with no correct row
+        is refused before the listing is read."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row at all
-        self.github(paths="docs/plan.md\ntests/unit/test_x.py\n.github/workflows/test.yml\n")
+        self.github(paths=files_listing("docs/plan.md", "tests/unit/test_x.py", ".github/workflows/test.yml"))
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
         self.assertIn(f"pr-merge.sh: {SKIP_LINE}\n", run.stderr)
-        self.assertIn(FILES_CALL, self.gh_calls())
+        calls = self.gh_calls()
+        self.assertIn(FILES_CALL, calls)
+        keyed = [call[: len(KEYED_CALL)] for call in calls]
+        self.assertEqual(keyed.count(KEYED_CALL), 1, "the head and the count are read once, after the listing")
+        self.assertLess(calls.index(FILES_CALL), keyed.index(KEYED_CALL))
         self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
         self.calls.unlink()
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_B))
-        self.github(paths="docs/plan.md\n")
+        self.github(paths=files_listing("docs/plan.md"))
         self.assert_refused(self.merge(), "has no row for pull request 7 at head " + SHA_A)
         self.assertNotIn(FILES_CALL, self.gh_calls(), "the verdict gate comes before the listing")
 
@@ -2691,21 +2748,21 @@ class PrMergeTest(PrLeverTestCase):
         """U597: one path of a class among any others keeps today's gate: no sweep row refuses naming the unit, the
         head, the rule and the class, with no skip line; the row of the rule merges."""
         for name, paths in (
-            ("credential", "home/dot_local/bin/common/executable_hcom-seat\n"),
-            ("policy", "docs/x.md\nhome/dot_agents/omp/policies/worker.yml\n"),
-            ("lever", "scripts/orchestrator/pr-merge.sh\ndocs/x.md\n"),
-            ("deployed-executable", "install/bootstrap.sh\n"),
+            ("credential", ("home/dot_local/bin/common/executable_hcom-seat",)),
+            ("policy", ("docs/x.md", "home/dot_agents/omp/policies/worker.yml")),
+            ("lever", ("scripts/orchestrator/pr-merge.sh", "docs/x.md")),
+            ("deployed-executable", ("install/bootstrap.sh",)),
         ):
             with self.subTest(name):
                 self.calls.unlink(missing_ok=True)
                 (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
-                self.github(paths=paths)
+                self.github(paths=files_listing(*paths))
                 run = self.merge()
                 self.assert_refused(run, f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_A}")
                 self.assertIn(f"this head changes a {name} path", run.stderr)
                 self.assertNotIn("sweep: not required", run.stderr)
                 self.ledger(ledger_row(SHA_A))  # the fixture's sweep row at the head
-                self.github(paths=paths)
+                self.github(paths=files_listing(*paths))
                 run = self.merge()
                 self.assertEqual(run.returncode, 0, run.stderr)
                 self.assertNotIn("sweep: not required", run.stderr)
@@ -2713,12 +2770,13 @@ class PrMergeTest(PrLeverTestCase):
     def test_a_rename_out_of_a_lever_directory_keeps_the_sweep_gate(self):
         """U597 round 2 (verdict finding 2): `gh pr diff --name-only` listed a rename's destination alone, so a lever
         file renamed to `docs/` answered `not-required`. The files API lists `previous_filename` too, and the lever's
-        jq form prints both paths, so a listing whose only lever path is a rename's source keeps the gate: no sweep row
-        refuses naming the lever class, and the row of the rule merges. The listing is the API's JSON run through the
-        lever's own `--jq`, so the test reads the jq form as gh would."""
+        jq form carries it in each file's array (round 3), so a complete listing whose only lever path is a rename's
+        source keeps the gate: no sweep row refuses naming the lever class, and the row of the rule merges. The
+        listing is the API's JSON run through the lever's own `--jq`, so the test reads the jq form as gh would, and
+        `changedFiles` is the listing's two files, so the count check passes. A copy's source counts the same."""
         renamed = [
-            {"filename": "docs/old.py", "previous_filename": "scripts/orchestrator/old.py"},
-            {"filename": "docs/plan.md"},
+            api_file("docs/old.py", "renamed", "scripts/orchestrator/old.py"),
+            api_file("docs/plan.md"),
         ]
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
         self.github(files=renamed)
@@ -2733,16 +2791,22 @@ class PrMergeTest(PrLeverTestCase):
         self.github(files=renamed)
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T09:00:00Z\n")
         self.assertNotIn("sweep: not required", run.stderr)
-        # the same rename within docs, and a rename into a lever directory, read by both paths too
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        # a copy out of the lever directory, read by both paths too
         self.calls.unlink()
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
-        self.github(files=[{"filename": "docs/new.md", "previous_filename": "docs/old.md"}])
+        self.github(files=[api_file("docs/copy.py", "copied", "scripts/orchestrator/old.py")])
+        self.assert_refused(self.merge(), "has no sweep row for U71")
+        # the same rename within docs, and a rename into a lever directory, read by both paths too
+        self.calls.unlink()
+        self.github(files=[api_file("docs/new.md", "renamed", "docs/old.md")])
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
         self.calls.unlink()
-        self.github(files=[{"filename": "scripts/orchestrator/new.py", "previous_filename": "docs/old.py"}])
+        self.github(files=[api_file("scripts/orchestrator/new.py", "renamed", "docs/old.py")])
         self.assert_refused(self.merge(), "has no sweep row for U71")
 
     def test_a_quoted_listing_refuses_with_no_merge(self):
@@ -2752,19 +2816,168 @@ class PrMergeTest(PrLeverTestCase):
         nothing; the files API never quotes, so a quoted listing is never a listing of changed paths."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
         for name, paths in (
-            ("a C-quoted lever path", '"scripts/orchestrator/a\\tb.sh"\n'),
-            ("a C-quoted docs path beside a plain one", 'docs/plan.md\n"docs/\\303\\244.md"\n'),
-            ("a backslash without quotes", "docs/a\\b.md\n"),
-            ("a quote alone", '"\n'),
+            ("a C-quoted lever path", ('"scripts/orchestrator/a\\tb.sh"',)),
+            ("a C-quoted docs path beside a plain one", ("docs/plan.md", '"docs/\\303\\244.md"')),
+            ("a backslash without quotes", ("docs/a\\b.md",)),
+            ("a quote alone", ('"',)),
         ):
             with self.subTest(name):
                 self.calls.unlink(missing_ok=True)
-                self.github(paths=paths)
+                self.github(paths=files_listing(*paths))
                 run = self.merge()
                 self.assert_refused(run, "refused: a listed path is C-quoted or holds a backslash")
                 self.assertNotIn("sweep: not required", run.stderr)
                 self.assertEqual(run.stdout, "", "no receipt")
                 self.assertEqual(self.writes(), [])
+
+    def test_a_listing_of_another_head_or_another_count_than_changed_files_refuses_with_no_merge(self):
+        """U597 round 3 (verdict findings 1 and 3): the files listing is keyed by the pull request's number alone, so
+        the lever reads `gh pr view <pr> --json headRefOid,changedFiles` once after it. A head other than the pinned
+        one is refused naming both shas (the listing may be another head's), a failed read is exit 1, and a listing
+        whose count of distinct filenames differs from `changedFiles` is refused naming both counts: a listing cut
+        short, one counted too high, and a listing of 3,000 entries whose `changedFiles` says more (GitHub's cap of
+        the files endpoint read as complete). A rename counts once, by its filename. None writes, none prints the skip
+        line, and the complete listing of the same docs-only head merges."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        docs = files_listing("docs/plan.md", "docs/other.md")
+
+        def check(run, code, message):
+            self.assertEqual(run.returncode, code, run.stdout + run.stderr)
+            self.assertIn(message, run.stderr)
+            self.assertNotIn("sweep: not required", run.stderr)
+            self.assertEqual(run.stdout, "", "no receipt")
+            self.assertEqual(self.writes(), [])
+            self.assertIn(FILES_CALL, self.gh_calls(), "the listing was read")
+            self.calls.unlink(missing_ok=True)
+
+        self.github(paths=docs, keyed=SHA_B)
+        check(
+            self.merge(),
+            2,
+            f"refused: the head of pull request 7 is {SHA_B} after its files listing, not the pinned head {SHA_A}",
+        )
+        self.github(paths=docs, keyed_exit=1)
+        check(
+            self.merge(), 1, "cannot read the head and the changedFiles count of pull request 7 after its files listing"
+        )
+        for name, listing, count in (
+            ("a listing cut short", docs, 3),
+            ("a count under the listing", docs, 1),
+            ("a count of zero", docs, 0),
+            ("a rename counted twice", files_listing_of([api_file("docs/b.md", "renamed", "docs/a.md")]), 2),
+            ("3,000 entries and changedFiles 3,001", files_listing(*(f"docs/f{n}.md" for n in range(3000))), 3001),
+        ):
+            with self.subTest(name):
+                self.github(paths=listing, changed_files=count)
+                listed = listed_count(paths=listing)
+                check(
+                    self.merge(),
+                    2,
+                    f"refused: the files listing names {listed} distinct filenames, not the {count} changedFiles of"
+                    " the pull request",
+                )
+        # the complete listing, its count equal to changedFiles, merges without a sweep row
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
+        self.calls.unlink()
+        self.github(paths=files_listing(*(f"docs/f{n}.md" for n in range(3000))))
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
+
+    def test_a_files_listing_that_is_not_the_api_s_data_refuses_with_no_merge(self):
+        """U597 round 3 (verdict finding 2): the lever passes each file as one JSON array `[status, filename,
+        previous_filename]`, and the reader refuses any other shape carrying its line: a line that is not JSON, not
+        an array of three, an unknown status, a rename or a copy without its source, a source on a modified file, a
+        filename that is no string, and a filename with an embedded newline (the decoded string holds it, so it is a
+        control character to `check_path`, where the line-per-path form lost the boundary). The newline case is read
+        through the lever's own jq, as gh prints it. None writes, none prints the skip line."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        plain = json.dumps(["modified", "docs/plan.md", None])
+        for name, listing, message in (
+            ("not JSON", "docs/plan.md\n", "line 1 of the files listing is not JSON"),
+            ("an object", '{"filename": "docs/plan.md"}\n', "line 1 of the files listing is not an array of three"),
+            (
+                "an array of two",
+                '["modified", "docs/plan.md"]\n',
+                "line 1 of the files listing is not an array of three",
+            ),
+            (
+                "an array of four",
+                '["modified", "docs/plan.md", null, 1]\n',
+                "line 1 of the files listing is not an array of three",
+            ),
+            (
+                "an unknown status",
+                '["moved", "docs/plan.md", null]\n',
+                "line 1 of the files listing has the status 'moved'",
+            ),
+            ("a null status", '[null, "docs/plan.md", null]\n', "line 1 of the files listing has the status None"),
+            (
+                "a rename without its source",
+                f'{plain}\n["renamed", "docs/old.py", null]\n',
+                "line 2 of the files listing is renamed without its source (previous_filename)",
+            ),
+            (
+                "a copy without its source",
+                '["copied", "docs/old.py", null]\n',
+                "line 1 of the files listing is copied without its source (previous_filename)",
+            ),
+            (
+                "a source on a modified file",
+                '["modified", "docs/plan.md", "scripts/orchestrator/x.py"]\n',
+                "line 1 of the files listing is modified yet carries a previous_filename",
+            ),
+            (
+                "a filename that is no string",
+                '["modified", 7, null]\n',
+                "line 1 of the files listing has no filename string",
+            ),
+            (
+                "a source that is no path",
+                '["renamed", "docs/new.py", "../etc/passwd"]\n',
+                "a listed path holds a '.', '..' or empty component",
+            ),
+            (
+                "an embedded newline, as text",
+                json.dumps(["modified", "scripts/orchestrator/a\nb.sh", None]) + "\n",
+                "a listed path holds a control character",
+            ),
+            ("an empty line between", f"{plain}\n\n{plain}\n", "line 2 of the files listing is empty"),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.github(paths=listing)
+                run = self.merge()
+                self.assert_refused(run, f"refused: {message}")
+                self.assertNotIn("sweep: not required", run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+                self.assertEqual(self.writes(), [])
+        # an embedded newline through the lever's own jq: the API's JSON escapes it, the reader decodes and refuses
+        self.calls.unlink(missing_ok=True)
+        self.github(files=[api_file("scripts/orchestrator/a\nb.sh"), api_file("docs/plan.md")])
+        run = self.merge()
+        self.assert_refused(run, "refused: a listed path holds a control character")
+        self.assertNotIn("sweep: not required", run.stderr)
+        self.assertEqual(self.writes(), [])
+        # a rename with its source and a copy with its source through the jq, every status of the API accepted
+        self.calls.unlink()
+        self.github(
+            files=[
+                api_file("docs/a.md", "added"),
+                api_file("docs/b.md", "removed"),
+                api_file("docs/c.md", "modified"),
+                api_file("docs/d.md", "renamed", "docs/d0.md"),
+                api_file("docs/e.md", "copied", "docs/c.md"),
+                api_file("docs/f.md", "changed"),
+                api_file("docs/g.md", "unchanged"),
+            ]
+        )
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
 
     def test_an_unreadable_sweep_scope_never_skips_the_sweep_row(self):
         """U597, standing order 21: a changed-paths listing that fails is exit 1; one that names no path, a path the
@@ -2773,7 +2986,7 @@ class PrMergeTest(PrLeverTestCase):
         are refusals naming the reader; a reader that exits with another status is exit 1. None writes, and none
         prints the skip line."""
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
-        docs = "docs/plan.md\n"
+        docs = files_listing("docs/plan.md")
 
         def check(run, code, message):
             self.assertEqual(run.returncode, code, run.stdout + run.stderr)
@@ -2793,11 +3006,16 @@ class PrMergeTest(PrLeverTestCase):
         check(
             self.merge(), 2, "refused: the files API (gh api repos/{owner}/{repo}/pulls/7/files) listed no changed path"
         )
+        self.assertNotIn(KEYED_CALL, [call[: len(KEYED_CALL)] for call in self.gh_calls()])
         for name, paths, message in (
-            ("a '..' component", "docs/plan.md\n../etc/passwd\n", "a listed path holds a '.', '..' or empty component"),
-            ("an empty line", "docs/plan.md\n\nREADME.md\n", "the listing holds an empty line"),
-            ("an absolute path", "/etc/passwd\n", "a listed path is absolute"),
-            ("a control character", "docs/pl\x01an.md\n", "a listed path holds a control character"),
+            (
+                "a '..' component",
+                files_listing("docs/plan.md", "../etc/passwd"),
+                "a listed path holds a '.', '..' or empty component",
+            ),
+            ("an absolute path", files_listing("/etc/passwd"), "a listed path is absolute"),
+            ("a control character", files_listing("docs/pl\x01an.md"), "a listed path holds a control character"),
+            ("an empty filename", files_listing(""), "the listing holds an empty line"),
         ):
             with self.subTest(name):
                 self.github(paths=paths)
@@ -2826,12 +3044,16 @@ class PrMergeTest(PrLeverTestCase):
         self.scope.write_text("import sys\nsys.exit(3)\n")
         self.github(paths=docs)
         check(self.merge(), 1, f"{self.scope} exited 3 reading the changed paths of pull request 7")
-        # the reader restored, the docs-only head merges without a sweep row
+        # the reader restored, the docs-only head merges without a sweep row, the reader run in its files form
         self.scope.write_text(real)
         self.github(paths=docs)
         run = self.merge()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn(SKIP_LINE, run.stderr)
+        self.assertIn(
+            '"${scope_reader}" --files-json --changed-files "${count}" <<< "${listing}"',
+            (LEVERS / "pr-merge.sh").read_text(),
+        )
 
 
 class DispositionDriftTest(unittest.TestCase):

@@ -1,15 +1,20 @@
 """Exercise scripts/orchestrator/sweep-scope.py (regime-cutover U597, the operator's sweep rule C of 2026-11-18): the
 one predicate `sweep_required(paths)` over the four path classes (`credential`, `policy`, `lever`,
-`deployed-executable`, one frozen tuple of prefixes each, in that precedence), a mixed head's class, a docs-only head
-that requires nothing, and the CLI forms pr-merge.sh and the coordinator run under `python3 -I -S`: `<base> <head>`
-(the paths `git diff --name-only --no-renames <base>...<head>` lists) and `--stdin` (the paths one per line, as the
-lever's read of the pull request files API prints them, `gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate
---jq '.[] | .filename, (.previous_filename // empty)'`), each printing `required <class>` or `not-required`, and exit
-2 with one stderr line on a failed git read, an empty listing, a path git would not list, a C-quoted name (round 2),
-or usage (standing order 21: never `not-required` by failure). The documents that state the rule (AGENTS.md, the
-hcom-orchestration skill, the orchestrator README) are read against CLASSES, the one definition (round 2)."""
+`deployed-executable`, one frozen tuple of prefixes each, in that precedence, held equal to a literal copy here), a
+mixed head's class, a docs-only head that requires nothing, and the CLI forms pr-merge.sh and the coordinator run
+under `python3 -I -S`: `<base> <head>` (the paths `git diff --name-only --no-renames <base>...<head>` lists, from the
+toplevel whatever `diff.relative` says or where the command runs; round 3) and `--files-json [--changed-files <n>]`
+(the pull request's files as the lever's read of the files API prints them, `gh api
+'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | [.status, .filename, (.previous_filename // null)] |
+@json'`, one JSON array per file, the count of distinct filenames held equal to `changedFiles`; round 3), each
+printing `required <class>` or `not-required`, and exit 2 with one stderr line on a failed git read, an empty
+listing, a path git would not list, a C-quoted name (round 2), a line that is not the API's shape, a rename without
+its source, a count other than `changedFiles`, or usage (standing order 21: never `not-required` by failure). The
+documents that state the rule (AGENTS.md, the hcom-orchestration skill, the orchestrator README) are read against
+CLASSES, the one definition (round 2)."""
 
 import importlib.util
+import json
 import os
 import re
 import subprocess
@@ -35,6 +40,50 @@ POLICY = "home/dot_agents/omp/policies/worker.yml"
 LEVER_PATH = "scripts/orchestrator/pr-merge.sh"
 DEPLOYED = "install/bootstrap.sh"
 DOCS = ("docs/plan.md", "README.md", "tests/unit/test_x.py", ".github/workflows/test.yml", "Makefile")
+# The operator's classification (decisions-four-points-2026-11-18.md, sweep rule C), written out here so that an
+# added or missing prefix in the module fails this test (round 3, verdict finding 8); the per-prefix test below
+# derives its cases from the module and could not see one.
+CLASSES_LITERAL = (
+    (
+        "credential",
+        (
+            "scripts/orchestrator/hcom-seat",
+            "scripts/orchestrator/acp-broker",
+            "scripts/orchestrator/seat-token-place",
+            "scripts/orchestrator/seat-login-preflight",
+            "home/dot_local/bin/common/executable_hcom-seat",
+            "home/dot_local/bin/common/executable_acp-broker",
+            "home/dot_local/bin/common/executable_seat-token-place",
+            "home/dot_local/bin/common/executable_seat-login-preflight",
+            "home/.chezmoiscripts/",
+        ),
+    ),
+    (
+        "policy",
+        (
+            "home/dot_agents/omp/policies/",
+            "home/dot_agents/agent-config.yaml",
+        ),
+    ),
+    (
+        "lever",
+        (
+            "scripts/orchestrator/",
+            "home/dot_local/bin/common/",
+        ),
+    ),
+    (
+        "deployed-executable",
+        (
+            "home/dot_local/bin/",
+            "home/dot_dsh/plugins/",
+            "install/",
+        ),
+    ),
+)
+# The lever's jq form and the reader's call, as pr-merge.sh spells them (round 3).
+FILES_JQ = "'.[] | [.status, .filename, (.previous_filename // null)] | @json'"
+READER_CALL = '"${scope_reader}" --files-json --changed-files "${count}" <<< "${listing}"'
 
 
 def load_reader():
@@ -44,6 +93,16 @@ def load_reader():
     sys.modules["sweep_scope"] = module
     spec.loader.exec_module(module)
     return module
+
+
+def entry(filename, status="modified", previous=None):
+    """One line of the files listing as the lever's jq form prints it."""
+    return json.dumps([status, filename, previous], separators=(",", ":"))
+
+
+def listing(*paths, status="modified"):
+    """A listing of files at `paths`, one array per line with the trailing newline."""
+    return "".join(entry(path, status) + "\n" for path in paths)
 
 
 class SweepScopePredicateTest(unittest.TestCase):
@@ -62,6 +121,18 @@ class SweepScopePredicateTest(unittest.TestCase):
                 for prefix in prefixes:
                     self.assertNotIn("//", prefix)
                     self.assertFalse(prefix.startswith("/"))
+
+    def test_the_classes_equal_the_operator_s_classification_written_out(self):
+        """Round 3 (verdict finding 8): CLASSES is the literal copy above, tuple for tuple and in order, so a prefix
+        added to or dropped from the module fails here, where the derived tests passed with an unrelated directory
+        added to the lever class."""
+        self.assertEqual(self.reader.CLASSES, CLASSES_LITERAL)
+        self.assertEqual(
+            tuple(len(prefixes) for _, prefixes in self.reader.CLASSES), (9, 2, 2, 3), "the prefix count per class"
+        )
+        # the literal is itself a copy, not a reference: a change to the module alone is seen
+        self.assertIsNot(self.reader.CLASSES, CLASSES_LITERAL)
+        self.assertEqual(self.reader.path_class("scripts/orchestratorx/a.sh"), None)
 
     def test_each_prefix_of_each_class_puts_a_path_in_that_class(self):
         """A representative under each prefix (the prefix itself for an exact entry, a child for a directory) falls
@@ -150,27 +221,121 @@ class SweepScopePredicateTest(unittest.TestCase):
                     self.reader.check_path(path)
                 self.assertIn("is C-quoted or holds a backslash", str(caught.exception))
                 with self.assertRaises(self.reader.Unreadable):
-                    self.reader.paths_from_listing(f"docs/plan.md\n{path}\n", "\n")
+                    self.reader.paths_from_files_json(listing("docs/plan.md", path), None)
         self.assertEqual(self.reader.check_path("scripts/orchestrator/a b.sh"), "scripts/orchestrator/a b.sh")
         self.assertEqual(self.reader.check_path("docs/ä.md"), "docs/ä.md")
 
-    def test_the_lever_reads_this_module_from_the_checkout_on_stdin(self):
-        """pr-merge.sh names the module by its checkout path and runs its `--stdin` form over the pull request files
-        API (round 2: both paths of a rename, no C quoting), and prints the one skip line (U597)."""
+    def test_the_files_listing_is_read_as_data_both_paths_of_a_rename_counting(self):
+        """Round 3 (verdict finding 2): each line is `[status, filename, previous_filename]`; the filename and, for a
+        rename or a copy, the source are the paths; every status of the API is accepted with a null source; the
+        distinct filenames are counted against `changedFiles` when one is given, a rename counting once."""
+        text = (
+            entry("docs/a.md", "added")
+            + "\n"
+            + entry("docs/b.md", "removed")
+            + "\n"
+            + entry("docs/c.md", "modified")
+            + "\n"
+            + entry("docs/d.md", "renamed", "scripts/orchestrator/d.py")
+            + "\n"
+            + entry("docs/e.md", "copied", "docs/c.md")
+            + "\n"
+            + entry("docs/f.md", "changed")
+            + "\n"
+            + entry("docs/g.md", "unchanged")
+            + "\n"
+        )
+        paths = self.reader.paths_from_files_json(text, 7)
+        self.assertEqual(
+            paths,
+            [
+                "docs/a.md",
+                "docs/b.md",
+                "docs/c.md",
+                "docs/d.md",
+                "scripts/orchestrator/d.py",
+                "docs/e.md",
+                "docs/c.md",
+                "docs/f.md",
+                "docs/g.md",
+            ],
+        )
+        self.assertEqual(self.reader.answer(paths), "required lever")
+        self.assertEqual(self.reader.paths_from_files_json(text, None), paths, "no count given, none checked")
+        self.assertEqual(self.reader.paths_from_files_json(text.rstrip("\n"), 7), paths, "no trailing newline")
+        for count in (6, 8, 0, 9):
+            with self.subTest(count=count):
+                with self.assertRaises(self.reader.Unreadable) as caught:
+                    self.reader.paths_from_files_json(text, count)
+                self.assertIn(f"names 7 distinct filenames, not the {count} changedFiles", str(caught.exception))
+
+    def test_a_files_listing_of_another_shape_is_unreadable(self):
+        """Round 3: a line that is not JSON, not an array of three, an unknown or non-string status, a filename that
+        is no string, a rename or a copy without its source, a source on any other status, a source or a filename
+        `check_path` refuses (an embedded newline is a control character of the decoded string), an empty line and an
+        empty listing are each Unreadable naming the line, never a class."""
+        plain = entry("docs/plan.md")
+        for name, text, message in (
+            ("empty", "", "names no file"),
+            ("a newline alone", "\n", "line 1 of the files listing is empty"),
+            ("an empty line between", f"{plain}\n\n{plain}\n", "line 2 of the files listing is empty"),
+            ("not JSON", "docs/plan.md\n", "line 1 of the files listing is not JSON"),
+            ("a string", '"docs/plan.md"\n', "line 1 of the files listing is not an array of three"),
+            ("an object", '{"filename": "docs/plan.md"}\n', "line 1 of the files listing is not an array of three"),
+            ("two items", '["modified", "docs/plan.md"]\n', "is not an array of three"),
+            ("four items", '["modified", "docs/plan.md", null, 1]\n', "is not an array of three"),
+            ("an unknown status", '["moved", "docs/plan.md", null]\n', "has the status 'moved', not one of added"),
+            ("a null status", '[null, "docs/plan.md", null]\n', "has the status None"),
+            ("a numeric filename", '["modified", 7, null]\n', "has no filename string"),
+            ("a null filename", '["modified", null, null]\n', "has no filename string"),
+            (
+                "a rename without its source",
+                f"{plain}\n" + entry("docs/old.py", "renamed") + "\n",
+                "line 2 of the files listing is renamed without its source (previous_filename)",
+            ),
+            ("a copy without its source", entry("docs/old.py", "copied") + "\n", "is copied without its source"),
+            ("a numeric source", '["renamed", "docs/new.py", 7]\n', "is renamed without its source"),
+            (
+                "a source on a modified file",
+                entry("docs/plan.md", "modified", "scripts/orchestrator/x.py") + "\n",
+                "is modified yet carries a previous_filename",
+            ),
+            ("a source on an added file", entry("docs/a.md", "added", "docs/b.md") + "\n", "is added yet carries"),
+            ("a .. source", entry("docs/new.py", "renamed", "../etc/passwd") + "\n", "holds a '.', '..' or empty"),
+            ("an absolute filename", entry("/etc/passwd") + "\n", "is absolute"),
+            ("an embedded newline", entry("scripts/orchestrator/a\nb.sh") + "\n", "holds a control character"),
+            ("a carriage return", entry("docs/a\r.md") + "\n", "holds a control character"),
+            ("an empty filename", entry("") + "\n", "the listing holds an empty line"),
+            ("a quoted filename", entry('"docs/a.md"') + "\n", "is C-quoted or holds a backslash"),
+        ):
+            with self.subTest(name):
+                with self.assertRaises(self.reader.Unreadable) as caught:
+                    self.reader.paths_from_files_json(text, None)
+                self.assertIn(message, str(caught.exception))
+                self.assertNotIn("\n", str(caught.exception), "one stderr line, the newline not echoed")
+
+    def test_the_lever_reads_this_module_from_the_checkout_as_data(self):
+        """pr-merge.sh names the module by its checkout path and runs its `--files-json` form with the pull request's
+        `changedFiles` over the files API's arrays (round 3: status, filename and previous_filename as data, after
+        one read of `headRefOid,changedFiles`), prints the one skip line (U597), and runs no `--stdin` form."""
         text = LEVER.read_text()
         self.assertIn("scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py", text)
-        self.assertIn('"${scope_reader}" --stdin <<< "${paths}"', text)
+        self.assertIn(READER_CALL, text)
         self.assertIn(
-            'gh_bounded api "repos/{owner}/{repo}/pulls/${pr}/files" --paginate'
-            " --jq '.[] | .filename, (.previous_filename // empty)'",
+            f'gh_bounded api "repos/{{owner}}/{{repo}}/pulls/${{pr}}/files" --paginate --jq {FILES_JQ}',
             text,
         )
+        self.assertIn('gh_bounded pr view "${pr}" --json headRefOid,changedFiles', text)
+        self.assertNotIn("--stdin", text, "the raw line-per-path form is gone")
         self.assertNotIn(
             "gh_bounded pr diff", text, "the name listing of gh pr diff printed a rename's destination alone"
         )
         self.assertIn("sweep: not required (no lever, policy, credential or deployed-executable path changed)", text)
         self.assertEqual(text.count("require_sweep_scope\n"), 1, "called once")
         self.assertIn("[[ -z ${sweep_class} ]] || require_sweep_row\n", text)
+        self.assertEqual(
+            self.reader.USAGE, "usage: sweep-scope.py <base> <head> | sweep-scope.py --files-json [--changed-files <n>]"
+        )
 
 
 class SweepScopeCliTest(unittest.TestCase):
@@ -269,6 +434,37 @@ class SweepScopeCliTest(unittest.TestCase):
         self.git("switch", "-q", "main")
         self.assert_answer(self.run_reader(self.base, renamed), "required lever")
 
+    def test_the_git_form_ignores_diff_relative_and_the_directory_it_runs_from(self):
+        """Round 3 (verdict finding 6): `diff.relative=true` in the repository's config narrows `git diff` to the
+        current subdirectory and strips its prefix, so from `tests/unit` the lever head answered `not-required`. The
+        command carries `-c diff.relative=false` and `--no-relative`: from the toplevel, from `docs/`, from
+        `tests/unit` and from `scripts/orchestrator`, with the setting on and off, every head answers as from the
+        toplevel, the lever head `required lever` and the mixed head `required credential`."""
+        subdirectories = (self.repo, self.repo / "docs", self.repo / "tests/unit", self.repo / "scripts/orchestrator")
+        expected = (
+            (self.docs_head, "not-required"),
+            (self.lever_head, "required lever"),
+            (self.mixed_head, "required credential"),
+        )
+        for setting in ("true", "false"):
+            self.git("config", "diff.relative", setting)
+            for cwd in subdirectories:
+                for head, answer in expected:
+                    with self.subTest(setting=setting, cwd=str(cwd.relative_to(self.repo)) or ".", head=answer):
+                        self.assert_answer(self.run_reader(self.base, head, cwd=cwd), answer)
+        # the setting on, the same command without the guard would have narrowed the listing: the guard is live
+        self.git("config", "diff.relative", "true")
+        narrowed = subprocess.run(
+            ["git", "diff", "--name-only", "--no-renames", f"{self.base}...{self.lever_head}", "--"],
+            cwd=self.repo / "tests/unit",
+            env=self.env,
+            capture_output=True,
+            text=True,
+            check=True,
+        ).stdout
+        self.assertNotIn("scripts/orchestrator", narrowed, "git's own relative listing lacks the lever path")
+        self.assert_answer(self.run_reader(self.base, self.lever_head, cwd=self.repo / "tests/unit"), "required lever")
+
     def test_a_failed_git_read_is_exit_2_with_one_line_never_not_required(self):
         """Standing order 21: a head git cannot resolve, a base it cannot resolve, a directory outside a repository,
         and two revisions with no change between them are each exit 2 naming the read, with no answer."""
@@ -281,55 +477,137 @@ class SweepScopeCliTest(unittest.TestCase):
         self.assert_refused(self.run_reader(self.base, "-x"), "is not a revision")
         self.assert_refused(self.run_reader("-x", self.docs_head), "usage: sweep-scope.py")
 
-    def test_the_stdin_form_answers_from_the_listing(self):
-        """The paths one per line, as the lever's files API read prints them, with or without the last newline."""
-        self.assert_answer(self.run_reader("--stdin", stdin=b"docs/plan.md\nREADME.md\n"), "not-required")
-        self.assert_answer(self.run_reader("--stdin", stdin=b"docs/plan.md\nREADME.md"), "not-required")
-        self.assert_answer(self.run_reader("--stdin", stdin=f"{DOCS[0]}\n{POLICY}\n".encode()), "required policy")
+    def test_the_files_json_form_answers_from_the_listing(self):
+        """The files as the lever's files API read prints them, one JSON array per line, with or without the last
+        newline, with or without `--changed-files`; a rename's source counts, and `--changed-files` equal to the
+        distinct filenames passes."""
+        docs = listing("docs/plan.md", "README.md")
+        self.assert_answer(self.run_reader("--files-json", stdin=docs.encode()), "not-required")
+        self.assert_answer(self.run_reader("--files-json", stdin=docs.rstrip("\n").encode()), "not-required")
+        self.assert_answer(self.run_reader("--files-json", "--changed-files", "2", stdin=docs.encode()), "not-required")
         self.assert_answer(
-            self.run_reader("--stdin", stdin=f"{LEVER_PATH}\n{CREDENTIAL}\n".encode()), "required credential"
+            self.run_reader("--files-json", "--changed-files", "2", stdin=listing(DOCS[0], POLICY).encode()),
+            "required policy",
         )
-        self.assert_answer(self.run_reader("--stdin", stdin=f"{DEPLOYED}\n".encode()), "required deployed-executable")
-        self.assert_answer(self.run_reader("--stdin", stdin=b"home/dot_agents/agent-config.yaml\n"), "required policy")
+        self.assert_answer(
+            self.run_reader("--files-json", stdin=listing(LEVER_PATH, CREDENTIAL).encode()), "required credential"
+        )
+        self.assert_answer(
+            self.run_reader("--files-json", stdin=listing(DEPLOYED).encode()), "required deployed-executable"
+        )
+        self.assert_answer(
+            self.run_reader("--files-json", stdin=listing("home/dot_agents/agent-config.yaml").encode()),
+            "required policy",
+        )
+        renamed = entry("docs/old.py", "renamed", "scripts/orchestrator/old.py") + "\n" + entry("docs/plan.md") + "\n"
+        self.assert_answer(
+            self.run_reader("--files-json", "--changed-files", "2", stdin=renamed.encode()), "required lever"
+        )
+        copied = entry("docs/copy.py", "copied", "install/bootstrap.sh") + "\n"
+        self.assert_answer(
+            self.run_reader("--files-json", "--changed-files", "1", stdin=copied.encode()),
+            "required deployed-executable",
+        )
 
-    def test_a_listing_that_is_no_listing_of_changed_paths_is_exit_2(self):
-        """An empty listing, an empty line, a control character, an absolute path, a `.`, `..` or empty component,
-        a C-quoted name or a backslash (round 2) and bytes that are not UTF-8 are each refused naming the shape,
-        never read as `not-required`."""
-        for name, listing, message in (
-            ("empty", b"", "names no changed path"),
-            ("a newline alone", b"\n", "holds an empty line"),
-            ("an empty line between", b"docs/a.md\n\nREADME.md\n", "holds an empty line"),
-            ("a control character", b"docs/a\x01.md\n", "holds a control character"),
-            ("a carriage return", b"docs/a.md\r\n", "holds a control character"),
-            ("an absolute path", b"/etc/passwd\n", "is absolute"),
-            ("a .. component", b"docs/../scripts/x\n", "holds a '.', '..' or empty component"),
-            ("a . component", b"./docs/a.md\n", "holds a '.', '..' or empty component"),
-            ("an empty component", b"docs//a.md\n", "holds a '.', '..' or empty component"),
-            ("a trailing slash", b"docs/\n", "holds a '.', '..' or empty component"),
-            ("not UTF-8", b"docs/\xff.md\n", "not UTF-8"),
-            ("a C-quoted lever path", b'"scripts/orchestrator/a\\tb.sh"\n', "is C-quoted or holds a backslash"),
+    def test_a_files_listing_short_of_changed_files_or_of_another_shape_is_exit_2(self):
+        """Round 3: an empty listing, a count other than `changedFiles` (a listing cut short, one of 3,000 entries
+        whose `changedFiles` says more, a rename counted twice), a line that is not JSON or not an array of three, a
+        rename without its source, a source on a modified file, an embedded newline, a C-quoted name (round 2) and
+        bytes that are not UTF-8 are each refused naming the shape, never read as `not-required`."""
+        plain = entry("docs/plan.md")
+        capped = listing(*(f"docs/f{n}.md" for n in range(3000)))
+        for name, text, count, message in (
+            ("empty", b"", None, "names no file"),
+            ("a newline alone", b"\n", None, "line 1 of the files listing is empty"),
+            ("cut short", listing("docs/a.md", "docs/b.md").encode(), "3", "names 2 distinct filenames, not the 3"),
             (
-                "a C-quoted path beside a plain one",
-                b'docs/a.md\n"docs/\\303\\244.md"\n',
+                "counted too high",
+                listing("docs/a.md", "docs/b.md").encode(),
+                "1",
+                "names 2 distinct filenames, not the 1",
+            ),
+            (
+                "3,000 entries, changedFiles 3,001",
+                capped.encode(),
+                "3001",
+                "names 3000 distinct filenames, not the 3001",
+            ),
+            (
+                "a rename counted twice",
+                (entry("docs/b.md", "renamed", "docs/a.md") + "\n").encode(),
+                "2",
+                "names 1 distinct filenames, not the 2",
+            ),
+            ("not JSON", b"docs/plan.md\n", None, "line 1 of the files listing is not JSON"),
+            ("two items", b'["modified", "docs/plan.md"]\n', None, "is not an array of three"),
+            ("an unknown status", b'["moved", "docs/plan.md", null]\n', None, "has the status 'moved'"),
+            (
+                "a rename without its source",
+                (plain + "\n" + entry("docs/old.py", "renamed") + "\n").encode(),
+                "2",
+                "line 2 of the files listing is renamed without its source",
+            ),
+            (
+                "a source on a modified file",
+                (entry("docs/plan.md", "modified", "docs/x.md") + "\n").encode(),
+                None,
+                "is modified yet carries a previous_filename",
+            ),
+            (
+                "an embedded newline",
+                (entry("scripts/orchestrator/a\nb.sh") + "\n").encode(),
+                "1",
+                "holds a control character",
+            ),
+            ("an absolute path", (entry("/etc/passwd") + "\n").encode(), None, "is absolute"),
+            (
+                "a .. component",
+                (entry("docs/../scripts/x") + "\n").encode(),
+                None,
+                "holds a '.', '..' or empty component",
+            ),
+            (
+                "a C-quoted lever path",
+                (entry('"scripts/orchestrator/a\\tb.sh"') + "\n").encode(),
+                None,
                 "is C-quoted or holds a backslash",
             ),
-            ("a backslash", b"scripts/orchestrator/a\\b.sh\n", "is C-quoted or holds a backslash"),
+            ("not UTF-8", b'["modified", "docs/\xff.md", null]\n', None, "not UTF-8"),
         ):
             with self.subTest(name):
-                self.assert_refused(self.run_reader("--stdin", stdin=listing), message)
+                args = ("--files-json",) if count is None else ("--files-json", "--changed-files", count)
+                self.assert_refused(self.run_reader(*args, stdin=text), message)
+        # the complete capped listing, its count equal, answers
+        self.assert_answer(
+            self.run_reader("--files-json", "--changed-files", "3000", stdin=capped.encode()), "not-required"
+        )
 
     def test_usage_is_exit_2(self):
-        for args in ((), (self.base,), (self.base, self.docs_head, "x"), ("--stdin", "x"), ("--other",)):
+        docs = listing("docs/a.md").encode()
+        for args in (
+            (),
+            (self.base,),
+            (self.base, self.docs_head, "x"),
+            ("--files-json", "x"),
+            ("--files-json", "--changed-files"),
+            ("--files-json", "--changed-files", "x"),
+            ("--files-json", "--changed-files", "-1"),
+            ("--files-json", "--changed-files", "1", "x"),
+            ("--files-json", "--count", "1"),
+            ("--stdin",),
+            ("--other",),
+        ):
             with self.subTest(args=args):
-                self.assert_refused(self.run_reader(*args, stdin=b"docs/a.md\n"), "usage: sweep-scope.py")
+                self.assert_refused(self.run_reader(*args, stdin=docs), "usage: sweep-scope.py")
 
 
 class SweepRuleDocumentsTest(unittest.TestCase):
     """U597 round 2 (verdict finding 5): the module is the one definition of the classes, and the documents that state
     the rule follow it: AGENTS.md's Audit sweep rule line names every prefix of CLASSES and the four classes, the
     hcom-orchestration skill's step 4 and the orchestrator README's pr-merge.sh row name the four classes and the
-    module. The regime template `home/dot_agents/regime/AGENTS-audit-section.md` is AGENTS.md's section byte for byte
+    module; round 3: the listing as data (status, filename, previous_filename), the head reread and the count against
+    `changedFiles` are in AGENTS.md's line and the README's row. The regime template
+    `home/dot_agents/regime/AGENTS-audit-section.md` is AGENTS.md's section byte for byte
     (tests.unit.test_regime_init), so it is not read here."""
 
     def setUp(self):
@@ -354,6 +632,13 @@ class SweepRuleDocumentsTest(unittest.TestCase):
             "Every unit and every program milestone", text, f"{where} no longer states the every-unit rule"
         )
 
+    def assert_describes_the_listing_as_data(self, text, where, pr):
+        """The listing's three fields as data, the head read after it and the count against `changedFiles`."""
+        for field in ("`status`", "`filename`", "`previous_filename`"):
+            self.assertIn(field, text, f"{where} names the field {field}")
+        self.assertIn(f"`gh pr view {pr} --json headRefOid,changedFiles`", text, f"{where} names the head reread")
+        self.assertIn("distinct filenames", text, f"{where} names the count the listing must reach")
+
     def test_the_agents_md_rule_line_names_every_prefix_and_the_four_classes(self):
         line = self.rule_line()
         self.assert_names_the_classes(line, "AGENTS.md's sweep rule")
@@ -361,10 +646,10 @@ class SweepRuleDocumentsTest(unittest.TestCase):
             for prefix in prefixes:
                 with self.subTest(prefix):
                     self.assertIn(f"`{prefix}`", line, f"the {name} prefix {prefix} is in the AGENTS.md rule line")
-        # the daily sweep of main and the files API read are the rule's, too
+        # the daily sweep of main and the files API read as data are the rule's, too
         self.assertIn("one full sweep per UTC day", line)
         self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<n>/files' --paginate`", line)
-        self.assertNotIn("gh pr diff", line)
+        self.assert_describes_the_listing_as_data(line, "AGENTS.md's sweep rule", "<n>")
 
     def test_the_skill_s_step_four_names_the_four_classes_and_the_module(self):
         text = SKILL.read_text()
@@ -374,6 +659,10 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assert_names_the_classes(step, "the skill's step 4")
         self.assertIn("A unit whose head changes a lever, a policy, credential handling or a deployed executable", step)
         self.assertIn("skips the row for every other head", step)
+        # round 3 (verdict finding 9): the daily sweep and the classes cite the operator's sweep rule C, not standing
+        # order 44, which governs executed tests
+        self.assertIn("the operator's sweep rule C of 2026-11-18", step)
+        self.assertNotIn("standing order 44", step)
 
     def test_the_readme_s_pr_merge_row_names_the_four_classes_and_the_module(self):
         rows = [
@@ -384,6 +673,18 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assert_names_the_classes(row, "the README's pr-merge.sh row")
         self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate`", row)
         self.assertNotIn("`gh pr diff <pr> --name-only`", row)
+        self.assert_describes_the_listing_as_data(row, "the README's pr-merge.sh row", "<pr>")
+
+    def test_the_lever_s_comments_describe_the_listing_as_it_is(self):
+        """The lever's header and `require_sweep_scope`'s description name the jq form, the reader's form, the head
+        reread and the count, and no retired form."""
+        text = LEVER.read_text()
+        self.assertIn(f"--jq {FILES_JQ}", text, "the jq form, in the call")
+        self.assertIn("[.status, .filename, (.previous_filename // null)]", text)
+        self.assertIn("`gh pr view <pr> --json headRefOid,changedFiles`", text)
+        self.assertIn("--files-json --changed-files", text)
+        self.assertNotIn(".filename, (.previous_filename // empty)", text, "the line-per-path form is gone")
+        self.assertNotIn("--stdin", text)
 
 
 if __name__ == "__main__":

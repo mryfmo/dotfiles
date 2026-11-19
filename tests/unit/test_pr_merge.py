@@ -43,9 +43,11 @@ RULE = (
     "of the security-audit skill before its pull request merges"
 )
 # The files the fake `gh api repos/{owner}/{repo}/pulls/7/files` lists (U597 round 2: the files API, run through the
-# lever's `--jq` by the fake): a lever path, so the sweep is required (U597).
-LEVER_FILES = [{"filename": "scripts/orchestrator/pr-merge.sh"}]
+# lever's `--jq` by the fake; round 3: status, filename and previous_filename as one array per file, and the head and
+# `changedFiles` read once after the listing): a lever path, so the sweep is required (U597).
+LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
 FILES_MATCH = r"^api repos/\{owner\}/\{repo\}/pulls/7/files --paginate$"
+KEYED_MATCH = r"^pr view 7 --json headRefOid,changedFiles$"
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
 CHECKS_CALL = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -116,6 +118,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             {"match": FILES_MATCH, "json": LEVER_FILES},
+            {"match": KEYED_MATCH, "json": {"headRefOid": head, "changedFiles": len(LEVER_FILES)}},
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -469,6 +472,7 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
             {"match": FILES_MATCH, "json": LEVER_FILES},
+            {"match": KEYED_MATCH, "json": {"headRefOid": SHA_A, "changedFiles": len(LEVER_FILES)}},
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",

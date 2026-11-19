@@ -164,24 +164,31 @@ class WorkerRoot:
 
     A directory scanner opens what it finds; the lever opens the input it was given. So a control FIFO,
     `.probe-control`, lies beside the input (same directory, same mode, created and removed with the worker root)
-    and is watched the same way at every attempt: a non-blocking write-open that does not fail with ENXIO means a
-    reader has it open, and the descriptor is closed at once, which gives that reader EOF. An open of the input with
-    a named holder is a read, as before. An open with no named holder is a read too, recorded as the pre-U625 string
-    with `(control silent)` before it (`<input> (control silent) opened for reading by no process whose descriptors
-    this user can read (N unreadable)`), unless the control also had a reader inside the open's window: from
-    CONTROL_WINDOW_S before the write-open that detected the open to CONTROL_WINDOW_S after the holder scan ended
-    (the writer closes right then, and a scanner that took the input first reaches the control only after that
-    close; one that took the control first blocks on the input until the next attempt). Then both opens are a
-    scanner's: the record names both, with the unreadable count, the attempts and the UTC time, goes to
-    `scanner_opens`, is printed on stderr as `worker root: scanner open: ...` so the job log keeps the case, and
-    fails nothing. consume() settles such an open after its last attempt, watching the control until the window has
-    closed. The rule is the same on a host without /proc (macOS): nothing names a holder there, so every open is a
-    read (`<input> (control silent) opened for reading reader not identified (no /proc)`) unless the control was
-    opened too. Left out, what the rule cannot tell: a scanner that opens only files whose names it knows (the input
-    alone, never the control) is reported as the lever's read with the control's silence in the record, so the log
-    shows the case; a scanner of this user is named by the scan and reported as a read, as before; and on a host
-    without /proc a read the lever made while a scanner happened to open the control passes, since no holder can be
-    named there (no macOS host has opened a FIFO of the probe so far).
+    and is watched the same way: a non-blocking write-open that does not fail with ENXIO means a reader has it
+    open, and the descriptor is closed at once, which gives that reader EOF. The probe looks at the control at the
+    start of every attempt, between every two passes of the holder scan's loop (each POLL_S while _holders
+    rescans for HOLDER_WAIT_S), and every POLL_S while _settle waits for a window to close, so no part of the window
+    goes unwatched: the scan's loop is part of it because the probe's writer holds the input open through the scan,
+    so a scanner the write-open woke is awake exactly then and reaches the control while the scan runs (round 3
+    polled before and after the scan only, and the verdict of 07efa1d4 showed such an open laid on the lever). An
+    open of the input with a named holder is a read, as before. An open with no named holder is a read too,
+    recorded as the pre-U625 string with `(control silent)` before it (`<input> (control silent) opened for reading
+    by no process whose descriptors this user can read (N unreadable)`), unless the control also had a reader
+    inside the open's window: from CONTROL_WINDOW_S before the write-open that detected the open to
+    CONTROL_WINDOW_S after the holder scan ended (the writer closes right then; a scanner that took the input first
+    reaches the control during the scan or after that close, one that took the control first blocks on the input
+    until the next attempt). Then both opens are a scanner's: the record names both, with the unreadable count,
+    the attempts and the UTC time, goes to `scanner_opens`, is printed on stderr as `worker root: scanner open:
+    ...` so the job log keeps the case, and fails nothing. consume() settles such an open after its last attempt,
+    watching the control until the window has closed. The rule is the same on a host without /proc (macOS):
+    nothing names a holder there, so every open is a read (`<input> (control silent) opened for reading reader not
+    identified (no /proc)`) unless the control was opened too. Left out, what the rule cannot tell: a control open
+    that closes between two of the probe's looks (a non-blocking open-and-close of microseconds) is unseen, as a
+    read open of the input that closes between two polls is; a scanner that opens only files whose names it knows
+    (the input alone, never the control) is reported as the lever's read with the control's silence in the record,
+    so the log shows the case; a scanner of this user is named by the scan and reported as a read, as before; and
+    on a host without /proc a read the lever made while a scanner happened to open the control passes, since no
+    holder can be named there (no macOS host has opened a FIFO of the probe so far).
 
     Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
     the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
@@ -278,7 +285,12 @@ class WorkerRoot:
         let that escape would abort the attempt and lose the read it had already detected; a holder whose fields are
         gone is still named by its pid. A scan that names nobody is repeated every POLL_S for HOLDER_WAIT_S before
         its answer stands, because a reader the write-open just woke has no descriptor until its `open()` returns
-        (the kernel counts it as a reader before that), so the first scan can look before the entry exists."""
+        (the kernel counts it as a reader before that), so the first scan can look before the entry exists. Between
+        two passes the control FIFO is write-probed (_note_control), the same probe _attempt makes before the
+        input's write-open and _settle makes after the scan: the probe's writer holds the input open for the whole
+        scan, so a scanner it woke is awake exactly then and reaches the control inside the scan, and a scan that
+        looked only at the input let that open go unseen (verdict of 07efa1d4, P1: the input open became the
+        consumer's read with `(control silent)`). The scan's passes are so part of the open's window."""
         return self._attribution(writer)[0]
 
     def _attribution(self, writer):
@@ -334,6 +346,7 @@ class WorkerRoot:
             record, named = scan()
             if named or time.monotonic() >= settle:
                 return record, named
+            self._note_control()  # the writer holds the input through the scan: a woken scanner reaches the control now
             time.sleep(self.POLL_S)
 
     def _record_read(self, writer):

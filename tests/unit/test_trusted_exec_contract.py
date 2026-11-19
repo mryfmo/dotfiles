@@ -666,6 +666,128 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
         self.assertEqual("", printed.getvalue())
 
+    def test_a_scanner_that_opens_the_control_during_the_holder_scan_is_a_scanner_open(self):
+        """U625 round 4 (verdict of 07efa1d4, P1 f2 s5): the round-3 probe paused the control poll while the holder
+        scan ran, so a scanner that opened the input and then opened and closed the control without blocking while
+        the scan was running was never seen on the control, and its input open became the consumer's read with
+        `(control silent)`. The scanner here is a thread: it opens the input (its blocking open returns when the
+        probe's write-open arrives, which is when the scan starts), opens the control with O_NONBLOCK at once and
+        holds it across two further listings of the proc root (counted through os.listdir: so it is open while the
+        scan rescans and closed long before the scan settles after HOLDER_WAIT_S), then closes both. Two shapes of
+        "no holder named", each on every host: the scan pointed at a scratch tree whose one descriptor table is
+        unreadable (the runner's case, the holder's table is another user's) with the input held open until the
+        control has been closed; and the real tree with its listing held until the input has closed (the shape of
+        the round-3 tests). Each is a scanner open, printed, and assert_untouched passes; nothing is a read."""
+        import contextlib
+        import io
+        import re
+        import threading
+
+        cases = (("unreadable table, input held", True), ("holder gone before the listing", False))
+        for name, unreadable_table in cases:
+            with self.subTest(name):
+                probe = self.worker_root_probe()
+                listings, input_closed, listdir = [], threading.Event(), os.listdir
+                if unreadable_table:
+                    proc = probe.base / "proc"
+                    probe.PROC_ROOT = str(proc)
+                    blocked = proc / "4343" / "fd"
+                    blocked.mkdir(parents=True)
+                    blocked.chmod(0o000)
+                    self.addCleanup(blocked.chmod, 0o700)
+                    with self.assertRaises(PermissionError):  # root could list it, and the count would be 0 instead
+                        os.listdir(blocked)
+                    record = r"by no process whose descriptors this user can read \(1 unreadable\)"
+                    input_closed.set()  # no listing waits: the input stays open through the scan
+                else:
+                    record = self.unnamed_record()
+
+                def listing(path, *args, root=probe.PROC_ROOT, seen=listings, closed=input_closed, real=listdir, **kw):
+                    if path == root:
+                        seen.append(time.monotonic())
+                        closed.wait(30)
+                    return real(path, *args, **kw)
+
+                def scanner(hold_input=unreadable_table, probe=probe, seen=listings, closed=input_closed):
+                    fd = os.open(probe.input, os.O_RDONLY)  # returns when the probe's write-open arrives
+                    control = os.open(probe.control, os.O_RDONLY | os.O_NONBLOCK)  # returns at once, no writer needed
+                    before = len(seen)
+                    if not hold_input:
+                        os.close(fd)
+                        closed.set()
+                    end = time.monotonic() + 30
+                    while len(seen) < before + 2 and time.monotonic() < end:
+                        time.sleep(0.0005)
+                    passes = len(seen) - before
+                    os.close(control)
+                    if hold_input:
+                        os.close(fd)
+                    return passes
+
+                patched = mock.patch.object(tec.os, "listdir", listing)
+                with patched, contextlib.redirect_stderr(io.StringIO()) as printed:
+                    passes = probe.consume(lambda: in_thread(scanner))
+                self.assertGreaterEqual(passes, 2, "the control was not held across two passes of the scan")
+                probe.assert_untouched()
+                self.assertEqual(([], []), (probe.reads, probe.errors))
+                self.assertGreaterEqual(len(probe.scanner_opens), 1, printed.getvalue())
+                form = re.escape(f"{probe.input} opened for reading ") + record
+                form += re.escape(f", and {probe.control} opened for reading inside its window at ")
+                form += r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(attempt \d+; control at attempt \d+(, \d+)*\)$"
+                for entry in probe.scanner_opens:
+                    self.assertRegex(entry, form)
+                    self.assertIn(f"worker root: scanner open: {entry}\n", printed.getvalue())
+
+    def test_an_error_in_the_control_path_during_consume_is_recorded_and_fails_the_check(self):
+        """U625 round 4 (verdict of 07efa1d4, P2 f1 s3; AGENTS.md's rule that a safety decision carries a
+        failure-injection test): the control FIFO decides scanner versus lever, so a control the probe cannot read
+        mid-consume must not pass silently. The consumer removes the control, or puts a regular file or a link in
+        its place (by os.replace, so no poll sees the control absent), and returns after two further attempts have
+        polled it. Each case is recorded once in `errors` naming the control and the failure, consume() itself raises
+        nothing it swallowed (the consumer's own value comes back), assert_untouched fails on the entry, and nothing
+        is a read or a scanner open."""
+        import contextlib
+        import io
+        import re
+
+        def removed(control):
+            os.unlink(control)
+
+        def regular_file(control):  # os.replace: the control is never absent in between, so one failure is recorded
+            control.with_name("swap").write_text("not a fifo\n")
+            os.replace(control.with_name("swap"), control)
+
+        def link(control):
+            os.symlink(control.with_name("elsewhere"), control.with_name("swap"))
+            os.replace(control.with_name("swap"), control)
+
+        cases = (
+            ("removed", removed, r"cannot tell whether .* is being read: FileNotFoundError\("),
+            ("a regular file", regular_file, r" was another file \(inode \d+, mode -rw-"),
+            ("a link", link, rf"cannot tell whether .* is being read: OSError\({errno.ELOOP}, "),
+        )
+        for name, inject, failure in cases:
+            with self.subTest(name):
+                probe = self.worker_root_probe()
+
+                def consumer(inject=inject, probe=probe):
+                    inject(probe.control)
+                    seen = probe.attempts
+                    while probe.attempts < seen + 2:
+                        time.sleep(0.001)
+                    return "consumed"
+
+                with contextlib.redirect_stderr(io.StringIO()) as printed:
+                    self.assertEqual("consumed", probe.consume(consumer))
+                self.assertEqual(1, len(probe.errors), probe.errors)
+                self.assertRegex(probe.errors[0], re.escape(str(probe.control)))
+                self.assertRegex(probe.errors[0], failure)
+                with self.assertRaisesRegex(AssertionError, "worker root: ") as failed:
+                    probe.assert_untouched()
+                self.assertIn(probe.errors[0], str(failed.exception))
+                self.assertEqual(([], [], []), (probe.reads, probe.scanner_opens, probe._control_opens))
+                self.assertEqual("", printed.getvalue())
+
     def test_the_holder_scan_tolerates_a_pid_that_exits_mid_scan(self):
         # Round 1 finding f1 s4: a pid that exits between its fd listing and its field reads answers ESRCH, which
         # escaped the scan and aborted the attempt, losing the read it had already detected. The three fields fail

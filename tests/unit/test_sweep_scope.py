@@ -2,13 +2,16 @@
 one predicate `sweep_required(paths)` over the four path classes (`credential`, `policy`, `lever`,
 `deployed-executable`, one frozen tuple of prefixes each, in that precedence), a mixed head's class, a docs-only head
 that requires nothing, and the CLI forms pr-merge.sh and the coordinator run under `python3 -I -S`: `<base> <head>`
-(the paths `git diff --name-only --no-renames <base>...<head>` lists) and `--stdin` (the paths one per line, as `gh pr
-diff <pr> --name-only` prints them), each printing `required <class>` or `not-required`, and exit 2 with one stderr
-line on a failed git read, an empty listing, a path git would not list, or usage (standing order 21: never
-`not-required` by failure)."""
+(the paths `git diff --name-only --no-renames <base>...<head>` lists) and `--stdin` (the paths one per line, as the
+lever's read of the pull request files API prints them, `gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate
+--jq '.[] | .filename, (.previous_filename // empty)'`), each printing `required <class>` or `not-required`, and exit
+2 with one stderr line on a failed git read, an empty listing, a path git would not list, a C-quoted name (round 2),
+or usage (standing order 21: never `not-required` by failure). The documents that state the rule (AGENTS.md, the
+hcom-orchestration skill, the orchestrator README) are read against CLASSES, the one definition (round 2)."""
 
 import importlib.util
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -21,6 +24,11 @@ from scratch_git import git_init, quiet_git_env  # noqa: E402
 ROOT = Path(__file__).resolve().parents[2]
 READER = ROOT / "scripts/orchestrator/sweep-scope.py"
 LEVER = ROOT / "scripts/orchestrator/pr-merge.sh"
+AGENTS = ROOT / "AGENTS.md"
+SKILL = ROOT / "home/dot_agents/skills/hcom-orchestration/SKILL.md"
+README = ROOT / "scripts/orchestrator/README.md"
+# The four classes as the documents name them, in the rule's words.
+CLASS_WORDS = ("lever", "policy", "credential handling", "deployed executable")
 # One path per class as the AGENTS.md sweep bullet names them.
 CREDENTIAL = "home/dot_local/bin/common/executable_hcom-seat"
 POLICY = "home/dot_agents/omp/policies/worker.yml"
@@ -125,13 +133,41 @@ class SweepScopePredicateTest(unittest.TestCase):
         self.assertIsNone(self.reader.sweep_required(outside))
         self.assertEqual(self.reader.answer(outside), "not-required")
 
+    def test_a_quoted_or_backslashed_path_is_unreadable_never_a_class(self):
+        """U597 round 2 (verdict finding 3): git prints a path with a tab or a non-ASCII byte C-quoted, with the
+        quotes, and such a text matched no prefix, so a quoted lever path skipped the sweep. check_path refuses a path
+        that starts with `"` or holds a backslash; the plain paths beside it stay readable."""
+        for path in (
+            '"scripts/orchestrator/a\\tb.sh"',
+            '"docs/\\303\\244.md"',
+            "scripts/orchestrator/a\\b.sh",
+            "docs/a\\b.md",
+            '"',
+            '"docs/a.md"',
+        ):
+            with self.subTest(path):
+                with self.assertRaises(self.reader.Unreadable) as caught:
+                    self.reader.check_path(path)
+                self.assertIn("is C-quoted or holds a backslash", str(caught.exception))
+                with self.assertRaises(self.reader.Unreadable):
+                    self.reader.paths_from_listing(f"docs/plan.md\n{path}\n", "\n")
+        self.assertEqual(self.reader.check_path("scripts/orchestrator/a b.sh"), "scripts/orchestrator/a b.sh")
+        self.assertEqual(self.reader.check_path("docs/ä.md"), "docs/ä.md")
+
     def test_the_lever_reads_this_module_from_the_checkout_on_stdin(self):
-        """pr-merge.sh names the module by its checkout path and runs its `--stdin` form over `gh pr diff
-        --name-only`, and prints the one skip line (U597)."""
+        """pr-merge.sh names the module by its checkout path and runs its `--stdin` form over the pull request files
+        API (round 2: both paths of a rename, no C quoting), and prints the one skip line (U597)."""
         text = LEVER.read_text()
         self.assertIn("scope_reader=${toplevel}/scripts/orchestrator/sweep-scope.py", text)
         self.assertIn('"${scope_reader}" --stdin <<< "${paths}"', text)
-        self.assertIn('gh_bounded pr diff "${pr}" --name-only', text)
+        self.assertIn(
+            'gh_bounded api "repos/{owner}/{repo}/pulls/${pr}/files" --paginate'
+            " --jq '.[] | .filename, (.previous_filename // empty)'",
+            text,
+        )
+        self.assertNotIn(
+            "gh_bounded pr diff", text, "the name listing of gh pr diff printed a rename's destination alone"
+        )
         self.assertIn("sweep: not required (no lever, policy, credential or deployed-executable path changed)", text)
         self.assertEqual(text.count("require_sweep_scope\n"), 1, "called once")
         self.assertIn("[[ -z ${sweep_class} ]] || require_sweep_row\n", text)
@@ -246,7 +282,7 @@ class SweepScopeCliTest(unittest.TestCase):
         self.assert_refused(self.run_reader("-x", self.docs_head), "usage: sweep-scope.py")
 
     def test_the_stdin_form_answers_from_the_listing(self):
-        """The paths one per line, as `gh pr diff <pr> --name-only` prints them, with or without the last newline."""
+        """The paths one per line, as the lever's files API read prints them, with or without the last newline."""
         self.assert_answer(self.run_reader("--stdin", stdin=b"docs/plan.md\nREADME.md\n"), "not-required")
         self.assert_answer(self.run_reader("--stdin", stdin=b"docs/plan.md\nREADME.md"), "not-required")
         self.assert_answer(self.run_reader("--stdin", stdin=f"{DOCS[0]}\n{POLICY}\n".encode()), "required policy")
@@ -257,8 +293,9 @@ class SweepScopeCliTest(unittest.TestCase):
         self.assert_answer(self.run_reader("--stdin", stdin=b"home/dot_agents/agent-config.yaml\n"), "required policy")
 
     def test_a_listing_that_is_no_listing_of_changed_paths_is_exit_2(self):
-        """An empty listing, an empty line, a control character, an absolute path, a `.`, `..` or empty component
-        and bytes that are not UTF-8 are each refused naming the shape, never read as `not-required`."""
+        """An empty listing, an empty line, a control character, an absolute path, a `.`, `..` or empty component,
+        a C-quoted name or a backslash (round 2) and bytes that are not UTF-8 are each refused naming the shape,
+        never read as `not-required`."""
         for name, listing, message in (
             ("empty", b"", "names no changed path"),
             ("a newline alone", b"\n", "holds an empty line"),
@@ -271,6 +308,13 @@ class SweepScopeCliTest(unittest.TestCase):
             ("an empty component", b"docs//a.md\n", "holds a '.', '..' or empty component"),
             ("a trailing slash", b"docs/\n", "holds a '.', '..' or empty component"),
             ("not UTF-8", b"docs/\xff.md\n", "not UTF-8"),
+            ("a C-quoted lever path", b'"scripts/orchestrator/a\\tb.sh"\n', "is C-quoted or holds a backslash"),
+            (
+                "a C-quoted path beside a plain one",
+                b'docs/a.md\n"docs/\\303\\244.md"\n',
+                "is C-quoted or holds a backslash",
+            ),
+            ("a backslash", b"scripts/orchestrator/a\\b.sh\n", "is C-quoted or holds a backslash"),
         ):
             with self.subTest(name):
                 self.assert_refused(self.run_reader("--stdin", stdin=listing), message)
@@ -279,6 +323,67 @@ class SweepScopeCliTest(unittest.TestCase):
         for args in ((), (self.base,), (self.base, self.docs_head, "x"), ("--stdin", "x"), ("--other",)):
             with self.subTest(args=args):
                 self.assert_refused(self.run_reader(*args, stdin=b"docs/a.md\n"), "usage: sweep-scope.py")
+
+
+class SweepRuleDocumentsTest(unittest.TestCase):
+    """U597 round 2 (verdict finding 5): the module is the one definition of the classes, and the documents that state
+    the rule follow it: AGENTS.md's Audit sweep rule line names every prefix of CLASSES and the four classes, the
+    hcom-orchestration skill's step 4 and the orchestrator README's pr-merge.sh row name the four classes and the
+    module. The regime template `home/dot_agents/regime/AGENTS-audit-section.md` is AGENTS.md's section byte for byte
+    (tests.unit.test_regime_init), so it is not read here."""
+
+    def setUp(self):
+        self.reader = load_reader()
+
+    def rule_line(self):
+        """The one line of AGENTS.md's `## Audit` section that states the sweep rule."""
+        text = AGENTS.read_text()
+        start = text.index("\n## Audit\n") + 1
+        end = text.find("\n## ", start)
+        lines = [
+            line for line in text[start:end].splitlines() if line.startswith("- A unit whose head changes a lever")
+        ]
+        self.assertEqual(len(lines), 1, "one sweep rule line in the Audit section")
+        return lines[0]
+
+    def assert_names_the_classes(self, text, where):
+        for word in CLASS_WORDS:
+            self.assertIn(word, text, f"{where} names the class {word!r}")
+        self.assertIn("`scripts/orchestrator/sweep-scope.py`", text, f"{where} names the one definition")
+        self.assertNotIn(
+            "Every unit and every program milestone", text, f"{where} no longer states the every-unit rule"
+        )
+
+    def test_the_agents_md_rule_line_names_every_prefix_and_the_four_classes(self):
+        line = self.rule_line()
+        self.assert_names_the_classes(line, "AGENTS.md's sweep rule")
+        for name, prefixes in self.reader.CLASSES:
+            for prefix in prefixes:
+                with self.subTest(prefix):
+                    self.assertIn(f"`{prefix}`", line, f"the {name} prefix {prefix} is in the AGENTS.md rule line")
+        # the daily sweep of main and the files API read are the rule's, too
+        self.assertIn("one full sweep per UTC day", line)
+        self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<n>/files' --paginate`", line)
+        self.assertNotIn("gh pr diff", line)
+
+    def test_the_skill_s_step_four_names_the_four_classes_and_the_module(self):
+        text = SKILL.read_text()
+        match = re.search(r"^4\. .*$", text, re.MULTILINE)
+        self.assertIsNotNone(match, "step 4 of the loop")
+        step = match.group(0)
+        self.assert_names_the_classes(step, "the skill's step 4")
+        self.assertIn("A unit whose head changes a lever, a policy, credential handling or a deployed executable", step)
+        self.assertIn("skips the row for every other head", step)
+
+    def test_the_readme_s_pr_merge_row_names_the_four_classes_and_the_module(self):
+        rows = [
+            line for line in README.read_text().splitlines() if line.startswith("| `~/.local/bin/common/pr-merge.sh *`")
+        ]
+        self.assertEqual(len(rows), 1, "one pr-merge.sh row in the lever table")
+        row = rows[0]
+        self.assert_names_the_classes(row, "the README's pr-merge.sh row")
+        self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate`", row)
+        self.assertNotIn("`gh pr diff <pr> --name-only`", row)
 
 
 if __name__ == "__main__":

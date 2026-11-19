@@ -42,8 +42,10 @@ RULE = (
     "a head whose changed paths touch a lever, a policy, credential handling or a deployed executable gets one sweep "
     "of the security-audit skill before its pull request merges"
 )
-# The changed paths the fake `gh pr diff 7 --name-only` lists: a lever path, so the sweep is required (U597).
-LEVER_PATHS = "scripts/orchestrator/pr-merge.sh\n"
+# The files the fake `gh api repos/{owner}/{repo}/pulls/7/files` lists (U597 round 2: the files API, run through the
+# lever's `--jq` by the fake): a lever path, so the sweep is required (U597).
+LEVER_FILES = [{"filename": "scripts/orchestrator/pr-merge.sh"}]
+FILES_MATCH = r"^api repos/\{owner\}/\{repo\}/pulls/7/files --paginate$"
 RECEIPT = f"merged pr=7 head={SHA_A} commit={SHA_B} verdict={{ts}}\n"
 MERGE_CALL = ["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]
 CHECKS_CALL = ["pr", "checks", "7", "--json", "bucket,name"]
@@ -113,7 +115,7 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": r"^pr diff 7 --name-only$", "stdout": LEVER_PATHS},
+            {"match": FILES_MATCH, "json": LEVER_FILES},
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",
@@ -466,7 +468,7 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
-            {"match": r"^pr diff 7 --name-only$", "stdout": LEVER_PATHS},
+            {"match": FILES_MATCH, "json": LEVER_FILES},
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
                 "match": r"^pr view 7 --json headRefOid,baseRefName$",

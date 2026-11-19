@@ -10,10 +10,12 @@ executable; every other head merges on its Codex audit and CI alone; and main's 
 standing control, which `pr-merge.sh` never reads.
 
 `sweep_required(paths)` is the predicate, defined here alone and read by `pr-merge.sh` (as `python3 -I -S
-scripts/orchestrator/sweep-scope.py --stdin` over the changed paths `gh pr diff <pr> --name-only` lists, the lever
-reading no local git object) and by `tests/unit/test_sweep_scope.py`. The classes are one frozen tuple of path
-prefixes each (CLASSES, in order of precedence): `credential` (the seat launcher, the broker, the token placer and the
-login preflight, in `scripts/orchestrator/` and as their deployed twins, and `home/.chezmoiscripts/`), `policy`
+scripts/orchestrator/sweep-scope.py --stdin` over the changed paths the GitHub pull request files API lists, `gh api
+'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | .filename, (.previous_filename // empty)'`, one path
+per line and both paths of a rename, the lever reading no local git object) and by `tests/unit/test_sweep_scope.py`.
+The classes are one frozen tuple of path prefixes each (CLASSES, in order of precedence): `credential` (the seat
+launcher, the broker, the token placer and the login preflight, in `scripts/orchestrator/` and as their deployed
+twins, and `home/.chezmoiscripts/`), `policy`
 (`home/dot_agents/omp/policies/` and `home/dot_agents/agent-config.yaml`, whose `command_policy` block counts as the
 whole manifest file), `lever` (`scripts/orchestrator/`, `home/dot_local/bin/common/`) and `deployed-executable`
 (`home/dot_local/bin/`, `home/dot_dsh/plugins/`, `install/`). A prefix ending in `/` matches every path below it; any
@@ -23,11 +25,13 @@ falls in; a path matching no class requires nothing, and a head of such paths al
 CLI: `sweep-scope.py <base> <head>` lists the head's changed paths as `git diff --name-only --no-renames
 <base>...<head>` (the paths changed since the merge base, renames shown as both paths, run in the current directory's
 repository with replace refs off) and prints `required <class>` or `not-required`, exit 0; `sweep-scope.py --stdin`
-reads the changed paths one per line from stdin, as `gh pr diff <pr> --name-only` prints them, and answers the same.
+reads the changed paths one per line from stdin, as the lever's files API read prints them, and answers the same.
 Exit 2 with one stderr line (`sweep-scope: ...`) on usage, a git that fails or cannot run, a listing that names no
 path, an empty line, a path that is absolute or holds a control character or a `.`, `..` or empty component (not a
-path git lists), or stdin that is not UTF-8: a failed or unreadable listing is never `not-required` (standing order
-21), and the lever refuses on exit 2 and fails on any other status.
+path git lists), a path that starts with `"` or holds a backslash (a C-quoted name, as git prints a path with a tab
+or a non-ASCII byte under `core.quotePath`, is not the path itself; the files API never quotes, so this guard is the
+reader's own, round 2 of U597), or stdin that is not UTF-8: a failed or unreadable listing is never `not-required`
+(standing order 21), and the lever refuses on exit 2 and fails on any other status.
 """
 
 from __future__ import annotations
@@ -115,11 +119,18 @@ def sweep_required(paths) -> str | None:
 
 def check_path(path: str) -> str:
     """`path` as git lists it, or Unreadable: a relative path of non-empty components other than `.` and `..`, with
-    no control character; anything else is not a listing of changed paths."""
+    no control character, not C-quoted and holding no backslash; anything else is not a listing of changed paths."""
     if not path:
         raise Unreadable("the listing holds an empty line; it is not a listing of changed paths")
     if any(ord(char) < 0x20 or ord(char) == 0x7F for char in path):
         raise Unreadable("a listed path holds a control character; it is not a path git lists")
+    quoted = (
+        f"a listed path is C-quoted or holds a backslash: {path}; a quoted listing is not a listing of changed paths"
+    )
+    if path.startswith('"'):  # lint-comparisons: allow the listing's text is judged for its shape, nothing is resolved
+        raise Unreadable(quoted)
+    if "\\" in path:  # lint-comparisons: allow the listing's text is judged for its shape, nothing is resolved
+        raise Unreadable(quoted)
     if path.startswith("/"):  # lint-comparisons: allow the listing's text is judged for its shape, nothing is resolved
         raise Unreadable(f"a listed path is absolute: {path}; git lists paths relative to the repository")
     if any(part in ("", ".", "..") for part in path.split("/")):
@@ -161,7 +172,8 @@ def changed_paths_from_git(base: str, head: str) -> list[str]:
 
 
 def changed_paths_from_stdin() -> list[str]:
-    """The paths on stdin, one per line, as `gh pr diff <pr> --name-only` prints them."""
+    """The paths on stdin, one per line, as the lever's files API read (`gh api 'repos/{owner}/{repo}/pulls/<pr>/files'
+    --paginate --jq '.[] | .filename, (.previous_filename // empty)'`) prints them."""
     try:
         text = sys.stdin.buffer.read().decode()
     except OSError as error:

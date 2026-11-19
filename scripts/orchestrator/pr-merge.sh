@@ -76,7 +76,9 @@
 #   the body's program (the derived store, or the checkout's own store while no derived one exists). The
 #   lever reads no local git objects or refs; it decides from `gh` reads and the store alone, and git only names the
 #   checkout (`rev-parse --show-toplevel`, `--absolute-git-dir`, `--git-common-dir`); the head's changed paths, which
-#   decide whether the sweep is required (below), are `gh pr diff <pr> --name-only`, a `gh` read like the others. CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
+#   decide whether the sweep is required (below), are the pull request files API, `gh api
+#   'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | .filename, (.previous_filename // empty)'`, a `gh`
+#   read like the others. CI is `gh pr checks <pr> --json bucket,name` between two reads of `headRefOid` that must both equal
 #   the head (and whose second read must still report base `main`: `--match-head-commit` pins only the head): at least
 #   one check, every bucket `pass` or `skipping`, every name of REQUIRED_CHECKS listed with bucket `pass`, and `gh`
 #   exiting 0; a pending, failed or cancelled check is a refusal naming it, and a required check that is not listed, or
@@ -103,8 +105,13 @@
 #   rule as the operator set it on 2026-11-18, sweep rule C: a lever, a policy, credential handling or a deployed
 #   executable; every other head merges on its Codex audit and CI alone, and main's head gets one full sweep per
 #   day, which this lever never reads; U147 read the unit's brief for the trust-boundary mark, and with one class
-#   that reading is gone). After `require_dispositions` the lever lists the head's changed paths with `gh pr diff
-#   <pr> --name-only` (a failed listing is a failure, an empty one a refusal: a pull request that changes nothing is
+#   that reading is gone). After `require_dispositions` the lever lists the pull request's files through the GitHub
+#   files API, `gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] | .filename, (.previous_filename
+#   // empty)'` (U597 round 2: `gh pr diff <pr> --name-only` printed a rename's destination alone, so a lever file
+#   renamed out of `scripts/orchestrator/` answered `not-required`, and kept git's C quoting of a name with a tab;
+#   the API lists both paths of a rename and JSON decoding leaves no quoting; gh fills `{owner}` and `{repo}` from
+#   the checkout's remote, `--paginate` walks every page, and the jq form prints one path per line; a failed listing
+#   is a failure, an empty one a refusal: a pull request that changes nothing is
 #   nothing to merge, and a listing cut short is never "not required", standing order 21) and asks the checkout's
 #   `scripts/orchestrator/sweep-scope.py --stdin`, the one definition of the classes (one frozen tuple of path
 #   prefixes per class), run as `python3 -I -S` with the listing on stdin and its status read: exit 2 is a refusal
@@ -663,8 +670,11 @@ require_dispositions() {
 }
 
 # @description Decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C of
-#   2026-11-18): the head's changed paths, `gh pr diff <pr> --name-only` (a `gh` read bounded like the others; this
-#   lever reads no local git object, so no planted replace ref or graft can narrow the listing), go on stdin to the
+#   2026-11-18): the pull request's files, `gh api 'repos/{owner}/{repo}/pulls/<pr>/files' --paginate --jq '.[] |
+#   .filename, (.previous_filename // empty)'` (a `gh` read bounded like the others; this lever reads no local git
+#   object, so no planted replace ref or graft can narrow the listing; round 2: the files API, not `gh pr diff
+#   --name-only`, which printed a rename's destination alone and kept git's C quoting, so both paths of a rename are
+#   listed and no name is quoted), go on stdin to the
 #   checkout's `sweep-scope.py --stdin`, the one definition of the classes, run as `python3 -I -S` as the ledger
 #   reader is, with its status read as ledger_verdict reads it: 2 a refusal carrying its line, any other non-zero a
 #   failure. A listing that fails is a failure and one that names no path a refusal (standing order 21: a pull request
@@ -676,9 +686,10 @@ require_dispositions() {
 # @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), or empty when none does.
 require_sweep_scope() {
     local status=0 paths answer class
-    paths=$(gh_bounded pr diff "${pr}" --name-only) || fail "cannot list the changed paths of pull request ${pr} (gh pr diff --name-only); the sweep scope is decided from them"
+    paths=$(gh_bounded api "repos/{owner}/{repo}/pulls/${pr}/files" --paginate --jq '.[] | .filename, (.previous_filename // empty)') ||
+        fail "cannot list the changed paths of pull request ${pr} (gh api repos/{owner}/{repo}/pulls/${pr}/files); the sweep scope is decided from them"
     [[ -n ${paths} ]] ||
-        refuse "gh pr diff ${pr} --name-only listed no changed path; a pull request that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
+        refuse "the files API (gh api repos/{owner}/{repo}/pulls/${pr}/files) listed no changed path of pull request ${pr}; a pull request that changes nothing is nothing to merge, and a listing cut short is never 'not required' (standing order 21)"
     answer=$("${python}" -I -S "${scope_reader}" --stdin <<< "${paths}" 2>&1) || status=$?
     case ${status} in
     0) ;;

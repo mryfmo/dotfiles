@@ -1,4 +1,5 @@
-"""The CI critical path (U39): the sharded unit-test runner and the render-only subtrees the bootstrap may skip."""
+"""The CI critical path (U39): the sharded unit-test runner, its matrix rows and aggregators (regime-cutover U622), and
+the render-only subtrees the bootstrap may skip."""
 
 from __future__ import annotations
 
@@ -17,6 +18,18 @@ ROOT = Path(__file__).resolve().parents[2]
 SHARDS = ROOT / "scripts/ci/unittest-shards.py"
 REMOTE = ROOT / ".github/workflows/remote.yaml"
 TEST = ROOT / ".github/workflows/test.yaml"
+# The three required status contexts of the main ruleset (read 2026-11-19 through the rulesets API; the constant
+# scripts/orchestrator/pr-merge.sh REQUIRED_CHECKS holds the same names), kept by the aggregator jobs of test.yaml
+# since U622 split each pair into shard rows.
+REQUIRED_TEST_CHECKS = ("test (macos-15, client)", "test (ubuntu-24.04, client)", "test (ubuntu-24.04, server)")
+# The matrix rows U622 gives each os: a quarter of the plan per macOS row (5 concurrent macOS jobs on the Free plan),
+# a half per Ubuntu row, the ubuntu-26.04 canary included.
+SHARD_ROWS = {
+    ("macos-15", "client"): ("1/4", "2/4", "3/4", "4/4"),
+    ("ubuntu-24.04", "client"): ("1/2", "2/2"),
+    ("ubuntu-24.04", "server"): ("1/2", "2/2"),
+    ("ubuntu-26.04", "client"): ("1/2", "2/2"),
+}
 # The render-only subtrees of home/ and the targets chezmoi gives them; the bootstrap must neither execute nor read
 # any of these targets, or a change there needs the full bootstrap again.
 RENDER_ONLY = {
@@ -44,6 +57,7 @@ BOOTSTRAP_READERS = (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+from workflow_lock import load_yaml
 
 
 def setUpModule() -> None:
@@ -102,6 +116,28 @@ def suite(temp: str, modules: dict[str, str]) -> Path:
     for name, body in modules.items():
         (start / name).write_text("import unittest\n\n" + textwrap.dedent(body))
     return start
+
+
+def dry_run_plan(output: str) -> list[tuple[str, int]]:
+    """The `--dry-run` listing as (shard name, test count) in its order; nothing else of the output is a plan line."""
+    return [(m.group(1), int(m.group(2))) for m in re.finditer(r"^  (\S.*): (\d+) tests$", output, re.MULTILINE)]
+
+
+def matrix_rows(matrix: dict) -> list[dict[str, str]]:
+    """The rows GitHub builds from a `strategy.matrix`: the product of its lists, less every combination an `exclude`
+    entry matches on all of its keys, plus each `include` entry that matches no combination as a row of its own
+    (docs.github.com, "Running variations of jobs in a workflow"; the includes here add rows, none extends one)."""
+    keys = [key for key in matrix if key not in ("include", "exclude")]
+    rows: list[dict[str, str]] = [{}]
+    for key in keys:
+        rows = [{**row, key: str(value)} for row in rows for value in matrix[key]]
+    for excluded in matrix.get("exclude", []):
+        rows = [row for row in rows if any(row.get(k) != str(v) for k, v in excluded.items())]
+    for included in matrix.get("include", []):
+        extra = {k: str(v) for k, v in included.items()}
+        if not any(all(row.get(k) == v for k, v in extra.items() if k in row) for row in rows):
+            rows.append(extra)
+    return rows
 
 
 PASSING = """
@@ -283,12 +319,115 @@ class UnittestShardsTest(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertIn("found no test modules", result.stderr)
 
+    def test_a_shard_part_runs_its_share_of_the_plan_biggest_first(self) -> None:
+        # The plan is the biggest-first order; part K of N is every N-th shard from the K-th, so with two modules of
+        # three and one tests, part 1/2 is the big one and 2/2 the small one, each a complete run with its own summary.
+        with tempfile.TemporaryDirectory() as temp:
+            start = suite(
+                temp,
+                {
+                    "test_a.py": PASSING,
+                    "test_b.py": "class B(unittest.TestCase):\n    def test_b(self):\n        pass\n",
+                },
+            )
+            first = shards(start, "--jobs", "2", "--shard", "1/2")
+            self.assertEqual(first.returncode, 0, first.stdout + first.stderr)
+            self.assertIn("3 tests in 1 modules, 1 shards under", first.stdout)
+            self.assertIn(", shard 1/2 of 2, 2 at a time", first.stdout)
+            self.assertIn("===== test_a.py: 3 tests", first.stdout)
+            self.assertNotIn("test_b.py", first.stdout)
+            self.assertRegex(
+                first.stdout, r"\nRan 3 tests in [0-9.]+s \(1 modules, 1 shards, 2 jobs\)\nOK \(skipped=1\)\n\Z"
+            )
+            second = shards(start, "--jobs", "2", "--shard", "2/2")
+            self.assertEqual(second.returncode, 0, second.stdout + second.stderr)
+            self.assertIn("1 tests in 1 modules, 1 shards under", second.stdout)
+            self.assertIn("===== test_b.py: 1 tests", second.stdout)
+            self.assertNotIn("test_a.py", second.stdout)
+            # A failing shard fails its part as it fails the whole run.
+            failing = "class F(unittest.TestCase):\n    def test_f(self):\n        self.assertEqual(1, 2)\n"
+            (start / "test_f.py").write_text("import unittest\n\n" + failing)
+            # test_f (1 test) and test_b (1 test) tie on size and sort by name: part 2/2 is test_b, 3/3 is test_f.
+            self.assertEqual(shards(start, "--shard", "2/2").returncode, 0)
+            third = shards(start, "--shard", "3/3")
+            self.assertEqual(third.returncode, 1)
+            self.assertIn("FAILED shard test_f.py: exit 1, FAILED", third.stdout)
+
+    def test_a_shard_outside_its_count_is_a_usage_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            start = suite(temp, {"test_a.py": PASSING})
+            for part, message in (
+                ("0/4", "'0/4': K must be in 1..N"),
+                ("5/4", "'5/4': K must be in 1..N"),
+                ("4", "'4' is not K/N"),
+                ("a/b", "'a/b' is not K/N"),
+                ("1/0", "'1/0': K must be in 1..N"),
+            ):
+                with self.subTest(part=part):
+                    result = shards(start, "--shard", part, "--dry-run")
+                    self.assertEqual(result.returncode, 2, result.stderr)
+                    self.assertIn(f"argument --shard: {message}", result.stderr)
+                    self.assertEqual("", result.stdout)
+            # More parts than shards: the empty part is a failure, never a silent pass.
+            result = shards(start, "--shard", "2/2")
+            self.assertEqual(result.returncode, 1)
+            self.assertIn("shard 2/2 of 1 is empty", result.stderr)
+
+    def test_dry_run_prints_the_plan_and_runs_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            failing = "class F(unittest.TestCase):\n    def test_f(self):\n        self.assertEqual(1, 2)\n"
+            big = "class S(unittest.TestCase):\n" + "".join(
+                f"    def test_{i}(self):\n        pass\n" for i in range(4)
+            )
+            start = suite(temp, {"test_a.py": PASSING, "test_f.py": failing, "test_big.py": big})
+            result = shards(start, "--split", "3", "--dry-run")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("8 tests in 3 modules, 4 shards under", result.stdout)
+            self.assertEqual(
+                [("test_a.py", 3), ("test_big.py[1/2]", 2), ("test_big.py[2/2]", 2), ("test_f.py", 1)],
+                dry_run_plan(result.stdout),
+            )
+            self.assertNotIn("=====", result.stdout)
+            self.assertNotIn("Ran ", result.stdout)
+            # The parts of the plan together list every shard once, each part in the plan's order.
+            whole = dry_run_plan(result.stdout)
+            parts = [
+                dry_run_plan(shards(start, "--split", "3", "--dry-run", "--shard", f"{k}/3").stdout) for k in (1, 2, 3)
+            ]
+            self.assertEqual([whole[0::3], whole[1::3], whole[2::3]], parts)
+            self.assertEqual(sorted(whole), sorted(shard for part in parts for shard in part))
+
+    def test_the_quarters_and_halves_of_the_real_plan_list_every_shard_once(self) -> None:
+        # The plan CI's rows run (--start tests/unit from the repository root, as make unit-test runs it): the N parts of
+        # each os's count together are the whole plan, every shard once, and no part is empty.
+        whole = shards(Path("tests/unit"), "--dry-run", cwd=ROOT)
+        self.assertEqual(whole.returncode, 0, whole.stdout + whole.stderr)
+        plan = dry_run_plan(whole.stdout)
+        self.assertGreater(len(plan), 100, whole.stdout)
+        self.assertEqual(len(plan), len(set(plan)))
+        self.assertIn(f"{len(plan)} shards under tests/unit, ", whole.stdout)
+        for count in sorted({len(parts) for parts in SHARD_ROWS.values()}):
+            with self.subTest(parts=count):
+                listed: list[tuple[str, int]] = []
+                for k in range(1, count + 1):
+                    part = shards(Path("tests/unit"), "--dry-run", "--shard", f"{k}/{count}", cwd=ROOT)
+                    self.assertEqual(part.returncode, 0, part.stdout + part.stderr)
+                    self.assertIn(f", shard {k}/{count} of {len(plan)}, ", part.stdout)
+                    quarter = dry_run_plan(part.stdout)
+                    self.assertEqual(plan[k - 1 :: count], quarter)
+                    self.assertTrue(quarter)
+                    listed += quarter
+                self.assertEqual(sorted(plan), sorted(listed))
+                self.assertEqual(len(plan), len(listed))
+
 
 class MakeUnitTestTest(unittest.TestCase):
     def make(self, *args: str) -> str:
         # A make that runs this suite passes MAKELEVEL and MAKEFLAGS down; GNU make then prints "Entering directory".
         env = {
-            key: value for key, value in os.environ.items() if key not in {"UNIT_TEST_JOBS", "MAKEFLAGS", "MAKELEVEL"}
+            key: value
+            for key, value in os.environ.items()
+            if key not in {"UNIT_TEST_JOBS", "UNIT_TEST_SHARD", "MAKEFLAGS", "MAKELEVEL"}
         }
         return subprocess.run(
             ["make", "--no-print-directory", "-n", "unit-test", *args],
@@ -317,6 +456,114 @@ class MakeUnitTestTest(unittest.TestCase):
             with self.subTest(weakening=weakening):
                 self.assertNotIn(weakening, step)
         self.assertNotIn("U39 measurement", TEST.read_text())
+
+    def test_unit_test_shard_narrows_the_run_to_one_part(self) -> None:
+        # The step's env sets UNIT_TEST_SHARD to the row's K/N; make passes it to the runner and nothing else changes.
+        warm, run = self.make("UNIT_TEST_SHARD=2/4").splitlines()
+        self.assertRegex(warm, r"^uv run (--offline )?--with pyyaml python -c 'import yaml'$")
+        self.assertEqual(run, "uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs 0 --shard 2/4")
+        self.assertTrue(self.make("UNIT_TEST_JOBS=6", "UNIT_TEST_SHARD=1/2").endswith("--jobs 6 --shard 1/2\n"))
+        self.assertEqual(self.make("UNIT_TEST_JOBS=1", "UNIT_TEST_SHARD=1/2"), self.make("UNIT_TEST_JOBS=1"))
+
+
+class ShardMatrixTest(unittest.TestCase):
+    """Regime-cutover U622: the test job runs as matrix shard rows and three aggregators keep the ruleset's names."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.document = load_yaml(TEST)
+        cls.jobs = cls.document["jobs"]
+
+    def test_the_matrix_gives_macos_four_parts_and_ubuntu_two(self) -> None:
+        job = self.jobs["test"]
+        self.assertEqual("test-shard (${{ matrix.os }}, ${{ matrix.system }}, ${{ matrix.shard }})", job["name"])
+        self.assertFalse(job["strategy"]["fail-fast"])
+        rows = matrix_rows(job["strategy"]["matrix"])
+        expected = [
+            {"os": os_, "system": system, "shard": shard}
+            for (os_, system), parts in SHARD_ROWS.items()
+            for shard in parts
+        ]
+        by_row = lambda row: (row["os"], row["system"], row["shard"])
+        self.assertEqual(sorted(expected, key=by_row), sorted(rows, key=by_row))
+        self.assertEqual(10, len(rows))
+
+    def test_the_row_runs_its_part_through_the_steps_env(self) -> None:
+        steps = {step.get("name"): step for step in self.jobs["test"]["steps"]}
+        step = steps["Run Python unit tests"]
+        self.assertEqual({"UNIT_TEST_SHARD": "${{ matrix.shard }}"}, step["env"])
+        self.assertEqual(25, step["timeout-minutes"])
+        self.assertIn('UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test\n', step["run"])
+        # No other step and no job-level env names the shard: tests/unit/test_apt_mirror.py pins the names in scope of
+        # the apt steps, and the Bats suite, the lints and the smoke tests run whole in every row.
+        self.assertNotIn("UNIT_TEST_SHARD", self.jobs["test"].get("env", {}))
+        for name, other in steps.items():
+            if name != "Run Python unit tests":
+                with self.subTest(step=name):
+                    self.assertNotIn("UNIT_TEST_SHARD", str(other.get("env", {})) + str(other.get("run", "")))
+        # The Bats coverage is the same in every row of a pair: the first row alone uploads it.
+        upload = steps["Upload coverage to Codecov"]
+        self.assertIn("startsWith(matrix.shard, '1/')", upload["if"])
+        self.assertIn("matrix.os == 'ubuntu-24.04'", upload["if"])
+
+    def test_the_required_check_names_are_aggregators_over_the_shard_rows(self) -> None:
+        # The ruleset requires the three names (only the admin changes it); each is a job that needs the shard job,
+        # runs however the rows ended and fails unless the matrix succeeded, so green means every shard passed.
+        by_name = {job.get("name"): (job_id, job) for job_id, job in self.jobs.items()}
+        self.assertEqual(set(REQUIRED_TEST_CHECKS), set(by_name) - {self.jobs["test"]["name"]})
+        for required in REQUIRED_TEST_CHECKS:
+            with self.subTest(check=required):
+                _, job = by_name[required]
+                self.assertNotIn("strategy", job)  # one check per name, never a matrix
+                self.assertEqual("test", job["needs"])
+                self.assertEqual("${{ always() }}", job["if"])
+                self.assertEqual({"SHARDS_RESULT": "${{ needs.test.result }}"}, job["env"])
+                self.assertIn("timeout-minutes", job)
+                (step,) = job["steps"]
+                self.assertIn('if [ "${SHARDS_RESULT}" != success ]; then\n', step["run"])
+                self.assertIn("exit 1\n", step["run"])
+                for weakening in ("continue-on-error", "|| true", "set +e", "success()", "failure()"):
+                    self.assertNotIn(weakening, str(job))
+        # No job id or matrix name collides with a required name: the shard rows report under test-shard (...).
+        self.assertFalse(set(REQUIRED_TEST_CHECKS) & set(self.jobs))
+        self.assertTrue(self.jobs["test"]["name"].startswith("test-shard ("))
+        # pr-merge.sh requires the same names: a renamed check here would be a merge refusal there.
+        lever = (ROOT / "scripts/orchestrator/pr-merge.sh").read_text()
+        for required in REQUIRED_TEST_CHECKS:
+            self.assertIn(f"    '{required}'\n", lever)
+
+    def test_a_dispatched_run_may_put_the_macos_rows_on_another_image(self) -> None:
+        # The measurement of U622: `macos_runner` (default macos-15) is the runs-on of the macos-15 rows alone; the
+        # matrix label, the job names and OS stay macos-15, and a dispatched run tests every row whatever the diff.
+        on = self.document["true"]  # PyYAML (YAML 1.1) reads the key `on` as the boolean true, the JSON carrier "true"
+        inputs = on["workflow_dispatch"]["inputs"]
+        self.assertEqual(["macos_runner"], list(inputs))
+        self.assertEqual("macos-15", inputs["macos_runner"]["default"])
+        self.assertEqual("string", inputs["macos_runner"]["type"])
+        job = self.jobs["test"]
+        self.assertEqual("${{ matrix.os == 'macos-15' && inputs.macos_runner || matrix.os }}", job["runs-on"])
+        self.assertEqual("${{ matrix.os }}", job["env"]["OS"])
+        for other_id, other in self.jobs.items():
+            if other_id != "test":
+                with self.subTest(job=other_id):
+                    self.assertEqual("ubuntu-24.04", other["runs-on"])
+        decide = next(step for step in job["steps"] if step.get("id") == "decide")
+        dispatch = 'if [ "${EVENT_NAME}" = workflow_dispatch ] || [ "${paths}" -eq 0 ]; then\n'
+        self.assertIn(dispatch, decide["run"])
+        after = decide["run"].split(dispatch, 1)[1]
+        self.assertTrue(after.startswith('  echo "should_test=true" >> "${GITHUB_OUTPUT}"\n'), after[:120])
+
+    def test_the_matrix_reader_follows_githubs_exclude_and_include_rules(self) -> None:
+        matrix = {
+            "os": ["a", "b"],
+            "n": [1, 2],
+            "exclude": [{"os": "a", "n": 2}, {"os": "c"}],
+            "include": [{"os": "c", "n": 3}, {"os": "b", "n": 1}],
+        }
+        self.assertEqual(
+            [{"os": "a", "n": "1"}, {"os": "b", "n": "1"}, {"os": "b", "n": "2"}, {"os": "c", "n": "3"}],
+            matrix_rows(matrix),
+        )
 
 
 class TypeScriptTestsStepTest(unittest.TestCase):

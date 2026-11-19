@@ -24,9 +24,21 @@ from unittest import mock
 from tests.unit.test_generate_agent_configs import MANAGED_ALLOW, load_manifest_fixture, render_claude_template
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from agent_home_isolation import isolate_agent_homes, restore_agent_homes  # noqa: E402
 from scratch_git import git_init  # noqa: E402
 
 sys.dont_write_bytecode = True
+
+
+# U597 round 9 (item 8; CI at c37800e3): the round-8 fixture names `scripts/update-agent-assets.sh#...` as an asset's
+# installer and this module starts subprocesses, so tests.unit.test_agent_home_isolation counts it as a harness that
+# resolves agent homes and requires the module to isolate them for its whole run, as every such harness does.
+def setUpModule() -> None:
+    isolate_agent_homes()
+
+
+def tearDownModule() -> None:
+    restore_agent_homes()
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -906,6 +918,117 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
 
         self.module.validate_assets(self.asset_manifest())
+
+    def security_audit_asset(self) -> dict:
+        """The `security-audit-skill` asset as the manifest declares it (U597 round 8: with the two validators' sha256
+        pins `ledger-row.py daily` holds the installed files to; round 9: and the `report-schema.json` the first
+        validator loads, the three files the writer copies and hashes before node runs the copies)."""
+        return {
+            "source": "git-commit",
+            "upstream": "cloudflare/security-audit-skill",
+            "pin": "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8",
+            "verify": "sha256",
+            "sha256": "53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6",
+            "reason": "fixture: the publisher signs nothing",
+            "install_path": "~/.agents/skills/security-audit",
+            "installer": "scripts/update-agent-assets.sh#update_security_audit_skill",
+            "validators_sha256": {
+                "validate-findings.cjs": "e" * 64,
+                "validate-coverage-ledger.cjs": "2" * 64,
+                "report-schema.json": "6" * 64,
+            },
+        }
+
+    def test_the_security_audit_skill_asset_requires_the_three_validators_sha256_pins_as_64_hex_whole(self) -> None:
+        """U597 round 8: `assets.security-audit-skill.validators_sha256` maps exactly `validate-findings.cjs` and
+        `validate-coverage-ledger.cjs` to 64 lowercase hex each, and since round 9 `report-schema.json` too (the file
+        validate-findings.cjs loads from its own directory, copied and hashed with the validators); the complete
+        declaration passes, and a missing block, a missing key, an extra key, a short digest, an upper-case digest, a
+        non-string digest and a digest with a trailing newline (round 9, verdict U597-c37800e3 P3 at :1445: `$`
+        matched before the newline, so a digest the writer's line reader never matches passed) each fail naming the
+        key, a non-string key beside the names fails naming the key instead of raising TypeError from `sorted` over
+        mixed types (round 12, verdict U597-097d1615 P3 at :1443), while another asset without the block passes; the
+        committed manifest declares the three pins whole."""
+        self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
+        manifest = self.asset_manifest()
+        manifest["assets"]["security-audit-skill"] = self.security_audit_asset()
+        self.module.validate_assets(manifest)
+        cases = {
+            "no validators_sha256 block": (lambda a: a.pop("validators_sha256"), "validators_sha256 must map exactly"),
+            "a missing key": (
+                lambda a: a["validators_sha256"].pop("validate-coverage-ledger.cjs"),
+                "validators_sha256 must map exactly",
+            ),
+            "an extra key": (
+                lambda a: a["validators_sha256"].update({"validate-extra.cjs": "a" * 64}),
+                "validators_sha256 must map exactly",
+            ),
+            "the schema's key missing": (
+                lambda a: a["validators_sha256"].pop("report-schema.json"),
+                "validators_sha256 must map exactly",
+            ),
+            "a list, not a mapping": (
+                lambda a: a.update(validators_sha256=["e" * 64, "2" * 64]),
+                "validators_sha256 must map exactly",
+            ),
+            "a short digest": (
+                lambda a: a["validators_sha256"].update({"validate-findings.cjs": "e" * 63}),
+                "validators_sha256.validate-findings.cjs must be 64 lowercase hex",
+            ),
+            "an upper-case digest": (
+                lambda a: a["validators_sha256"].update({"validate-coverage-ledger.cjs": "E" * 64}),
+                "validators_sha256.validate-coverage-ledger.cjs must be 64 lowercase hex",
+            ),
+            "a number": (
+                lambda a: a["validators_sha256"].update({"validate-findings.cjs": 1}),
+                "validators_sha256.validate-findings.cjs must be 64 lowercase hex",
+            ),
+            "a trailing newline": (
+                lambda a: a["validators_sha256"].update({"report-schema.json": "6" * 64 + "\n"}),
+                "validators_sha256.report-schema.json must be 64 lowercase hex",
+            ),
+            "a leading newline": (
+                lambda a: a["validators_sha256"].update({"validate-coverage-ledger.cjs": "\n" + "2" * 64}),
+                "validators_sha256.validate-coverage-ledger.cjs must be 64 lowercase hex",
+            ),
+            # round 12 (verdict U597-097d1615 P3 at :1443): a non-string key beside the string ones (YAML reads a bare
+            # `1:` as an integer) is refused naming the key, where `sorted` over mixed types raised TypeError
+            "an integer key beside the names": (
+                lambda a: a["validators_sha256"].update({1: "a" * 64}),
+                "validators_sha256 holds the key 1, which is not a file name string",
+            ),
+            "a null key": (
+                lambda a: a["validators_sha256"].update({None: "a" * 64}),
+                "validators_sha256 holds the key None, which is not a file name string",
+            ),
+            "a boolean key in place of a name": (
+                lambda a: a["validators_sha256"].update({True: a["validators_sha256"].pop("report-schema.json")}),
+                "validators_sha256 holds the key True, which is not a file name string",
+            ),
+        }
+        for name, (breaks, message) in cases.items():
+            with self.subTest(case=name):
+                manifest = self.asset_manifest()
+                asset = self.security_audit_asset()
+                breaks(asset)
+                manifest["assets"]["security-audit-skill"] = asset
+                stderr = io.StringIO()
+                with contextlib.redirect_stderr(stderr), self.assertRaises(SystemExit):
+                    self.module.validate_assets(manifest)
+                self.assertIn(f"assets.security-audit-skill.{message}", stderr.getvalue())
+        # the committed manifest declares the three pins as the installed files' digests, 64 hex each and nothing more
+        # (re.fullmatch: `$` alone would pass a trailing newline, the round-9 P3)
+        committed = load_manifest_fixture(self.temp_dir)["assets"]["security-audit-skill"]["validators_sha256"]
+        self.assertEqual(
+            sorted(committed), ["report-schema.json", "validate-coverage-ledger.cjs", "validate-findings.cjs"]
+        )
+        for digest in committed.values():
+            self.assertIsNotNone(re.fullmatch(r"[0-9a-f]{64}", digest), digest)
+        self.assertIsNone(self.module.SHA256_HEX.fullmatch("e" * 64 + "\n"), "the validator's own pattern, whole")
+        self.assertEqual(
+            self.module.SECURITY_AUDIT_VALIDATORS,
+            ("validate-findings.cjs", "validate-coverage-ledger.cjs", "report-schema.json"),
+        )
 
     def test_assets_reject_each_incomplete_declaration(self) -> None:
         cases = {

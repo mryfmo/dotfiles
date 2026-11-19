@@ -62,13 +62,27 @@ any unit, is Malformed naming the line and the field); `merge_of(commit)` is the
 from, the `head_sha` of the newest merge row whose receipt names `commit=<commit>`, a merge row being the row
 `ledger-row.py merged` writes (verifier exactly `pr-merge.sh`, `MERGE_VERIFIER`, the word rounds-check.py reads a merge
 row by since U222; evidence starting with the lever's receipt `merged pr=<n> head=<sha> commit=<40 hex>`,
-`MERGE_RECEIPT`), whose verdict cell must be `-`, whose `head_sha` must be 40 hex, whose receipt's `pr=` must be the
-row's pr cell and whose receipt's `head=` must be the row's head cell or its first 8 (round 12, the round-11 P2 at
-:362: an audit verdict with a `pr-merge.sh` verifier and a receipt naming another pull request supplied the tip
-gate's provenance; each inconsistency is Malformed naming the line and the field); a `pr-merge.sh` row of another
-evidence shape (the rows written by hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a
-row) is no merge row to this question, so the installed ledgers that hold them keep reading. `ledger.py <store> sweep-any <head>` prints the sweep row's four columns or
-`none`; `ledger.py <store> merge-of <commit>` prints `<head>` or `none`.
+`MERGE_RECEIPT`), whose verdict cell must be `-`, whose pr cell must be a decimal number (`PULL_REQUEST`; round 13,
+the round-12 P3 at :371: the writer, `ledger-row.py merged`, refuses a non-decimal pr, so a row carrying one was
+written by hand), whose `head_sha` must be 40 hex, whose receipt's `pr=` must be that decimal pr cell and whose
+receipt's `head=` must be the row's head cell or its first 8 (round 12, the round-11 P2 at :362: an audit verdict
+with a `pr-merge.sh` verifier and a receipt naming another pull request supplied the tip gate's provenance; each
+inconsistency is Malformed naming the line and the field); a `pr-merge.sh` row of another evidence shape (the rows
+written by hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this
+question, so the installed ledgers that hold them keep reading. `ledger.py <store> sweep-any <head>` prints the sweep
+row's four columns or `none`; `ledger.py <store> merge-of <commit>` prints `<head>` or `none`.
+
+A third question since round 13 (the round-12 P2 at pr-merge.sh:1201), for the same gate: `carried_from(head)` is the
+earlier head a `carried` row at `head` names, a carried row being one whose verdict starts with the word `carried`
+(`CARRIED_VERDICT`, standing order 38: the row the coordinator writes from `audit-carry.py`'s line when the head's diff
+against its merge base equals the earlier head's) and whose evidence holds that line, `carried <earlier> <head>
+<sha256>` (`CARRIED_EVIDENCE`, the grammar of pr-merge.sh's `carried_evidence_re`: the digest a whole word before the
+end or a space, `;`, `,`, `.` or `)`), the newest such row at the head by `(ts, line)`, or None when none is there.
+The relation means the two heads' diffs are one, so the merge lever, having found main's tip squashed from a head with
+no sweep row of its own, follows it to the earlier head and reads the sweep row there. A carried row at the head whose
+evidence names no such line for that head, or names the head itself as the earlier head, is Malformed naming the line
+and the field (the merge lever refuses the same row at its own gate; standing order 21). `ledger.py <store>
+carried-from <head>` prints `<earlier>` or `none`.
 
 The daily sweep (regime-cutover U597 round 4; the operator's sweep rule C of 2026-11-18): main's head gets one full
 sweep of the `security-audit` skill per UTC day, the standing control a head outside every sweep class rests on, and
@@ -151,6 +165,13 @@ SWEEP_EVIDENCE_SUFFIX = ".json"
 MERGE_VERDICT = "-"
 MERGE_VERIFIER = "pr-merge.sh"
 MERGE_RECEIPT = re.compile(r"^merged pr=(\S+) head=(\S+) commit=([0-9a-f]{40})(?:$|[\s;,.)])")
+# A carried row (regime-cutover U122, standing order 38; U597 round 13 reads it here for the merge lever's tip gate):
+# a verdict starting with the word `carried` (AUDIT_VERDICT's boundary) and an evidence holding the line audit-carry.py
+# printed, `carried <earlier> <head> <sha256>`, as pr-merge.sh's carried_evidence_re reads it: the line starts the
+# column or follows whitespace, and the digest is a whole word before the end, whitespace or one of `;`, `,`, `.` and
+# `)` (U180: a note may follow). The two shas are the earlier head and the row's own head.
+CARRIED_VERDICT = re.compile(r"^carried(?:$|[\s(;,])")
+CARRIED_EVIDENCE = re.compile(r"(?:^|\s)carried ([0-9a-f]{40}) ([0-9a-f]{40}) ([0-9a-f]{64})(?:$|[\s;,.)])")
 SHA = re.compile(r"^[0-9a-f]{40}$")
 UNIT = re.compile(r"^U[0-9]+$")
 PULL_REQUEST = re.compile(r"^[1-9][0-9]{0,9}$")
@@ -360,11 +381,15 @@ class Row:
 
     def merge_fault(self):
         """Why this merge row is not the row `ledger-row.py merged` composes, naming the field, or None: the verdict
-        cell `-`, a 40-hex head_sha, a receipt whose pr word is the row's pr cell and whose head word is that sha or
-        its first 8 (the writer's own refusals; round 12 added the verdict and the pr, the round-11 P2 at :362, where
-        an audit verdict carrying a receipt of another pull request answered `merge_of`)."""
+        cell `-`, a decimal pr cell (round 13, the round-12 P3 at :371: the writer refuses a non-decimal pr, and the
+        reader accepted one when the receipt agreed with it), a 40-hex head_sha, a receipt whose pr word is that pr
+        cell and whose head word is that sha or its first 8 (the writer's own refusals; round 12 added the verdict
+        and the pr, the round-11 P2 at :362, where an audit verdict carrying a receipt of another pull request
+        answered `merge_of`)."""
         if self.verdict != MERGE_VERDICT:
             return f"the verdict of a merge row is not {MERGE_VERDICT!r}: {self.verdict!r}"
+        if not PULL_REQUEST.match(self.pr):
+            return f"the pr of a merge row is not a decimal number: {self.pr!r}"
         if not SHA.match(self.head_sha):
             return f"the head_sha of a merge row is not 40 hex: {self.head_sha!r}"
         match = MERGE_RECEIPT.match(self.evidence)
@@ -375,6 +400,20 @@ class Row:
                 f"the receipt of a merge row names head={match.group(2)}, neither its head_sha {self.head_sha} nor "
                 "its first 8"
             )
+        return None
+
+    @property
+    def carried(self):
+        """True when the verdict starts with the word `carried` (a carried row, standing order 38; U597 round 13)."""
+        return CARRIED_VERDICT.match(self.verdict) is not None
+
+    @property
+    def carried_source(self):
+        """The earlier head a carried row's evidence names for this row's head (`carried <earlier> <head> <sha256>`
+        with `<head>` the row's head_sha), or None when the evidence holds no such line for it (U597 round 13)."""
+        for match in CARRIED_EVIDENCE.finditer(self.evidence):
+            if match.group(2) == self.head_sha:
+                return match.group(1)
         return None
 
 
@@ -461,6 +500,31 @@ class Ledger:
                 found.append(row)
         row = newest(found)
         return None if row is None else row.head_sha
+
+    def carried_from(self, head):
+        """The earlier head the newest `carried` row at `head` names (U597 round 13, the round-12 P2 at
+        pr-merge.sh:1201): a carried row (`Row.carried`) at the head whose evidence holds `carried <earlier> <head>
+        <sha256>` (`Row.carried_source`), the newest by `(ts, line)`, or None when no carried row is at the head; a
+        carried row at the head whose evidence names no such line for it, or names the head itself as the earlier
+        head, is Malformed naming the line and the field (the merge lever refuses the same row at its own gate)."""
+        found = []
+        for row in self.rows:
+            if not row.carried or row.head_sha != head:
+                continue
+            earlier = row.carried_source
+            if earlier is None:
+                raise Malformed(
+                    f"{self.name}:{row.line}: the evidence of a carried row at {head} holds no 'carried <earlier> "
+                    f"{head} <sha256>' line for that head: {row.evidence!r}"
+                )
+            if earlier == head:
+                raise Malformed(
+                    f"{self.name}:{row.line}: the evidence of a carried row at {head} names the head itself as the "
+                    "earlier head"
+                )
+            found.append(row)
+        row = newest(found)
+        return None if row is None else row.carried_source
 
 
 def control_check(name, number, header, fields):
@@ -686,6 +750,17 @@ def main(argv=None):
         help="the head the squash at the commit came from (the newest pr-merge.sh receipt row naming commit=<sha>): <head>, or none",
     )
     merge_of.add_argument("commit", help="the merge commit, 40 hex (main's tip)")
+    carried_from = forms.add_parser(
+        "carried-from",
+        help=(
+            "the earlier head the newest carried row at the head names (carried <earlier> <head> <sha256>, standing"
+            " order 38): <earlier>, or none"
+        ),
+    )
+    carried_from.add_argument(
+        "head",
+        help="the head, 40 hex (the head main's tip was squashed from, the merge gate's question since U597 round 13)",
+    )
     daily = forms.add_parser(
         "daily",
         help=(
@@ -727,6 +802,9 @@ def main(argv=None):
         elif args.form == "merge-of":
             head = ledger.merge_of(args.commit)
             print(NONE if head is None else head)
+        elif args.form == "carried-from":
+            earlier = ledger.carried_from(args.head)
+            print(NONE if earlier is None else earlier)
         else:
             row = ledger.newest_audit_at_another_head(args.unit, args.head, args.pr)
             print(NONE if row is None else "\t".join((row.head_sha, row.verdict, row.unit)))

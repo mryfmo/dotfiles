@@ -100,6 +100,12 @@ DAILY_DISPATCH = (
     "(`ledger-row.py daily`; `<ts>` the RESULT's bus timestamp, the row's ts; the count is read from the findings "
     "file) as a row of the store's `daily-sweeps.tsv`"
 )
+# U597 round 13 (verdict U597-30d381ab P1 at pr-merge.sh:1800): a milestone unit, by its `units.tsv` track, gets its
+# sweep whatever its paths, dispatched beside the class rule.
+MILESTONE_DISPATCH = (
+    "as does a milestone unit (its `units.tsv` track `milestone`), whose sweep you dispatch whatever its paths "
+    "(`pr-merge.sh` requires its `sweep` row at the audited head whatever the classes answer; U597 round 13)"
+)
 DAILY_GATE = (
     "skips the row for every other head only while `ledger.py daily 86400` finds a daily sweep of main's head within "
     "24 hours, so a day without its sweep keeps the per-head rule for every head"
@@ -107,16 +113,22 @@ DAILY_GATE = (
 # U597 round 11 (verdict U597-2bebb5ae P1 at pr-merge.sh:907, :981 and :1609; the mechanism-change decisions row of
 # 2026-11-19T15:21:36Z): rounds 9 and 10 bound the exemption to a server policy the lever inferred client-side; the
 # lever now reads shas, trees and store rows alone, so step 4 names the tip gate and the tree check in the policy's
-# place, and step 6 names the moved-main exit, the receipt printed first, and its recovery.
+# place, and step 6 names the moved-main exit, the receipt printed first, and its recovery. Round 13 (verdict
+# U597-30d381ab): the daily row's head on main's line, the carried route of the tip gate, and the landed commit held by
+# its first parent and its tree with the landed diff classified on a mismatch.
 TIP_GATE = (
     "; the lever reads no server policy to decide it (U597 round 11 removed the up-to-date policy read of rounds 9 and "
-    "10): before the listing it requires main's tip to be swept or exempt, the tip's landed diff classified against "
-    "its first parent and, for a class or the cap, a sweep row at the tip or at the head it was squashed from when the "
-    "two trees are one (`ledger.py sweep-any`, `ledger.py merge-of`; an empty landed diff needs none), classifies the "
-    "diff the squash will land, GitHub's test merge of the head against that tip (`merge_commit_sha`), beside the "
-    "head's own listing with the stricter answer standing, and after the merge holds the merge commit's tree to the "
-    "test merge's tree, so a landed tree that differs (main moved between the lever's last tip read and GitHub's "
-    "write) exits 1 after the receipt and the merge commit is swept before the next merge, step 6; U597 round 12)"
+    "10): the daily row's head must be main's tip or an ancestor of it (the compare API's status `identical` or "
+    "`ahead`, read at both reads; round 13), before the listing it requires main's tip to be swept or exempt, the "
+    "tip's landed diff classified against its first parent and, for a class or the cap, a sweep row at the tip, at the "
+    "head it was squashed from when the two trees are one, or at the earlier head that head was carried from "
+    "(`ledger.py sweep-any`, `ledger.py merge-of`, `ledger.py carried-from`; an empty landed diff needs none), "
+    "classifies the diff the squash will land, GitHub's test merge of the head against that tip (`merge_commit_sha`), "
+    "beside the head's own listing with the stricter answer standing, and after the merge holds the merge commit's "
+    "first parent to that tip and its tree to the test merge's tree, so a landed commit that differs in either (main "
+    "moved between the lever's last tip read and GitHub's write) has its landed diff classified through the same "
+    "reader: a diff touching no class exits 0 with a line and the receipt stands, a class or the cap exits 1 after the "
+    "receipt and the merge commit is swept before the next merge, step 6; U597 round 12, round 13)"
 )
 # U597 round 12 (verdict U597-097d1615 P2 at SKILL.md:29): the daily workflow ended at recording or declining the row,
 # leaving the stop gate's open item for the daily RESULT; step 4 replies to every daily RESULT, `ready_for_review` and
@@ -131,11 +143,13 @@ DAILY_REPLY = (
     "daily task never gets a VERDICT)"
 )
 MOVED_MAIN = (
-    "Exit 1 after `MERGED` whose stdout is the receipt line and whose stderr line names the merge commit's tree and the "
-    "test merge's tree classified before the merge (`is not the test merge's tree`: `main` moved between the lever's "
-    "last tip read and GitHub's write, the one window the lever cannot close) or an unreadable tree of the merge commit "
-    "(U597 round 8, round 11, round 12) means the merge happened and the landed diff is not known to be the classified "
-    "one: record the merge from that receipt line with "
+    "Exit 1 after `MERGED` whose stdout is the receipt line and whose stderr line names the merge commit, its first "
+    "parent or its tree beside the tip and the test merge's tree classified before the merge, and the class its landed "
+    "diff touches (`the landed diff (compare/<parent>...<merge commit>) touches`: `main` moved between the lever's last "
+    "tip read and GitHub's write, the one window the lever cannot close, and the diff that landed touches a sweep class "
+    "or the cap) or an unreadable parent or tree of the merge commit (U597 round 8, round 11, round 12, round 13) means "
+    "the merge happened and the landed diff is a classed one the lever did not classify before the merge, or is "
+    "unknown: record the merge from that receipt line with "
     '`~/.local/bin/common/ledger-row.py <store> merged --pr <n> --head <head sha> --unit U<n> --receipt "<receipt '
     'line>"` as for every merge (the lever prints the receipt before its error line so the merge is recorded), then '
     "dispatch a sweep of the merge commit to the sweep seat (a TASK naming the `security-audit` skill at that commit "
@@ -144,8 +158,10 @@ MOVED_MAIN = (
     "--task U<n> --findings sweeps/<dir>/findings.json --count <n>` as a `sweep` row of the unit at the merge commit, "
     "before the `MERGED` line and `state=landed`: the next merge is refused until that row stands, since `pr-merge.sh` "
     "requires main's tip to be swept or exempt before it merges onto it; the merge is not undone and the lever is "
-    "never run again for it. An exit 0 whose stderr says the merge commit's tree is the test merge's tree classified "
-    "before the merge needs no such sweep: the landed diff is the classified one; record and land as usual."
+    "never run again for it. An exit 0 whose stderr says the merge commit's first parent is the tip and its tree the "
+    "test merge's tree classified before the merge, or that `main` moved but the landed diff touches no sweep class, "
+    "needs no such sweep: the landed diff is the classified one, or touches nothing the tip gate asks a sweep for "
+    "(round 13); record and land as usual."
 )
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
@@ -290,16 +306,20 @@ class HcomSeatSkillsTest(unittest.TestCase):
         # U597: the sweep rule by path class; the every-unit sentence is gone, and the daily sweep and the classes
         # cite the operator's sweep rule C of 2026-11-18, not standing order 44, which governs executed tests (round 3);
         # round 4: the daily sweep is the coordinator's dispatch from the kit's template, its row written with
-        # ledger-row.py daily, and the lever skips a head's own row only while that row stands
+        # ledger-row.py daily, and the lever skips a head's own row only while that row stands; round 13: a milestone
+        # unit's sweep is dispatched whatever its paths
         self.assertIn(
             "A unit whose head changes a lever, a policy, credential handling or a deployed executable (the path "
             "classes of `scripts/orchestrator/sweep-scope.py`, U597) also gets one security sweep before its merge, "
+            + MILESTONE_DISPATCH
+            + ", "
             + DAILY_DISPATCH
             + " (the operator's sweep rule C of 2026-11-18; `pr-merge.sh` refuses",
             verify,
         )
         self.assertIn(DAILY_GATE, verify)
         self.assertEqual(verify.count("daily-sweep-brief.md"), 1)
+        self.assertEqual(verify.count("track `milestone`"), 1)
         self.assertNotIn("standing order 44", verify)
         self.assertNotIn("Every unit and every program milestone also gets one security sweep", verify)
         self.assertNotIn("trust-boundary class", verify)

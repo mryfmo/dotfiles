@@ -657,11 +657,16 @@ class SweepScopeCliTest(unittest.TestCase):
 
 # The program-milestone sweep sentence (U597 round 12, verdict U597-097d1615 P2 at AGENTS.md:71): the base's rule gave
 # every unit and every program milestone one sweep; the per-head rule replaced the unit half, and the milestone half
-# stands beside it in AGENTS.md's line and its byte-for-byte template.
+# stands beside it in AGENTS.md's line and its byte-for-byte template. Round 13 (verdict U597-30d381ab P1 at
+# pr-merge.sh:1800): the sentence defines a program milestone as a unit whose `units.tsv` track is `milestone`, the cell
+# the lever reads to require the sweep row whatever the classes answer.
 MILESTONE_SENTENCE = (
-    "Every program milestone keeps the sweep it had before this unit: a milestone's head gets one sweep of the"
-    " `security-audit` skill on a srt worker seat before its pull request merges, whatever its changed paths, and the"
-    " milestone sweep is the per-head sweep of that head (recorded as its `sweep` row)."
+    "Every program milestone keeps the sweep it had before this unit: a program milestone is a unit whose `units.tsv`"
+    " row has track `milestone`, and a milestone's head gets one sweep of the `security-audit` skill on a srt worker"
+    " seat before its pull request merges, whatever its changed paths (`pr-merge.sh` reads the body's unit's row in"
+    " `units.tsv` and requires the unit's `sweep` row at the audited head when its track is `milestone`, whatever the"
+    " classes answer and without reading the daily row; U597 round 13), and the milestone sweep is the per-head sweep"
+    " of that head (recorded as its `sweep` row)."
 )
 
 
@@ -752,7 +757,7 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`assets.security-audit-skill.validators_sha256`", line)
         self.assertIn("task id `daily-<YYYY-MM-DD>` alone naming the UTC day", line)
         self.assertIn("from private copies hashed against their `claude.levers.sha256` pins", line)
-        self.assertNotIn("the merge commit's first parent", line, "the parent read is gone (round 12)")
+        self.assertIn("the merge commit's first parent and tree", line, "the parent read returns (round 13)")
         # round 9: the daily row's own grammar, the task's day or the day before, the validators from private copies,
         # the recheck before the merge request
         self.assertIn("or the day before it", line)
@@ -769,13 +774,17 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`ledger.py merge-of <tip>`", line)
         self.assertIn("`.tree.sha`", line)
         self.assertNotIn(
-            "is classified again at the merge commit", line, "nothing is classified after the merge (round 12)"
+            "is classified again at the merge commit",
+            line,
+            "the round-11 wording is gone; round 13 names the landed diff",
         )
         self.assertIn("swept and recorded as a `sweep` row of the unit before the next merge", line)
         # round 12 (verdict U597-097d1615 P1 at :1764 and :1136, P2 at :1770, P2 at AGENTS.md:71): the diff the squash
         # lands is classified from GitHub's test merge before the merge, the landed tree is held to the test merge's
         # tree, an empty landed diff of the tip needs no sweep, and the program-milestone sweep sentence stands beside
-        # the per-head rule
+        # the per-head rule; round 13 (verdict U597-30d381ab): the landed commit's first parent and tree are both held
+        # and a mismatch classifies the landed diff, a milestone is a unit whose units.tsv track is `milestone`, the
+        # daily row's head lies on main's line, and the tip gate follows a carried row
         self.assertIn(
             "The diff the lever classifies before the merge is the one the squash will land (U597 round 12)", line
         )
@@ -785,10 +794,24 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("the two answers must agree", line)
         self.assertIn("the stricter stands and one line names both", line)
         self.assertIn(
-            "holds it to the test merge's tree: equal trees mean the classified diff is the landed diff exactly", line
+            "reads the merge commit's first parent and tree (`git/commits/<commit>`) and holds both, the parent to the tip"
+            " it read and the tree to the test merge's tree: both equal mean the classified diff is the landed diff"
+            " exactly and nothing is classified again or swept twice",
+            line,
         )
+        self.assertIn("equal trees with another parent are a moved main too", line)
+        self.assertIn("`gh api 'repos/{owner}/{repo}/compare/<parent>...<merge commit>'`", line)
+        self.assertIn("a diff touching no class exits 0 with one line and the receipt stands", line)
+        self.assertIn("exits 1 after the receipt line naming the merge commit, its parent and the class", line)
+        self.assertIn("the tip gate classifies the same landed diff, so the two agree; U597 round 13", line)
         self.assertIn("the one window the lever cannot close", line)
         self.assertIn("a tip whose listing names no file, an empty squash, landed nothing and needs no sweep", line)
+        self.assertIn("at the earlier head its `carried` row names (`ledger.py carried-from <head>`", line)
+        self.assertIn(
+            "whose head is main's tip or an ancestor of it (`gh api 'repos/{owner}/{repo}/compare/<daily head>...<main"
+            " tip>' --jq .status` must be `identical` or `ahead` at both reads",
+            line,
+        )
         self.assertIn(MILESTONE_SENTENCE, line)
         self.assertLess(
             line.index("every unit's head that touches a class gets its sweep before the merge"),
@@ -836,14 +859,23 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("requires main's tip to be swept or exempt", step)
         self.assertIn("`ledger.py sweep-any`, `ledger.py merge-of`", step)
         self.assertNotIn(
-            "classified again at the merge commit", step, "nothing is classified after the merge (round 12)"
+            "classified again at the merge commit", step, "the round-11 wording is gone; round 13 names the landed diff"
         )
         self.assertIn(
             "classifies the diff the squash will land, GitHub's test merge of the head against that tip (`merge_commit_sha`)",
             step,
         )
-        self.assertIn("holds the merge commit's tree to the test merge's tree", step)
-        self.assertIn("the merge commit is swept before the next merge, step 6; U597 round 12", step)
+        # round 13: the milestone dispatch, the daily row's head on main's line, the carried route and the landed diff
+        # classified after a moved main
+        self.assertIn(
+            "as does a milestone unit (its `units.tsv` track `milestone`), whose sweep you dispatch whatever its paths",
+            step,
+        )
+        self.assertIn("the daily row's head must be main's tip or an ancestor of it", step)
+        self.assertIn("`ledger.py carried-from`", step)
+        self.assertIn("holds the merge commit's first parent to that tip and its tree to the test merge's tree", step)
+        self.assertIn("has its landed diff classified through the same reader", step)
+        self.assertIn("the merge commit is swept before the next merge, step 6; U597 round 12, round 13", step)
         for word in ("ruleset", "strict_required_status_checks_policy", "U613"):
             self.assertNotIn(word, step, f"step 4 names no {word} (round 11)")
 
@@ -861,22 +893,40 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("private copies", row)
         self.assertIn("`claude.levers.sha256`", row)
         self.assertIn("first parent", row)
+        # round 13: the milestone track, the daily row's head on main's line, the carried route and the landed diff
+        # classified after a moved main (prettier drops the spaces around inline code in the table, so the words are
+        # asserted apart from the code spans)
+        self.assertIn("`milestone`", row)
+        self.assertIn("whatever its paths (round 13: the body's unit's track is read from the store's", row)
+        self.assertIn("`identical`", row)
+        self.assertIn("`ahead`", row)
+        self.assertIn("at both reads, else the row is refused naming both shas", row)
+        self.assertIn("`ledger.py carried-from <head>`", row)
+        self.assertIn("either differing (round 13: equal trees with another parent are a moved main too)", row)
+        self.assertIn("`compare/<parent>...<merge commit>`", row)
+        self.assertIn("is classified through the same reader after the receipt line", row)
+        self.assertIn("a diff touching no class exits 0 with one stderr line and the receipt stands", row)
+        self.assertIn("exits 1 naming the merge commit, its parent and the class", row)
         # round 11: no policy, ruleset or actor read; the tip gate with its two ledger forms, the trees, the route
         self.assertIn("the lever reads no server policy, ruleset or actor", row)
-        self.assertIn("`require_tip_swept`", row)
-        self.assertIn("`ledger.py sweep-any <tip>`", row)
         self.assertIn("`ledger.py merge-of <tip>`", row)
         self.assertIn("--jq .tree.sha`", row)
         self.assertNotIn(
-            "classified again at the merge commit", row, "nothing is classified after the merge (round 12)"
+            "classified again at the merge commit", row, "the round-11 wording is gone; round 13 names the landed diff"
         )
         self.assertIn("the `pr-update-branch.sh` route", row)
         self.assertNotIn("strict_required_status_checks_policy", row)
         # round 12: the test merge, the tree hold, the guarantee and the one window, U613 named once as what closes it
         self.assertIn("`require_test_merge`", row)
         self.assertIn("--jq .merge_commit_sha`", row)
-        self.assertIn("is held to the test merge's tree", row)
+        self.assertIn("the parent to the tip read before the gates and the tree to the test merge's tree", row)
         self.assertIn("What the lever guarantees: before the merge, that the diff the squash will land", row)
+        self.assertIn(
+            "after the merge, that the landed commit is the test merge on that tip (its first parent the tip, its tree"
+            " the test merge's tree), else the landed diff is classified and, when it touches a class, the next merge is"
+            " blocked until the merge commit is swept",
+            row,
+        )
         # prettier drops the spaces around inline code in the table, so the words are asserted apart
         self.assertIn("The one window it cannot close is", row)
         self.assertIn(
@@ -933,8 +983,13 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("classify_diff", text)
         self.assertIn("`ledger.py <store> sweep-any <tip>`", text)
         self.assertIn("`ledger.py <store> merge-of <tip>`", text)
-        self.assertIn("--jq .tree.sha`", text)
-        self.assertNotIn("`compare/<parent>...<merge commit>`", text, "no compare after the merge (round 12)")
+        self.assertIn("`compare/<parent>...<merge commit>`", text, "the landed diff after a moved main (round 13)")
+        self.assertIn("landed_commit_of", text)
+        self.assertIn("judge_landed_commit", text)
+        self.assertIn("unit_track_read", text)
+        self.assertIn("daily_on_main_line", text)
+        self.assertIn("ledger_carried_from", text)
+        self.assertIn("`ledger.py <store> carried-from <head>`", text)
         self.assertIn("the lever never opens the findings file", text)
         self.assertIn("the mechanism-change decisions row of 2026-11-19T15:21:36Z", text)
         for word in ("strict_required_status_checks_policy", "ref_pattern_matches", "bypass"):

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, when CI passed and the three sweep gates hold (regime-cutover U597 round 12): main's tip is swept or exempt (its landed diff classified at the tip; a sweep row at it when a class is touched; an empty landed diff needs none), the diff the squash will land (GitHub's test merge of the head against the tip the lever read, `merge_commit_sha`, classified beside the head's own listing, the stricter answer standing) has the unit's `sweep` row when it touches a sweep class (a lever, a policy, credential handling or a deployed executable) or rests on a daily sweep of main's head within 24 hours at the lever's last read before the merge request when it touches none, and after the merge the landed tree is the test merge's tree (else exit 1 after the receipt, and the next merge waits for the merge commit's sweep); the orchestrator seat's merge lever. It reads no server-side protection setting, policy or actor.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, when CI passed and the three sweep gates hold (regime-cutover U597 round 13): main's tip is swept or exempt (its landed diff classified at the tip; a sweep row at it, at the head it was squashed from or at the head that one was carried from when a class is touched; an empty landed diff needs none), the diff the squash will land (GitHub's test merge of the head against the tip the lever read, `merge_commit_sha`, classified beside the head's own listing, the stricter answer standing) has the unit's `sweep` row when it touches a sweep class (a lever, a policy, credential handling or a deployed executable) or when the unit's `units.tsv` track is `milestone`, or rests on a daily sweep of main's head within 24 hours at the lever's last read before the merge request, at the tip or an ancestor of it, when it touches none, and after the merge the landed commit's first parent is that tip and its tree the test merge's tree (else the landed diff is classified: a diff touching no class exits 0 with a line, a class or the cap exits 1 after the receipt, and the next merge waits for the merge commit's sweep); the orchestrator seat's merge lever. It reads no server-side protection setting, policy or actor.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -235,22 +235,36 @@
 #   head needs stays the unit's row at the audited head (the audited content; the test merge's tree equals the head's
 #   tree whenever `main` did not move, and when it moved the second classification is what makes the difference
 #   visible before the merge); `not-required` from both rests on the daily row of main's head within 24 hours at the
-#   lever's last read before the merge request (require_daily_sweep, recheck_daily_sweep, daily_row_fields). Gate
-#   three, the landed tree (after `gh pr merge`): the merge commit's tree, `gh api
-#   repos/{owner}/{repo}/git/commits/<commit> --jq .tree.sha` (status read, 40 hex), must equal the test merge's tree
-#   read before the merge. Equal trees mean GitHub landed the very commit the lever classified, so the pre-merge
+#   lever's last read before the merge request (require_daily_sweep, recheck_daily_sweep, daily_row_fields), whose
+#   head must be the tip read before the gates or an ancestor of it (daily_on_main_line, round 13: `gh api
+#   repos/{owner}/{repo}/compare/<daily head>...<tip> --jq .status` must be `identical` or `ahead`, else the row is
+#   refused naming both shas; the writer binds the row to the sha it is given, so a row at a sha off main's line is not
+#   the day's sweep of main). A unit whose `units.tsv` track is `milestone` needs its sweep row whatever the two
+#   answers say (unit_track_read, round 13: the AGENTS.md Audit sweep rule gives every program milestone one sweep
+#   before its pull request merges, whatever its changed paths; the daily row is not read for it). Gate three, the
+#   landed commit (after `gh pr merge`): the merge commit's first parent and tree, `gh api
+#   repos/{owner}/{repo}/git/commits/<commit> --jq '[.tree.sha, ([.parents[].sha] | join(" "))] | @tsv'` (status
+#   read, each 40 hex; landed_commit_of), must be the tip read before the gates and the test merge's tree read before
+#   the merge. Both equal mean GitHub landed the very commit the lever classified onto the very tip, so the pre-merge
 #   classification is the landed diff exactly, nothing is classified again and no second sweep is asked of an
-#   unchanged landed tree. Unequal trees mean `main` moved between the lever's last tip read and GitHub's write, so
-#   the receipt is printed first (the merge is a fact once `MERGED` at the audited head into `main` is read, and
-#   `ledger-row.py merged` records it from the receipt) and then exit 1 with one stderr line naming both trees and the
-#   instruction to sweep the merge commit and record it as a `sweep` row of the unit at the merge commit (the
-#   hcom-orchestration SKILL step 6), which gate one requires before the next merge. What the lever guarantees: before
-#   the merge, that the diff the squash will land (GitHub's test merge against the tip the lever read) touches no
-#   sweep class or has its sweep row; after the merge, that the landed tree is the test merge's tree, else the next
-#   merge is blocked until the merge commit is swept. The one window it cannot close is `main` moving between the
-#   lever's last tip read and GitHub's write: the main ruleset's up-to-date requirement closes it when the operator
-#   enables it (U613, the server's own control, which this lever never reads), and the lever detects it otherwise, by
-#   the trees, after the fact. The daily row is read by its own grammar (daily_row_fields), the verifier
+#   unchanged landed commit. Either differing (round 13, the round-12 P2 at :1879: equal trees with another parent
+#   are a moved main too, since the landed diff differs even when the result tree does not) means `main` moved between
+#   the lever's last tip read and GitHub's write, so the receipt is printed first (the merge is a fact once `MERGED` at
+#   the audited head into `main` is read, and `ledger-row.py merged` records it from the receipt) and the landed diff,
+#   `compare/<parent>...<merge commit>`, is classified through the pinned reader (judge_landed_commit): a diff that
+#   touches no class is exit 0 with one stderr line, the receipt standing and nothing asked of the merge commit; a
+#   class or the cap is exit 1 with one stderr line naming the merge commit, its parent, the class and the instruction
+#   to sweep the merge commit and record it as a `sweep` row of the unit at the merge commit (the hcom-orchestration
+#   SKILL step 6), which gate one requires before the next merge (round 12 asked the sweep whatever the landed diff
+#   held, and gate one then passed a docs-only landed diff with nothing recorded, the round-12 P1 at :1182; now the
+#   two classify the same diff the same way). What the lever guarantees: before the merge, that the diff the squash
+#   will land (GitHub's test merge against the tip the lever read) touches no sweep class or has its sweep row; after
+#   the merge, that the landed commit is the test merge on that tip (its first parent the tip, its tree the test
+#   merge's tree), else the landed diff is classified and, when it touches a class, the next merge is blocked until
+#   the merge commit is swept. The one window it cannot close is `main` moving between the lever's last tip read and
+#   GitHub's write: the main ruleset's up-to-date requirement closes it when the operator enables it (U613, the
+#   server's own control, which this lever never reads), and the lever detects it otherwise, by the parent and the
+#   tree, after the fact. The daily row is read by its own grammar (daily_row_fields), the verifier
 #   `security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)`
 #   and the evidence `sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs
 #   PASS; validators sha256 <8 hex> <8 hex> <8 hex>; artifacts sha256 <8 hex> <8 hex>; recorded <ts>`, the three
@@ -281,16 +295,21 @@
 #   merge's tree and parents that fail or a tree that is not 40 hex, a tree read that fails or is not 40 hex, among
 #   its failures), the manifest pin probes, the scope reader or the ledger reader (any status but 0 or 2), or the
 #   merge, failed; or, after `MERGED` at the audited head (the receipt printed first, round 11), the merge commit's
-#   tree could not be read or is not 40 hex, or is not the test merge's tree read before the merge (round 12: `main`
-#   moved between the lever's last tip read and GitHub's write; the coordinator sweeps the merge commit and records
-#   the row before the next merge, which gate one refuses until then).
+#   tree and parents could not be read, its tree or first parent is not 40 hex, or the landed diff could not be
+#   listed or classified, or the landed commit is not the test merge on the tip read before the gates (round 13: its
+#   first parent is not that tip or its tree is not the test merge's tree, `main` moved between the lever's last tip
+#   read and GitHub's write) and its landed diff, `compare/<parent>...<merge commit>`, touches a class or the cap
+#   (the coordinator sweeps the merge commit and records the row before the next merge, which gate one refuses until
+#   then; a landed diff that touches no class is exit 0 with one stderr line, the receipt standing).
 # @exitcode 2 Refused: usage, the pull request's state, no `correct` or `carried` row for the head, no current test
 #   merge of the head (`mergeable` not `MERGEABLE` or `true`, or `merge_commit_sha` not 40 hex: re-run after GitHub
 #   recomputes it), a test merge whose parents are not the tip and the head or whose listing's merge base is not the
 #   tip (round 12), a head whose merge
 #   base with `main` is not `main`'s tip (not up to date: bring it up to date with `pr-update-branch.sh` and re-run
-#   the audit; round 7, round 11), main's tip whose landed diff touches a class or the cap with no sweep row at it and
-#   none at a head whose tree is the tip's through its merge row (round 11, gate one; an empty landed diff of the tip
+#   the audit; round 7, round 11), a `units.tsv` that is a symlink or not a regular file of this user (round 13: the
+#   body's unit's track is read from it), main's tip whose landed diff touches a class or the cap with no sweep row at
+#   it, none at the head it was squashed from (its tree the tip's, through its merge row) and none at the head that
+#   head was carried from (round 11, gate one; round 13, `ledger.py carried-from`; an empty landed diff of the tip
 #   needs none, round 12), a compare
 #   listing of the head or the test merge that names no file, a scope answer the checkout's `sweep-scope.py` refuses (its exit 2: a listing that is not one
 #   JSON array of status, filename and previous_filename per file, a `previous_filename` neither a string nor null, a
@@ -302,8 +321,11 @@
 #   for a unit's sweep row, below) or not the daily row's own grammar (the verifier's seat, run and `TASK
 #   daily-<YYYY-MM-DD>`, the evidence's seven fields, the three validator digest prefixes held to the manifest's
 #   `validators_sha256` pins, the two artifact digests by shape; round 9, round 10), a daily row whose window closed
-#   between the first read and the merge request (recheck_daily_sweep), no `sweep` row of
-#   the unit or a fix unit of it at the audited head when the sweep row is required (a class, the cap, or no daily
+#   between the first read and the merge request (recheck_daily_sweep), a daily row whose head is neither the tip read
+#   before the gates nor an ancestor of it (round 13: the compare API's status for `<daily head>...<tip>` not
+#   `identical` or `ahead`), no `sweep` row of
+#   the unit or a fix unit of it at the audited head when the sweep row is required (a class, the cap, the unit's
+#   `units.tsv` track `milestone` (round 13), or no daily
 #   sweep of main's head within 86400 seconds), a sweep answer of the reader that is
 #   neither `none` nor one row of four tab-separated fields with a ts, a sweep row whose verifier is not
 #   `security-audit-skill <pin>` with the
@@ -781,6 +803,31 @@ unit_row_exists() {
     return 1
 }
 
+# @description Read the body's unit's `track` cell of the store's `units.tsv` (regime-cutover U597 round 13; the
+#   round-12 P1 at :1800: a milestone unit outside every class merged on the daily row, where the AGENTS.md Audit
+#   sweep rule gives every program milestone its sweep whatever its paths). The table is the one require_dispositions
+#   reads for a residual's unit, held the same way (a regular file of this user and no symlink, else a refusal naming
+#   it; the header, each row's column count and a non-empty `id` by table_rows; a failed read exits 1, standing order
+#   21), and read here into a local of its own, so nothing from the environment stands in for a row (U119 round 6).
+#   The track is the second cell, split on the tab alone by parameter expansion (bash's `read` merges adjacent tabs,
+#   so an empty track would shift the cells). A unit with no row has no track and is no milestone (the per-head rule
+#   by class stands); a unit with more than one row (the live register holds one such id) is a milestone when any of
+#   its rows says so.
+# @set unit_track `milestone` when a row of the unit has that track, else the track of its row, else empty.
+unit_track_read() {
+    local rows row rest track
+    [[ ! -L ${units_file} && -f ${units_file} && -O ${units_file} ]] ||
+        refuse "${units_file} is not a regular file of this user (a symlink or missing); whether ${unit} is a program milestone is read from its track cell there"
+    rows=$(table_rows "${units_file}" "${units_header}" '1') || exit $?
+    unit_track=''
+    while IFS= read -r row; do
+        [[ ${row%%$'\t'*} == "${unit}" ]] || continue
+        rest=${row#*$'\t'}
+        track=${rest%%$'\t'*}
+        [[ ${unit_track} == milestone ]] || unit_track=${track}
+    done <<< "${rows}"
+}
+
 # @description Set `priority`, `path` and `lineno` from a pending entry of require_dispositions (U119 round 5),
 #   `<priority>\t<path>\t<lineno>`, by parameter expansion and no `IFS` write: the fields are the lever's own matched
 #   text (finding_re), so none is empty and the path holds no tab.
@@ -1095,6 +1142,70 @@ tip_parent_of() {
     tip_parent=${parents}
 }
 
+# @description Read the merge commit's first parent and tree in one call (regime-cutover U597 round 13; the round-12
+#   P1 at :1182 and P2 at :1879): `gh api "repos/{owner}/{repo}/git/commits/<commit>" --jq '[.tree.sha,
+#   ([.parents[].sha] | join(" "))] | @tsv'`, the test merge's own read (require_test_merge), its status read, the
+#   tree held to 40 hex and the first parent (the first word of the parents; a squash has one) held to 40 hex (a root
+#   commit, no parent, is an empty word and fails). The merge is a fact when this runs, so every failure follows the
+#   receipt and names the sweep of the merge commit, which gate one requires at the next merge while the landed diff
+#   is unknown.
+# @arg $1 string The merge commit, 40 hex.
+# @set landed_tree Its tree, 40 hex.
+# @set landed_parent Its first parent, 40 hex.
+landed_commit_of() {
+    local sha=$1 answer parents
+    answer=$(gh_bounded api "repos/{owner}/{repo}/git/commits/${sha}" --jq '[.tree.sha, ([.parents[].sha] | join(" "))] | @tsv') ||
+        fail "cannot read the tree and parents of the merge commit ${sha} (gh api repos/{owner}/{repo}/git/commits/${sha}); whether the landed commit is the test merge classified before the merge (first parent ${base_tip}, tree ${test_merge_tree}) is unknown: sweep the merge commit ${sha} and record it before the next merge"
+    # The two cells split on the tab the jq put between them (an answer without one leaves the tree the whole
+    # answer and the parents empty, which the 40-hex holds refuse).
+    landed_tree=${answer%%$'\t'*}
+    parents=''
+    [[ ${answer} != *$'\t'* ]] || parents=${answer#*$'\t'}
+    landed_parent=${parents%% *}
+    [[ ${landed_tree} =~ ^[0-9a-f]{40}$ ]] ||
+        fail "the tree of the merge commit ${sha} read from gh api repos/{owner}/{repo}/git/commits/${sha} is not 40 hex: '${landed_tree}'; whether the landed tree is the test merge's tree ${test_merge_tree} classified before the merge is unknown: sweep the merge commit ${sha} and record it before the next merge"
+    [[ ${landed_parent} =~ ^[0-9a-f]{40}$ ]] ||
+        fail "the first parent of the merge commit ${sha} read from gh api repos/{owner}/{repo}/git/commits/${sha} is not 40 hex: '${landed_parent}'; whether the squash landed on the tip ${base_tip} read before the gates is unknown: sweep the merge commit ${sha} and record it before the next merge"
+}
+
+# @description Classify the diff a squash onto a moved main landed (regime-cutover U597 round 13; the round-12 P1 at
+#   :1182 and P2 at :1879), after landed_commit_of found the merge commit's first parent not the tip read before the
+#   gates, or its tree not the test merge's tree (equal trees with another parent are a moved main too: the landed
+#   diff differs even when the result tree does not). The landed diff, `compare/<parent>...<merge commit>`, goes
+#   through the pinned reader as every listing does (classify_diff with `fail`: the commit is on `main`, so nothing in
+#   the pull request can be fixed for it; the merge base must be the parent by construction; `empty-is-exempt`, as
+#   for the tip's own listing: an empty squash landed nothing). `not-required` is exit 0 with one stderr line: main
+#   moved, the landed diff touches no class, the receipt stands and nothing is asked of the merge commit, which is
+#   what gate one will find at the next merge. A class or the cap is exit 1 after the receipt naming the merge
+#   commit, its parent, the class and the sweep to record (a `sweep` row of the unit at the merge commit,
+#   `ledger-row.py sweep`, the hcom-orchestration SKILL step 6), which gate one requires at the next merge from the
+#   same landed diff classified the same way (round 12 asked the sweep whatever the landed diff held, and the tip
+#   gate then passed a docs-only one with nothing recorded, the round-12 P1 at :1182; the two now agree).
+judge_landed_commit() {
+    local moved what="the merge commit ${commit} of pull request ${pr} (the landed diff)"
+    if [[ ${landed_parent} != "${base_tip}" ]]; then
+        moved="its first parent ${landed_parent} is not the tip ${base_tip} read before the gates"
+        [[ ${landed_tree} == "${test_merge_tree}" ]] ||
+            moved+=" and its tree ${landed_tree} is not the test merge's tree ${test_merge_tree} classified before the merge"
+    else
+        moved="its first parent is the tip ${base_tip} read before the gates while its tree ${landed_tree} is not the test merge's tree ${test_merge_tree} classified before the merge"
+    fi
+    moved+=": main moved between the lever's last tip read and GitHub's write, the one window this lever cannot close, so the landed diff is not the classified one"
+    classify_diff "${landed_parent}" "${commit}" "${what}" fail \
+        "the compare API (gh api repos/{owner}/{repo}/compare/${landed_parent}...${commit}) answered a merge base that is not the merge commit's first parent ${landed_parent}; the landed diff is the diff from its parent, so the listing is not it: sweep the merge commit ${commit} and record it before the next merge" \
+        empty-is-exempt
+    if [[ ${listing_empty} == 1 ]]; then
+        echo "${lever}: merged as ${commit}, but ${moved}; the landed diff (compare/${landed_parent}...${commit}) names no file (an empty squash): nothing landed, so nothing is swept, the receipt stands and no sweep is asked of the merge commit" >&2
+        return 0
+    fi
+    if [[ -z ${listing_class} ]]; then
+        echo "${lever}: merged as ${commit}, but ${moved}; the landed diff (compare/${landed_parent}...${commit}) touches no sweep class (no lever, policy, credential or deployed-executable path changed), so the receipt stands and no sweep is asked of the merge commit, which the tip gate reads the same way at the next merge" >&2
+        return 0
+    fi
+    change_words_of "${listing_class}"
+    fail "pull request ${pr} merged as ${commit}, but ${moved}; the landed diff (compare/${landed_parent}...${commit}) touches ${change_words} (${listing_answer}): sweep the merge commit ${commit} and record it as a sweep row of ${unit} at ${commit} (ledger-row.py sweep) before the next merge, which this lever refuses until the row stands (the hcom-orchestration SKILL step 6)"
+}
+
 # @description Ask the pinned ledger copy for the newest sweep row of any unit at a head (regime-cutover U597 round 11,
 #   `ledger.py <store> sweep-any <head>`, the form gate one reads with: the sweep of main's tip may be any unit's,
 #   the merged unit's or the coordinator's sweep of a merge commit, the hcom-orchestration SKILL step 6), its status
@@ -1150,6 +1261,25 @@ ledger_merge_of() {
     merge_of_head=${answer}
 }
 
+# @description Ask the pinned ledger copy which earlier head a head was carried from (regime-cutover U597 round 13,
+#   `ledger.py <store> carried-from <head>`; the round-12 P2 at :1201): the earlier head the newest `carried` row at
+#   the head names in its evidence (`carried <earlier> <head> <sha256>`, the line audit-carry.py printed, standing
+#   order 38), or `none`; the status read as ledger_verdict reads it and the exit-0 answer held to `none` or 40 hex.
+# @arg $1 string The head, 40 hex (the head main's tip was squashed from).
+# @set carried_from_head `none`, or the earlier head, 40 hex.
+ledger_carried_from() {
+    local head=$1 status=0 answer
+    answer=$("${python}" -I -S "${ledger_copy}" "${store}" carried-from "${head}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${answer#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${ledger} for the carried row at the head ${head}: ${answer:-no output}" ;;
+    esac
+    [[ ${answer} == none || ${answer} =~ ^[0-9a-f]{40}$ ]] ||
+        refuse "${ledger_reader} answered the carried-from question for the head ${head} with neither none nor a 40-hex head: ${answer:-nothing}"
+    carried_from_head=${answer}
+}
+
 # @description Gate one: main's tip is swept or exempt before the next merge lands on it (regime-cutover U597 round
 #   11; the round-10 P1 at :981 and :1609 and the mechanism-change decisions row of 2026-11-19T15:21:36Z). A squash
 #   that landed on a moved `main` left a landed diff this lever classified only after the merge (gate three), and the
@@ -1166,9 +1296,13 @@ ledger_merge_of() {
 #   equal the tip's tree (tree_of on both: the squash of an up-to-date head reproduces the head's tree, so equal trees
 #   mean a sweep at that head covered the bytes the tip holds, while a tip that landed on a moved `main` holds other
 #   bytes and no sweep of the head covers them), and then the newest sweep row of any unit at that head counts
-#   (ledger_sweep_any again, held the same way). No merge row, unequal trees and no sweep row at either head refuse
-#   naming the tip, the class and the missing sweep: sweep the merge commit and record it before the next merge (the
-#   hcom-orchestration SKILL step 6). A failed read anywhere is a failure (standing order 21).
+#   (ledger_sweep_any again, held the same way); when that head has no sweep row either, its `carried` row (round 13,
+#   the round-12 P2 at :1201: a head merged under a carried row was swept at the earlier head the row names, since
+#   require_sweep_row reads the audited head) names the earlier head (ledger_carried_from, `ledger.py <store>
+#   carried-from <head>`), whose newest sweep row of any unit counts the same way, the trees already one and the
+#   carried row's digest making the two heads' diffs one. No merge row, unequal trees and no sweep row at any of the
+#   heads refuse naming the tip, the class and the missing sweep: sweep the merge commit and record it before the
+#   next merge (the hcom-orchestration SKILL step 6). A failed read anywhere is a failure (standing order 21).
 require_tip_swept() {
     local what="the tip ${base_tip} of ${base}" tree_tip missing
     tip_parent_of "${base_tip}"
@@ -1199,9 +1333,20 @@ require_tip_swept() {
     [[ ${tree_tip} == "${tree_sha}" ]] ||
         refuse "${missing}: its merge row names the head ${merge_of_head}, whose tree ${tree_sha} is not the tip's tree ${tree_tip}, so a sweep at that head does not cover the tip (main moved under the squash)"
     ledger_sweep_any "${merge_of_head}" "the head ${merge_of_head} the tip ${base_tip} was squashed from"
+    if [[ ${sweep_any_row} != none ]]; then
+        echo "${lever}: tip: ${base_tip} of ${base} landed ${change_words}; the sweep row of ${sweep_any_unit} at the head ${merge_of_head} it was squashed from stands (the two trees are one)" >&2
+        return 0
+    fi
+    # The carried relation (round 13, the round-12 P2 at :1201): a head merged under a `carried` row was audited and
+    # swept at the earlier head its row names (require_verdict_row and require_sweep_row read that head), so the sweep
+    # row that covered the merge is at the earlier head, and the two heads' diffs are one by the digest the row holds.
+    ledger_carried_from "${merge_of_head}"
+    [[ ${carried_from_head} != none ]] ||
+        refuse "${missing}: its merge row names the head ${merge_of_head}, whose tree is the tip's, and ${ledger} holds no sweep row at that head and no carried row at it naming an earlier head (ledger.py carried-from), so no earlier swept head stands for it either"
+    ledger_sweep_any "${carried_from_head}" "the head ${carried_from_head} that the head ${merge_of_head} the tip ${base_tip} was squashed from was carried from"
     [[ ${sweep_any_row} != none ]] ||
-        refuse "${missing}: its merge row names the head ${merge_of_head}, whose tree is the tip's, and ${ledger} holds no sweep row at that head either"
-    echo "${lever}: tip: ${base_tip} of ${base} landed ${change_words}; the sweep row of ${sweep_any_unit} at the head ${merge_of_head} it was squashed from stands (the two trees are one)" >&2
+        refuse "${missing}: its merge row names the head ${merge_of_head}, whose tree is the tip's, whose carried row names the earlier head ${carried_from_head}, and ${ledger} holds no sweep row at either head"
+    echo "${lever}: tip: ${base_tip} of ${base} landed ${change_words}; the sweep row of ${sweep_any_unit} at the head ${carried_from_head}, which the head ${merge_of_head} it was squashed from was carried from, stands (the two trees are one, and the carried row's digest makes the two heads' diffs one)" >&2
 }
 
 # @description Read GitHub's test merge of the head against the tip (regime-cutover U597 round 12; the round-11 P1 at
@@ -1262,14 +1407,19 @@ require_test_merge() {
 #   `sweep_class` to the class and `sweep_reason` to the class clause; `not-required` sets `sweep_class` empty and asks
 #   require_daily_sweep whether the standing control stands (round 4: the exemption is bound to the daily sweep of
 #   main's head; rounds 9 and 10 bound it to a server policy as well, and round 11 removed that read: the daily row is
-#   read for every such head, and the landed tree is held to the test merge's after the merge, gate three). The sweep
-#   row a required head needs is the unit's row at the audited head, the audited content: the test merge's tree is the
-#   head's whenever `main` did not move, and when it moved the second classification makes the difference visible
-#   here, before the merge.
+#   read for every such head, and the landed commit is held to the test merge's after the merge, gate three). The
+#   milestone rule (round 13, the round-12 P1 at :1800, where a milestone unit outside every class merged on the daily
+#   row): the body's unit's row of `units.tsv` is read first (unit_track_read), and a unit whose track is `milestone`
+#   needs its sweep row whatever the two answers say, the AGENTS.md Audit sweep rule's program-milestone sentence; the
+#   daily row is not read for it, and its `sweep_reason` names the milestone rule, beside the class clause when there is
+#   one. The sweep row a required head needs is the unit's row at the audited head, the audited content: the test
+#   merge's tree is the head's whenever `main` did not move, and when it moved the second classification makes the
+#   difference visible here, before the merge.
 # @set sweep_class The class that requires the sweep (`credential`, `policy`, `lever`, `deployed-executable`), `cap` for a listing at the compare API's cap, or empty when none does.
-# @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
+# @set sweep_reason Why require_sweep_row runs, named in its refusal: the class clause, the cap clause, the milestone rule (round 13), or the missing daily sweep (require_daily_sweep); empty when the head skips the row.
 require_sweep_scope() {
-    local head_answer head_class landed_answer landed_class answer class class_from
+    local head_answer head_class landed_answer landed_class answer class class_from milestone_reason
+    unit_track_read
     classify_diff "${base_tip}" "${head}" "the head ${head} of pull request ${pr}" refuse \
         "the head ${head} of pull request ${pr} is not up to date with ${base} (merge base <merge base>, ${base} tip ${base_tip}); bring the branch up to date with pr-update-branch.sh (GitHub's merge of ${base} into the branch, never a rebase; the hcom-orchestration SKILL step 6) and re-run the audit, so the listing is the diff the squash lands"
     head_answer=${listing_answer}
@@ -1303,10 +1453,21 @@ require_sweep_scope() {
         answer="required ${class}"
         echo "${lever}: sweep: the head ${head} of pull request ${pr} classifies as '${head_answer}' and the diff the squash lands (the test merge ${test_merge} against the tip ${base_tip} of ${base}) as '${landed_answer}'; main moved since the branch point, so the two differ, and the stricter stands: ${answer}" >&2
     fi
+    # The milestone rule (round 13, the round-12 P1 at :1800): a unit whose units.tsv track is `milestone` gets its
+    # sweep whatever its paths (the AGENTS.md Audit sweep rule), so its row is required under every answer and the
+    # daily row is not read for it.
+    milestone_reason=''
+    [[ ${unit_track} != milestone ]] ||
+        milestone_reason="${unit} is a program milestone (its units.tsv row's track is milestone), and the AGENTS.md Audit sweep rule gives every program milestone one sweep before its pull request merges, whatever its changed paths"
     case ${answer} in
     not-required)
         sweep_class=''
-        require_daily_sweep
+        if [[ -n ${milestone_reason} ]]; then
+            sweep_reason=${milestone_reason}
+            echo "${lever}: sweep: this head changes no sweep-class path, but ${milestone_reason}; its sweep row is required and the daily sweep of main's head is not read for it" >&2
+        else
+            require_daily_sweep
+        fi
         ;;
     'required cap')
         # The listing is at the compare API's cap (round 5): 300 or more entries, so it may be cut short and the
@@ -1323,6 +1484,7 @@ require_sweep_scope() {
         esac
         ;;
     esac
+    [[ -z ${milestone_reason} || ${answer} == not-required ]] || sweep_reason="${sweep_reason}, and ${milestone_reason}"
 }
 
 # The window of the daily sweep (U597 round 4): a row of the store's `daily-sweeps.tsv` whose ts is within this many
@@ -1342,8 +1504,9 @@ DAILY_SWEEP_MAX_AGE=86400
 #   the pin word a prefix of the manifest's pin, the findings file a regular file of this user under the store, never
 #   opened) and to the daily row's own grammar (daily_row_fields, round 9: the seat, the run, the daily task, the
 #   validators' PASS words and the three digest prefixes held to the manifest's `validators_sha256` pins, the two
-#   artifact digests by shape; round 10); any other
-#   answer is a refusal naming the reader and the answer.
+#   artifact digests by shape; round 10), and its head held to main's line (daily_on_main_line, round 13: the compare
+#   API's status for `<daily head>...<tip>` must be `identical` or `ahead`, the tip the swept head or a descendant of
+#   it, else the row is refused naming both shas); any other answer is a refusal naming the reader and the answer.
 # @set daily_row `none`, or the row as the reader printed it.
 # @set daily_ts daily_head daily_verifier daily_evidence The row's four cells when daily_row is a row.
 daily_sweep_read() {
@@ -1377,6 +1540,28 @@ daily_sweep_read() {
     subject="the daily sweep row of ${daily_ts} at main's head ${daily_head}"
     sweep_row_fields "${subject}" "${daily_verifier}" "${daily_evidence}"
     daily_row_fields "${subject}" "${daily_verifier}" "${daily_evidence}"
+    daily_on_main_line "${daily_head}" "${subject}"
+}
+
+# @description Hold the daily row's head to main's line (regime-cutover U597 round 13; the round-12 P2 at
+#   ledger-row.py:631: the writer binds the row to the sha it is given, so a fresh row at any sha, a branch head or an
+#   unrelated commit, stood as the day's sweep of main): `gh api "repos/{owner}/{repo}/compare/<daily head>...<tip>"
+#   --jq '.status'`, the tip read before the gates (read_base_tip), its status read. `identical` (the tip is the swept
+#   head) or `ahead` (the tip descends from it: the sweep of an earlier main, which the tip's own gate one covers
+#   since) is the day's sweep of main; `behind` (the swept sha descends from the tip, so it is not on main yet) and
+#   `diverged` (another line) are refusals naming both shas, and so is any other answer; a failed read is a failure
+#   naming both (standing order 21). The read runs at both reads of the row, the first and the one right before the
+#   merge request (recheck_daily_sweep): the tip is the same sha at both, the row may be another.
+# @arg $1 string The daily row's head, 40 hex.
+# @arg $2 string The row, as the refusals name it.
+daily_on_main_line() {
+    local daily_head=$1 subject=$2 line_status
+    line_status=$(gh_bounded api "repos/{owner}/{repo}/compare/${daily_head}...${base_tip}" --jq '.status') ||
+        fail "cannot read whether the tip ${base_tip} of ${base} is the daily sweep's head ${daily_head} or descends from it (gh api repos/{owner}/{repo}/compare/${daily_head}...${base_tip} --jq .status); a daily row at a sha not on ${base}'s line is not the day's sweep of ${base}, so an unread status decides nothing"
+    case ${line_status} in
+    identical | ahead) ;;
+    *) refuse "${subject} is at ${daily_head}, which is neither the tip ${base_tip} of ${base} nor an ancestor of it (the compare API's status for ${daily_head}...${base_tip} is '${line_status:-nothing}', not identical or ahead); a daily row at a sha not on ${base}'s line is not the day's sweep of ${base}, so the per-head rule stands" ;;
+    esac
 }
 
 # @description Bind the exemption to its standing control (regime-cutover U597 round 4; the round-2 and round-3 P2 at
@@ -1863,22 +2048,25 @@ IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"
 # reported here, loudly, with the base it landed on; it cannot be undone by the lever.
 [[ ${merged_base} == main ]] ||
     fail "pull request ${pr} merged into ${merged_base:-an unreadable base}, not main: it was retargeted after the last read; tell the operator"
-# Gate three (round 12; round 11 read the merge commit's first parent and classified the landed diff again when
-# main had moved, so a landed diff that differed from the audited head's was first classified after the merge, the
-# round-11 P1 at :1764, and an unchanged landed tree on a moved main was asked a second sweep, the P2 at :1770): the
-# merge is a fact from here on, so the receipt is printed first and every exit after it follows the receipt
-# (`ledger-row.py merged` records the merge from it whatever the check says). The merge commit's tree, read with its
-# status and held to 40 hex, must be the test merge's tree read before the merge (require_test_merge): equal trees
-# mean GitHub landed the very commit the lever classified, so the pre-merge classification is the landed diff exactly,
-# nothing is classified again and no second sweep is asked; unequal trees mean main moved between the lever's last tip
-# read and GitHub's write, the one window this lever cannot close (the header names what closes it), so the landed
-# diff is not the classified one: exit 1 naming both trees and the sweep of the merge commit, which gate one requires
-# at the next merge.
+# Gate three (round 12; round 13, the round-12 P1 at :1182 and P2 at :1879): the merge is a fact from here on, so the
+# receipt is printed first and every exit after it follows the receipt (`ledger-row.py merged` records the merge from
+# it whatever the check says). The merge commit's first parent and tree are read in one call (landed_commit_of, the
+# test merge's own read) and both are held: the parent must be the tip read before the gates and the tree the test
+# merge's tree (require_test_merge). Both equal mean GitHub landed the very commit the lever classified onto the very
+# tip, so the pre-merge classification is the landed diff exactly, nothing is classified again and no second sweep is
+# asked. Either differing means main moved between the lever's last tip read and GitHub's write, the one window this
+# lever cannot close (the header names what closes it; round 12 held the tree alone, and equal trees with another
+# parent are a moved main whose landed diff differs too, the round-12 P2 at :1879), so the landed diff is not the
+# classified one and is classified now (judge_landed_commit): `compare/<parent>...<merge commit>` through the pinned
+# reader; `not-required` is exit 0 with one stderr line (the receipt stands, nothing is asked), a class or the cap
+# exit 1 naming the merge commit, its parent, the class and the sweep to record (round 12 demanded the sweep whatever
+# the landed diff held, and the tip gate at the next run then passed a docs-only landed diff with nothing recorded,
+# the round-12 P1 at :1182; now the two agree: the tip gate finds the same landed diff this classification found).
 echo "merged pr=${pr} head=${head} commit=${commit} verdict=${verdict_ts}"
-tree_of "${commit}" "the merge commit" "whether the landed tree is the test merge's tree ${test_merge_tree} classified before the merge is unknown: sweep the merge commit ${commit} and record it before the next merge"
-if [[ ${tree_sha} == "${test_merge_tree}" ]]; then
-    echo "${lever}: merged as ${commit}, whose tree ${tree_sha} is the test merge's tree classified before the merge: the landed diff is the classified one, and no second sweep is asked" >&2
+landed_commit_of "${commit}"
+if [[ ${landed_parent} == "${base_tip}" && ${landed_tree} == "${test_merge_tree}" ]]; then
+    echo "${lever}: merged as ${commit}, whose first parent is the tip ${base_tip} read before the gates and whose tree ${landed_tree} is the test merge's tree classified before the merge: the landed diff is the classified one, and no second sweep is asked" >&2
 else
-    fail "pull request ${pr} merged as ${commit}, but the merge commit's tree ${tree_sha} is not the test merge's tree ${test_merge_tree} classified before the merge: main moved between the lever's last tip read (${base_tip}) and GitHub's write, the one window this lever cannot close, so the landed diff is not the classified one; sweep the merge commit ${commit} and record it as a sweep row of ${unit} at ${commit} (ledger-row.py sweep) before the next merge, which this lever refuses until the row stands (the hcom-orchestration SKILL step 6)"
+    judge_landed_commit
 fi
 ((merge_status == 0)) || echo "${lever}: the merge command exited ${merge_status}, but the pull request is MERGED" >&2

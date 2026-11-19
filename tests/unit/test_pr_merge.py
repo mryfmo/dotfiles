@@ -61,6 +61,9 @@ RULE = (
 # as one array per file; round 5: one call, no count of the pull request read; round 7: keyed by main's tip, read once
 # through the refs API, with the response's merge base the tip itself): a lever path, so the sweep is required (U597).
 LEVER_FILES = [{"status": "modified", "filename": "scripts/orchestrator/pr-merge.sh"}]
+# The store's `units.tsv` with the unit's row (U597 round 13: the lever reads the body's unit's track from it and
+# refuses a store without the register); track `R`, so no test here meets the milestone rule.
+UNITS_ROW = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\nU71\tR\tgate\t\t\t\t\t-\n"
 # The landed diff of main's tip (round 11, gate one): docs only, so the tip needs no sweep row and the sweep gate under
 # test is the head's own.
 DOCS_FILES = [{"status": "modified", "filename": "docs/changelog.md"}]
@@ -115,6 +118,8 @@ class PrMergeSweepGateTest(PrLeverTestCase):
         self.ledger(ledger_row(SHA_A))
         self.verdict()
         self.body = f"## Summary\n\nProgram-Unit: regime-cutover/U71\n\n{FOOTER}\n"
+        # The register the lever reads for the body's unit's track (U597 round 13): the unit's row, track `R`.
+        (self.records / "units.tsv").write_text(UNITS_ROW)
 
     def findings(self, unit="U71", head=SHA_A):
         path = self.sweeps / f"{unit}-{head[:8]}.json"
@@ -493,6 +498,8 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
         shutil.copy2(LEVERS / "sweep-scope.py", reader.parent / "sweep-scope.py")
         (self.repo / ".git/info/exclude").write_text(".orchestration/\nscripts/\n")
         (self.records / "sweeps").mkdir()
+        # The register the lever reads for the body's unit's track (U597 round 13): the unit's row, track `R`.
+        (self.records / "units.tsv").write_text(UNITS_ROW)
         (self.records / f"sweeps/U71-{SHA_A[:8]}.json").write_text("{}\n")
         (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A) + sweep_row())
         (self.records / "verdicts").mkdir()

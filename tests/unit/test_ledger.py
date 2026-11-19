@@ -21,7 +21,9 @@ so a row of a unit's sweep shape is Malformed naming the field. Round 11: `newes
 <head>` form (the newest sweep row of any unit at the head, every sweep row of the ledger held to the rule) and
 `merge_of(commit)` and the `merge-of <commit>` form (the head the squash at the commit came from, the newest
 `pr-merge.sh` receipt row naming `commit=<sha>`; a `pr-merge.sh` row of another evidence shape is no merge row), the
-merge gate's two questions about main's tip."""
+merge gate's two questions about main's tip. Round 13: `carried_from(head)` and the `carried-from <head>` form (the
+earlier head the newest `carried` row at the head names, the tip gate's route to a carried head's sweep) and the merge
+row's pr cell held to a decimal number."""
 
 import importlib.util
 import os
@@ -287,7 +289,7 @@ class LedgerSweepTest(unittest.TestCase):
         run = self.cli("-h")
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertIn("sweep", run.stdout)
-        self.assertIn("{verdict,carry-source,sweep,sweep-any,merge-of,daily}", run.stdout)
+        self.assertIn("{verdict,carry-source,sweep,sweep-any,merge-of,carried-from,daily}", run.stdout)
 
     def test_merge_of_admits_only_a_consistent_pr_merge_row(self):
         """U597 round 12 (verdict U597-097d1615 P2 at ledger.py:362): `merge_of` admitted an audit verdict with a
@@ -352,6 +354,23 @@ class LedgerSweepTest(unittest.TestCase):
         with self.assertRaises(self.reader.Malformed) as caught:
             read.merge_of(merged)
         self.assertIn("the verdict of a merge row is not '-': '- (note)'", str(caught.exception))
+        # round 13 (the round-12 P3 at :371): the pr cell must be a decimal number, as the writer requires; a receipt
+        # that agrees with a non-decimal cell changes nothing, and the fault comes after the verdict's, before the head's
+        for pr in ("x", "-", "07", "7a"):
+            with self.subTest(pr=pr):
+                read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", pr, A, merged))  # line 2
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    read.merge_of(merged)
+                self.assertEqual(
+                    str(caught.exception),
+                    f"{self.ledger_file}:2: the pr of a merge row is not a decimal number: {pr!r}",
+                )
+                run = self.cli("merge-of", merged)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "x", A[:8], merged))
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertIn("the pr of a merge row is not a decimal number: 'x'", str(caught.exception))
         # the order of the faults: the verdict first, then the head cell, then the receipt's pr, then its head
         read = self.ledger(
             merge_row("2026-10-30T07:00:00Z", "U7", "7", A[:8], merged, verdict="correct", receipt_pr="9")
@@ -360,6 +379,92 @@ class LedgerSweepTest(unittest.TestCase):
             read.merge_of(merged)
         self.assertIn("the verdict of a merge row is not '-'", str(caught.exception))
         self.assertEqual(self.reader.MERGE_VERDICT, "-")
+
+    def test_carried_from_answers_the_earlier_head_a_carried_row_names(self):
+        """U597 round 13 (verdict U597-30d381ab P2 at pr-merge.sh:1201): a head merged under a `carried` row was swept
+        at the earlier head its row names, so the tip gate, finding main's tip squashed from a head with no sweep row
+        of its own, follows the carried relation. `carried_from(head)` is the earlier head the newest carried row at
+        the head names (`carried <earlier> <head> <sha256>` in its evidence, pr-merge.sh's `carried_evidence_re`
+        grammar: the line at the start or after whitespace, the digest a whole word before the end or a separator),
+        None at a head without one; `carried (note)` and `carried;` are carried rows, `carrier` is not; a carried row
+        at the head whose evidence names no such line for that head (another head's line, a 65th hex character, a short
+        digest, no line) or names the head itself is Malformed naming the line and the field, to the reader and to the
+        `carried-from` CLI (exit 2 naming the line), while a row at another head is not read; the CLI prints
+        `<earlier>` or `none` and refuses a sha that is not 40 hex."""
+        digest = "d" * 64
+
+        def carried(ts, head, earlier, unit="U7", evidence=None, verdict="carried"):
+            if evidence is None:
+                evidence = f"carried {earlier} {head} {digest}; verdicts/{unit}-{earlier[:8]}.md"
+            return row(ts, unit, "7", head, verdict, "audit-carry.py (equal digests)", evidence)
+
+        read = self.ledger(
+            row("2026-10-30T01:00:00Z", "U7", "7", B, "correct (findings=0)"),  # line 2
+            carried("2026-10-30T02:00:00Z", A, B),  # line 3
+            carried("2026-10-30T03:00:00Z", A, C, unit="U8"),  # line 4: the newest at A, another unit
+            carried("2026-10-30T02:30:00Z", B, C),  # line 5: at another head
+            sweep("2026-10-30T04:00:00Z", B),  # line 6
+        )
+        self.assertEqual(read.carried_from(A), C, "the newest carried row at A by ts, whatever its unit")
+        self.assertEqual(read.carried_from(B), C)
+        self.assertIsNone(read.carried_from(C))
+        self.assertEqual([r.carried for r in read.rows], [False, True, True, True, False])
+        self.assertEqual(read.rows[1].carried_source, B)
+        self.assertIsNone(read.rows[0].carried_source)
+        # the word boundary: `carried (note)` and `carried;` are carried rows, `carrier` is not
+        read = self.ledger(
+            carried("2026-10-30T02:00:00Z", A, B, verdict="carried (digest equal)"),
+            carried("2026-10-30T02:10:00Z", A, C, verdict="carrier"),
+        )
+        self.assertEqual(read.carried_from(A), B)
+        read = self.ledger(carried("2026-10-30T02:00:00Z", A, B, verdict="carried; note"))
+        self.assertEqual(read.carried_from(A), B)
+        # the evidence's grammar: the digest a whole word before the end or a separator, the line at the start or after
+        # whitespace
+        for evidence in (
+            f"carried {B} {A} {digest}",
+            f"carried {B} {A} {digest}; a note",
+            f"carried {B} {A} {digest}.",
+            f"carried {B} {A} {digest}, then",
+            f"note: carried {B} {A} {digest})",
+        ):
+            with self.subTest(evidence=evidence):
+                read = self.ledger(carried("2026-10-30T02:00:00Z", A, B, evidence=evidence))
+                self.assertEqual(read.carried_from(A), B)
+        # Malformed: a carried row at the head whose evidence names no line for it, or names the head itself
+        no_line = f"the evidence of a carried row at {A} holds no 'carried <earlier> {A} <sha256>' line for that head: "
+        for name, evidence, fault in (
+            ("another head's line", f"carried {B} {C} {digest}", no_line + repr(f"carried {B} {C} {digest}")),
+            ("a 65th hex character", f"carried {B} {A} {digest}e", no_line + repr(f"carried {B} {A} {digest}e")),
+            ("a short digest", f"carried {B} {A} {digest[:63]}", no_line + repr(f"carried {B} {A} {digest[:63]}")),
+            ("no line", "equal digests", no_line + repr("equal digests")),
+            ("a line glued to a word", f"xcarried {B} {A} {digest}", no_line + repr(f"xcarried {B} {A} {digest}")),
+            (
+                "the head itself",
+                f"carried {A} {A} {digest}",
+                f"the evidence of a carried row at {A} names the head itself as the earlier head",
+            ),
+        ):
+            with self.subTest(name):
+                read = self.ledger(carried("2026-10-30T02:00:00Z", A, B, evidence=evidence))  # line 2
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    read.carried_from(A)
+                self.assertEqual(str(caught.exception), f"{self.ledger_file}:2: {fault}")
+                self.assertIsNone(read.carried_from(B), "a row at another head is not read")
+                run = self.cli("carried-from", A)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, f"ledger: {self.ledger_file}:2: {fault}\n")
+        # the CLI form
+        self.ledger(carried("2026-10-30T02:00:00Z", A, B))
+        run = self.cli("carried-from", A)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, f"{B}\n", ""))
+        run = self.cli("carried-from", B)
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "none\n", ""))
+        for args in (("carried-from", A[:8]), ("carried-from",), ("carried-from", "U7", A)):
+            with self.subTest(args=args):
+                run = self.cli(*args)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("error:", run.stderr)
 
     def test_sweep_any_and_merge_of_answer_the_merge_gate_s_questions_about_main_s_tip(self):
         """U597 round 11 (gate one of pr-merge.sh: main's tip swept or exempt before the next merge lands on it):

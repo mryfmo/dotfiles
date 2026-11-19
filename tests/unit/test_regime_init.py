@@ -274,11 +274,18 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         recording step followed a symlinked ancestor in the worker-controlled output directory, so coordinator-readable
         files outside the seat could be validated and copied into the store before the writer checked them. The REPORT
         now resolves the directory physically first (`cd <dir> && pwd -P`, its exit read), requires the physical path
-        under the seat's scratch root (itself resolved the same way), refuses any symlinked component below the root
-        with a per-component `test -L`, and validates and copies from the physical path; the order sentence names the
-        hold before the validation. Finding 9 (P3): the bus timestamp (`+00:00`, as bus-history.sh prints hcom's rows)
-        is converted to the writer's `YYYY-MM-DDTHH:MM:SSZ` with the one-line python form the kit's readers use, which
-        the test runs over the fixtures' bus form."""
+        under a root resolved the same way, refuses any symlinked component below the root with a per-component
+        `test -L`, and validates and copies from the physical path; the order sentence names the hold before the
+        validation. Round 13 (verdict U597-30d381ab P1 at :44): round 12's root was the worker-writable
+        `security-audit/` directory, so a symlink planted at that root was resolved as the root and the checks started
+        below it; the root is now the seat's state directory the coordinator owns, `~/.local/state/omp-seats/
+        <repository>/.state/`, which the worker cannot write, every component from there down to the run directory is
+        tested with `test -L` (the seat directory, the `security-audit/` root and the run directory, then each deeper
+        component), the resolved run directory must be exactly the resolved state directory followed by
+        `/<seat>/security-audit/<run>`, and the template says why the root is included (a worker can plant a symlink
+        at the root of its writable tree). Finding 9 (P3): the bus timestamp (`+00:00`, as bus-history.sh prints
+        hcom's rows) is converted to the writer's `YYYY-MM-DDTHH:MM:SSZ` with the one-line python form the kit's
+        readers use, which the test runs over the fixtures' bus form."""
         text = (TEMPLATES / "daily-sweep-brief.md").read_text()
         report = text[text.index("\nREPORT\n") : text.index("\nSTANDING\n")]
         self.assertIn(
@@ -289,14 +296,29 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         self.assertIn(
             "It first resolves the worker's output directory physically, `cd <output-dir> && pwd -P` (its exit status"
             " read: a directory that cannot be entered is a refusal of the run), and requires the physical path to lie"
-            " under the seat's scratch root `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/`, itself"
-            " resolved with `cd ~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit && pwd -P` (the"
-            " physical output directory must start with that root and a slash, else the run is refused and nothing is"
-            " validated or copied), and refuses when any component of `<output-dir>` below that root is a symbolic link:"
-            " `test -L` on each component in turn,"
-            " `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/<run>` first and each deeper component"
-            " after it, every test false",
+            " under the seat's state directory `~/.local/state/omp-seats/<repository>/.state/`, the directory the"
+            " coordinator owns and the worker cannot write (the seat's containment grants the worker its own"
+            " `.state/<seat>` and nothing above it), itself resolved with `cd ~/.local/state/omp-seats/<repository>/.state"
+            " && pwd -P` (its exit status read; the physical output directory must be exactly that directory followed by"
+            " `/<seat>/security-audit/<run>`, else the run is refused and nothing is validated or copied), and refuses"
+            " when any component of `<output-dir>` below that directory is a symbolic link: `test -L` on each component"
+            " in turn, `~/.local/state/omp-seats/<repository>/.state/<seat>` first, then"
+            " `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit`, then"
+            " `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/<run>` and each deeper component after"
+            " it, every test false.",
             report,
+        )
+        self.assertIn(
+            "The `security-audit/` root is included because a worker can plant a symlink at the root of its writable"
+            " tree: the worker writes everything under `.state/<seat>`, so a check that resolved `security-audit/` itself"
+            " as its root and tested the components below it alone started inside a path the worker could have replaced"
+            " with a link, and the resolved root then lay wherever the link pointed",
+            report,
+        )
+        self.assertNotIn(
+            "cd ~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit && pwd -P",
+            report,
+            "the worker-writable root is resolved no more (round 13)",
         )
         self.assertIn("the physical path is what the validators and the copy below read", report)
         self.assertIn(
@@ -308,6 +330,14 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         )
         self.assertLess(report.index("cd <output-dir> && pwd -P"), report.index("It runs both validators itself"))
         self.assertLess(report.index("`test -L` on each component"), report.index("`test ! -e <store>/sweeps/"))
+        self.assertLess(
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>` first"),
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit`, then"),
+        )
+        self.assertLess(
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit`, then"),
+            report.index("`~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/<run>` and each deeper"),
+        )
         # the bus timestamp conversion, the one-line form, run over the bus fixtures' form
         self.assertIn(
             "with `<ts>` the RESULT message's bus timestamp converted to the writer's form `YYYY-MM-DDTHH:MM:SSZ`"

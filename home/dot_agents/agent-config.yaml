@@ -1031,7 +1031,7 @@ claude:
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
       stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d
-      stall-watch.sh: dacaab9ac2ce81307476be5f54ed5daa17d9ed5a40dbed17b24a7040f81a646e
+      stall-watch.sh: 5385935fdf27fe5b75c8ae445b86be0e0f638063de4bbde82d7cd037be5b6c5c
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

@@ -1,12 +1,15 @@
 """Exercise scripts/orchestrator/stall-watch.sh (regime-cutover U621, standing orders 57 and 59; round 2 after verdict
-U621-942e9a16, round 3 after verdict U621-b368fced), the schedule and the record around `stall-check.py`: one tick runs
+U621-942e9a16, round 3 after verdict U621-b368fced, round 4 after verdict U621-4edab4b0), the schedule and the record
+around `stall-check.py`: one tick runs
 the checker beside the lever over a store with `<store>/progress` as the progress root, appends one `decisions.tsv` row
 of phase `stall` per new stall and prints the checker's row on stdout, once per stall by a marker file
 `<store>/progress/<unit>-stalled-<ts>` that is created under a `.partial` name before the row and renamed after it; a
 unit without a file is a stall only once the deadline has passed since the tick that first saw it (the
 `<unit>-seen-<ts>` marker); `--until-stall` exits 1 at the end of the first tick that records a new stall, every stall
-of that tick recorded and printed; `reset <unit>` removes a unit's markers and moves its progress file aside, and takes
-no option; the row is appended through a descriptor opened with O_NOFOLLOW; a failed checker, a failed record or a
+of that tick recorded and printed; `reset <unit>` is one transaction ordered to fail safe (the clock, the progress file
+moved aside by rename, only then the markers removed, the print at the end; a failure stops it with exit 3, nothing on
+stdout and one stderr line naming the step and what was done) and takes no option; the row is appended through a
+descriptor opened with O_NOFOLLOW; a failed checker, a failed record or a
 failed read of a partial marker's age is printed on stderr and is exit 3. Every test runs the lever as a subprocess
 over a scratch store under a scratch HOME with the real wall clock (the checker takes no injected clock through this
 lever, so the progress lines and the `seen` markers are written relative to now); nothing reads the live store or the
@@ -799,6 +802,111 @@ class StallWatchTest(unittest.TestCase):
         (row,) = self.decisions()
         self.assert_stalled_row(row, "U2", age, self.stalled_line)
         self.assertEqual(self.markers(), [marker.name])
+
+    def test_a_failed_archive_rename_is_exit_3_naming_it_and_leaves_the_file_and_the_markers_untouched(self) -> None:
+        # Round 4 (verdict U621-4edab4b0 P2 at :314): at 4edab4b0 reset removed the markers before the rename, so a
+        # failed move left the old file beside no marker and the next tick recorded the same stall a second time; now
+        # the rename comes first and its failure stops the sequence with nothing done and nothing on stdout.
+        file = self.progress / "U2-progress.txt"
+        previous = file.read_bytes()
+        marker = f"U2-stalled-{self.stalled_line[:20]}"
+        run = self.run_lever("--once")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        self.assertEqual(self.markers(), [marker])
+        # The clock the test drives: a `date` wrapper on PATH prints one fixed clock, so the archive name is known and
+        # the test pre-creates it (an archive name already taken is a failure of the rename).
+        clock = "2026-01-01T00:00:00Z"
+        env = self.fake_tool("date", f"echo {clock}")
+        archive = self.progress / f"U2-progress.{clock}.txt"
+        taken = "another reset's archive\n"
+        archive.write_text(taken)
+        before = self.listing()
+        failed = self.run_lever("reset", "U2", env=env)
+        self.assertEqual((failed.returncode, failed.stdout), (3, ""), failed.stderr)
+        self.assertEqual(failed.stderr.count("\n"), 1, failed.stderr)
+        self.assertEqual(
+            failed.stderr,
+            f"stall-watch.sh: the rename of the progress file {file} to {archive} failed: the archive name is taken; "
+            "nothing is done (the file stands and no marker of U2 is removed)\n",
+        )
+        self.assertEqual(self.listing(), before, "nothing was written, moved or removed")
+        self.assertEqual(file.read_bytes(), previous, "the progress file stands")
+        self.assertEqual(archive.read_text(), taken, "the taken name is not overwritten")
+        self.assertEqual(self.markers(), [marker], "the final marker stands")
+        self.assertEqual(len(self.decisions()), 1)
+        # The next tick after the failed reset: the final marker still guards the stall, so no second row (at 4edab4b0
+        # the marker was already gone and the old file's line was recorded again).
+        held = self.run_lever("--once")
+        self.assertEqual((held.returncode, held.stdout, held.stderr), (0, "", ""))
+        self.assertEqual(len(self.decisions()), 1, "the same stall is not recorded twice")
+        # The coordinator fixes the store (the taken name moved aside, nothing deleted) and runs reset again: the
+        # success case prints the removed markers in the order removed, then the archive line last, after every step.
+        archive.rename(self.progress / f"U2-progress.{clock}.earlier.txt")
+        seen = self.write_seen("U2", stamp(50))
+        reset = self.run_lever("reset", "U2", env=env)
+        self.assertEqual(
+            (reset.returncode, reset.stdout, reset.stderr),
+            (0, f"{seen}\n{self.progress}/{marker}\n{archive}\n", ""),
+        )
+        self.assertFalse(file.exists(), "the replacement has no file")
+        self.assertEqual(archive.read_bytes(), previous, "the previous worker's lines are kept")
+        self.assertEqual((self.markers(), self.seen()), ([], []))
+        self.assertEqual(len(self.decisions()), 1, "reset touches no row")
+
+    def test_a_failed_marker_removal_after_the_archive_is_exit_3_naming_the_marker_and_the_archive_which_stands(
+        self,
+    ) -> None:
+        # Round 4 (verdict U621-4edab4b0 P2 at :314; the round brief's item 1): a marker removal that fails after the
+        # archive stops the sequence there; the stderr line names the marker, the archive (which stands) and the markers
+        # already removed, so the coordinator finishes by hand; nothing is on stdout.
+        file = self.progress / "U2-progress.txt"
+        previous = file.read_bytes()
+        marker = f"U2-stalled-{self.stalled_line[:20]}"
+        run = self.run_lever("--once")
+        self.assertEqual(run.returncode, 1, run.stderr)
+        seen = self.write_seen("U2", stamp(50))
+        # A marker `rm` cannot remove: a directory under a partial marker's name, which the glob lists after the `seen`
+        # marker and before the final one; the one injection that needs no wrapper.
+        blocked = self.progress / "U2-stalled-2026-01-01T00:00:00Z.partial"
+        blocked.mkdir()
+        clock = "2026-02-02T00:00:00Z"
+        env = self.fake_tool("date", f"echo {clock}")
+        archive = self.progress / f"U2-progress.{clock}.txt"
+        failed = self.run_lever("reset", "U2", env=env)
+        self.assertEqual((failed.returncode, failed.stdout), (3, ""), failed.stderr)
+        self.assertEqual(failed.stderr.count("\n"), 1, failed.stderr)
+        self.assertEqual(
+            failed.stderr,
+            f"stall-watch.sh: the marker {blocked} cannot be removed; done before the failure: the progress file {file} "
+            f"is archived as {archive}; the markers removed before it: {seen}; finish by hand and run reset U2 again\n",
+        )
+        self.assertFalse(file.exists(), "the archive was made before the markers")
+        self.assertEqual(archive.read_bytes(), previous, "the archive stands")
+        self.assertEqual(self.seen(), [], "the marker before the failure was removed")
+        self.assertEqual(self.markers(), [blocked.name, marker], "the sequence stopped at the failure")
+        self.assertEqual(len(self.decisions()), 1)
+        # The coordinator finishes the named step by hand and runs reset again: no file now, so no archive line; the
+        # final marker goes; exit 0; the archive is never deleted; the replacement's first tick is a sighting.
+        blocked.rmdir()
+        again = self.run_lever("reset", "U2", env=env)
+        self.assertEqual((again.returncode, again.stdout, again.stderr), (0, f"{self.progress}/{marker}\n", ""))
+        self.assertEqual((self.markers(), self.seen()), ([], []))
+        self.assertEqual(archive.read_bytes(), previous)
+        fresh = self.run_lever("--once")
+        self.assertEqual((fresh.returncode, fresh.stdout, fresh.stderr), (0, "", ""))
+        self.assertEqual((len(self.seen()), len(self.decisions())), (1, 1))
+        # The clock is the first step even without a file: its failure is exit 3 naming it, nothing touched (the
+        # listing is taken after the wrapper on PATH is rewritten, so only the store is compared).
+        clockless_env = self.fake_tool("date")
+        listing = self.listing()
+        clockless = self.run_lever("reset", "U2", env=clockless_env)
+        self.assertEqual((clockless.returncode, clockless.stdout), (3, ""), clockless.stderr)
+        self.assertEqual(
+            clockless.stderr,
+            f"stall-watch.sh: the clock cannot be read (date -u failed); no marker of U2 is removed (there is no "
+            f"progress file {file} to archive)\n",
+        )
+        self.assertEqual(self.listing(), listing, "nothing was touched")
 
     def test_the_deployed_twin_equals_the_source_and_hashes_to_its_pin(self) -> None:
         source = LEVER.read_bytes()

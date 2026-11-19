@@ -678,7 +678,7 @@
       "target": ".local/bin/common/stall-watch.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "dacaab9ac2ce81307476be5f54ed5daa17d9ed5a40dbed17b24a7040f81a646e"
+      "sha256": "5385935fdf27fe5b75c8ae445b86be0e0f638063de4bbde82d7cd037be5b6c5c"
     },
     {
       "source": "home/dot_local/bin/common/executable_ticket-unit.py",

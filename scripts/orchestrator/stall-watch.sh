@@ -3,11 +3,11 @@
 # @brief Run stall-check.py over a program store on a schedule and record each new stall once in decisions.tsv.
 # @description
 #   Regime-cutover U621 (standing orders 57 and 59; round 2 after verdict U621-942e9a16, round 3 after verdict
-#   U621-b368fced). Measured 2026-11-19: four Task subagents went silent after a tool result (one died on the
-#   network's TLS proxy error, two produced no transcript entry for 30 to 38 minutes, one parked on a `wait` whose job
-#   result never arrived) and each cost 30 to 40 minutes before the coordinator noticed by hand, about 2.5 hours in the
-#   day. `stall-check.py` (U496) names the
-#   in-flight units silent past a deadline, but nothing ran it on a schedule and nothing acted on its rows. This
+#   U621-b368fced, round 4 after verdict U621-4edab4b0). Measured 2026-11-19: four Task subagents went silent after a
+#   tool result (one died on the network's TLS proxy error, two produced no transcript entry for 30 to 38 minutes, one
+#   parked on a `wait` whose job result never arrived) and each cost 30 to 40 minutes before the coordinator noticed by
+#   hand, about 2.5 hours in the day. `stall-check.py` (U496) names the in-flight units silent past a deadline, but
+#   nothing ran it on a schedule and nothing acted on its rows. This
 #   lever is that schedule and that record: `stall-watch.sh <store> [--deadline-minutes <n>] [--interval-seconds
 #   <n>] [--once | --until-stall]` runs the `stall-check.py` beside it (`python3 -I <dir>/stall-check.py <store>
 #   --progress-root <store>/progress --deadline-minutes <n>`) every interval (default 60 seconds) with the deadline
@@ -28,13 +28,18 @@
 #   gets its `seen` markers removed on that tick. The stall's identity is that first-seen time, so the no-file marker
 #   is `<unit>-stalled-seen-<ts>`: after the coordinator ran `stall-watch.sh <store> reset <unit>`, a replacement
 #   worker's own silence is a later first-seen time, a new marker and a new row. `reset <unit>` takes no option
-#   (one given is refused naming it) and makes the replacement start clean: it removes the unit's `seen` and `stalled`
-#   markers, partial ones included, and moves the unit's progress file aside, `<unit>-progress.txt` to
-#   `<unit>-progress.<UTC clock of the reset>.txt` in the same directory (a rename, nothing deleted, so the previous
-#   worker's lines stay for the record and the replacement has no file, which the first-seen rule above counts from
-#   its first tick instead of reporting the old file's last line as a stall at once); it prints each removed marker
-#   and the archived file's name on stdout, says nothing about the file when there is none, and exits 0, or 3 naming
-#   the path it could not remove or rename (a failed clock read refuses the rename before anything is removed).
+#   (one given is refused naming it) and makes the replacement start clean as one transaction ordered to fail safe:
+#   it reads the clock; moves the unit's progress file aside, `<unit>-progress.txt` to `<unit>-progress.<UTC clock of
+#   the reset>.txt` in the same directory (a rename, nothing deleted, so the previous worker's lines stay for the
+#   record and the replacement has no file, which the first-seen rule above counts from its first tick instead of
+#   reporting the old file's last line as a stall at once), when there is one; only after the archive stands, removes
+#   the unit's `seen` and `stalled` markers, partial ones included; and prints only at the end, after every step
+#   succeeded, each removed marker in the order removed and the archived file's name last on stdout (nothing about
+#   the file when there is none), exit 0. Any failure (the clock, the rename, an archive name already taken, a marker
+#   removal) stops the sequence there: one stderr line names the step and what was already done before it, nothing
+#   is printed on stdout, the exit is 3, and the coordinator finishes the named step by hand or fixes the store, runs
+#   `reset` again and dispatches the replacement only after an exit 0. The archive comes before the markers because
+#   a marker removed before a failed rename would let the next tick record the same stall again from the old file.
 #
 #   The record is made once per stall by a marker file `<store>/progress/<unit>-stalled-<ts>`, `<ts>` the timestamp of
 #   the stalled last line or `seen-<first-seen ts>` for a no-file stall, and the row is written before the marker is
@@ -92,15 +97,15 @@
 #   the program; `tests/unit/test_stall_watch.py` runs the checkout script and the installed layout over a scratch
 #   store.
 # @arg $1 path The program store directory holding units.tsv, decisions.tsv and progress/.
-# @arg $2 string `reset`, followed by the unit whose `seen` and `stalled` markers are removed and whose progress file is moved aside (no option with it).
+# @arg $2 string `reset`, followed by the unit whose progress file is moved aside and whose `seen` and `stalled` markers are then removed, one transaction (no option with it).
 # @option --deadline-minutes <n> The age in whole minutes a moving worker's last line, or a unit's first sighting without a file, may have (default 25, 1 to 1440).
 # @option --interval-seconds <n> Seconds between two ticks (default 60, 1 to 86400).
 # @option --once Run one tick and exit with its result instead of looping.
 # @option --until-stall Loop, and exit 1 at the end of the first tick that records a new stall (every row of that tick on stdout) or 3 on a checker or record failure.
-# @stdout One `unit<TAB>state<TAB>age_minutes<TAB>last_line` row per newly recorded stall, as stall-check.py printed it; `reset`: each removed marker path and the archived progress file's path.
-# @exitcode 0 `--once`: the check ran and no new stall was recorded; `reset`: every marker of the unit is gone and its progress file, if there was one, is archived.
+# @stdout One `unit<TAB>state<TAB>age_minutes<TAB>last_line` row per newly recorded stall, as stall-check.py printed it; `reset`, on exit 0 only: each removed marker path in the order removed, then the archived progress file's path last.
+# @exitcode 0 `--once`: the check ran and no new stall was recorded; `reset`: its progress file, if there was one, is archived and every marker of the unit is gone.
 # @exitcode 1 `--once` or `--until-stall`: a new stall was recorded this tick (every row of the tick is on stdout).
-# @exitcode 3 `--once` or `--until-stall`: stall-check.py exited other than 0 or 1, or a record could not be made or a partial marker's age read, this tick (printed on stderr); `reset`: a marker could not be removed, or the progress file could not be archived.
+# @exitcode 3 `--once` or `--until-stall`: stall-check.py exited other than 0 or 1, or a record could not be made or a partial marker's age read, this tick (printed on stderr); `reset`: the clock, the rename (an archive name already taken included) or a marker removal failed, the sequence stopped there, one stderr line names the step and what was done before it, nothing on stdout.
 # @exitcode 2 Refused before the first tick: a bad argument, a store that is not a store, no checker, no python3.
 # @example
 #   scripts/orchestrator/stall-watch.sh ~/.local/state/regime-store/dotfiles/regime-cutover --once
@@ -288,47 +293,73 @@ progress=${store}/progress
 [[ -d ${progress} && ! -L ${progress} ]] || refuse "${progress} is not a directory; the workers' progress files and the stall markers live there"
 [[ -w ${progress} ]] || refuse "${progress} cannot be written; the stall markers go there"
 
-# @description `reset <unit>`: remove the unit's `seen` and `stalled` markers (partial ones included) and move its
-#   progress file aside, `<unit>-progress.txt` to `<unit>-progress.<UTC clock of the reset>.txt` beside it (a rename,
-#   nothing deleted: the previous worker's lines stay for the record), printing each removed path and the archived
-#   name on stdout, so a replacement worker starts with no file and its silence is a new first sighting and a new
-#   stall. The clock is read, with its status, before anything is removed (standing order 21): a failed read is exit 3
-#   with nothing touched; a unit without a file gets no line about the file.
+# @description `reset <unit>`, one transaction ordered to fail safe (round 4 after verdict U621-4edab4b0, P2 at
+#   `:314`): read the clock; move the unit's progress file aside, `<unit>-progress.txt` to `<unit>-progress.<UTC clock
+#   of the reset>.txt` beside it (a rename, nothing deleted: the previous worker's lines stay for the record, and the
+#   replacement starts with no file, so its silence is a new first sighting and a new stall), when there is one; only
+#   after the archive stands, remove the unit's `seen` and `stalled` markers, partial ones included; print only at the
+#   end, after every step succeeded. The archive comes before the markers because a marker removed before a failed
+#   rename would let the next tick record the same stall twice from the old file, while a rename done before a failed
+#   removal leaves the final marker that keeps the record single. Any failure (the clock, the rename, a marker
+#   removal; an archive name already taken is a failure of the rename) stops the sequence at that step: one stderr
+#   line names the step and what was already done before it (the archive made, the markers removed), nothing is
+#   printed on stdout, and the exit is 3, so the coordinator finishes the named step by hand or fixes the store and
+#   runs `reset` again. Every read has its status read (standing order 21).
 # @arg $1 string The unit.
-# @exitcode 0 Every marker of the unit is gone and its progress file, if there was one, is archived.
-# @exitcode 3 A marker could not be removed, or the progress file could not be archived (printed on stderr).
+# @stdout On exit 0 only: each removed marker's path in the order it was removed, then the archived file's path last
+#   (no line about the file when there was none).
+# @exitcode 0 The progress file, if there was one, is archived and every marker of the unit is gone.
+# @exitcode 3 The clock could not be read, the progress file could not be renamed (the archive name taken included)
+#   or a marker could not be removed: one stderr line names the step and what was done before it; nothing on stdout.
 reset_unit_state() {
-    local unit=$1 entry status=0 file archive='' clock
+    local unit=$1 entry file archive='' clock removed_lines='' removed_list='' done_so_far
     file=${progress}/${unit}-progress.txt
-    if [[ -e ${file} || -L ${file} ]]; then
-        if ! clock=$(date -u +%Y-%m-%dT%H:%M:%SZ) || [[ ! ${clock} =~ ${stamp_shape}$ ]]; then
+    # Step 1, the clock: the archive's name. Nothing is done yet, so a failure leaves nothing to finish by hand.
+    if ! clock=$(date -u +%Y-%m-%dT%H:%M:%SZ) || [[ ! ${clock} =~ ${stamp_shape}$ ]]; then
+        if [[ -e ${file} || -L ${file} ]]; then
             complain "the clock cannot be read (date -u failed); the progress file ${file} is not archived and no marker of ${unit} is removed"
-            return 3
+        else
+            complain "the clock cannot be read (date -u failed); no marker of ${unit} is removed (there is no progress file ${file} to archive)"
         fi
+        return 3
+    fi
+    # Step 2, the archive by rename, when a file exists: a taken name is the rename's failure, and `mv -n` with the
+    # read-back that the source is gone and the archive stands refuses to overwrite a name taken between the two.
+    if [[ -e ${file} || -L ${file} ]]; then
         archive=${progress}/${unit}-progress.${clock}.txt
         if [[ -e ${archive} || -L ${archive} ]]; then
-            complain "the archive name ${archive} is taken; the progress file ${file} is not archived and no marker of ${unit} is removed"
+            complain "the rename of the progress file ${file} to ${archive} failed: the archive name is taken; nothing is done (the file stands and no marker of ${unit} is removed)"
+            return 3
+        fi
+        if ! mv -n -- "${file}" "${archive}" 2> /dev/null || [[ -e ${file} || -L ${file} ]] || [[ ! -e ${archive} && ! -L ${archive} ]]; then
+            complain "the rename of the progress file ${file} to ${archive} failed; nothing is done (the file stands and no marker of ${unit} is removed)"
             return 3
         fi
     fi
+    # Step 3, the markers, each read for its status; the first failure stops the sequence and names what stands done.
     for entry in "${progress}/${unit}-seen-"* "${progress}/${unit}-stalled-"*; do
         [[ -e ${entry} || -L ${entry} ]] || continue
-        if rm -f -- "${entry}" 2> /dev/null; then
-            printf '%s\n' "${entry}"
-        else
-            complain "the marker ${entry} cannot be removed"
-            status=3
+        if ! rm -f -- "${entry}" 2> /dev/null; then
+            if [[ -n ${archive} ]]; then
+                done_so_far="the progress file ${file} is archived as ${archive}"
+            else
+                done_so_far="there was no progress file ${file} to archive"
+            fi
+            if [[ -n ${removed_list} ]]; then
+                done_so_far+="; the markers removed before it: ${removed_list}"
+            else
+                done_so_far+="; no marker was removed before it"
+            fi
+            complain "the marker ${entry} cannot be removed; done before the failure: ${done_so_far}; finish by hand and run reset ${unit} again"
+            return 3
         fi
+        removed_lines+="${entry}"$'\n'
+        removed_list+="${removed_list:+, }${entry}"
     done
-    if [[ -n ${archive} ]]; then
-        if mv -- "${file}" "${archive}" 2> /dev/null; then
-            printf '%s\n' "${archive}"
-        else
-            complain "the progress file ${file} cannot be moved to ${archive}; the replacement would be judged by the previous worker's lines"
-            status=3
-        fi
-    fi
-    return "${status}"
+    # Step 4, the print, only now that every step succeeded: the markers in the order removed, the archive line last.
+    printf '%s' "${removed_lines}"
+    [[ -z ${archive} ]] || printf '%s\n' "${archive}"
+    return 0
 }
 if [[ -n ${verb} ]]; then
     if reset_unit_state "${reset_unit}"; then

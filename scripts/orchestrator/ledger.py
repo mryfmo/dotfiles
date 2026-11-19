@@ -59,15 +59,25 @@ Malformed with the ledger's strictness: the header exact, four cells per row spl
 shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where
 round 5's `strptime` alone read it), no cell holding a control character (round 7; a carriage return included and
 never stripped, round 8, so a row ends in LF alone), no empty cell, a `head_sha` of 40
-hex, and the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
-file `sweeps/<path>.json`), each fault naming the line and the field. `Daily.newest_within(now, max_age)` is the
-newest row by `(ts, line)` whose ts lies within the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60
-seconds, the reader's allowance for a row another host's clock wrote; the writer refuses a ts after its own clock,
-round 7; round 5: a row dated further in the future is not within the window, so it does not count and is not refused
-as malformed, where round 4's floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily
-<max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none`
-(no file, or no row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a
-row, so the exemption of rule C is bound to the control it rests on.
+hex, the verifier and the evidence the exact fields of the sweep rule (`security-audit-skill <pin>`, a findings
+file `sweeps/<path>.json`), and, since round 9 (verdict U597-c37800e3 P2 at :393, where the daily reader applied the
+sweep row's grammar alone and a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing
+findings path, read back as the day's sweep of main's head), the daily row's own grammar, the exact fields
+`ledger-row.py daily` writes: the verifier `security-audit-skill <pin> (full audit mode on the srt worker seat <seat>,
+run-<n>; TASK daily-<YYYY-MM-DD>)` (`DAILY_VERIFIER`, the task the daily dispatch's id alone, its day the ts's UTC day
+or the day before, a sweep that crosses midnight) and the evidence's six `; `-separated fields in the writer's order,
+`<findings>; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>
+<8 hex>; recorded <ts>` (`daily_fields_fault`: the count, the two validators' PASS words, the first 8 hex of the two
+validator pins the writer held the installed files to, and the recording time under the one ts form), each fault
+naming the line and the field, so a row shaped like a unit's sweep row is Malformed, never a daily row. `DailyRow`
+exposes the parsed fields (`seat`, `run`, `task_day`, `validator_digests`, `recorded`). `Daily.newest_within(now,
+max_age)` is the newest row by `(ts, line)` whose ts lies within the window `now - max_age <= ts <= now +
+DAILY_FUTURE_SLACK` (60 seconds, the reader's allowance for a row another host's clock wrote; the writer refuses a ts
+after its own clock, round 7; round 5: a row dated further in the future is not within the window, so it does not
+count and is not refused as malformed, where round 4's floor alone let a future-dated row waive per-head sweeps until
+a day after its ts). `ledger.py <store> daily <max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of
+that row against the clock (UTC), or `none` (no file, or no row within the window); `pr-merge.sh` asks it with 86400
+and skips a head's own sweep row only on a row, so the exemption of rule C is bound to the control it rests on.
 """
 
 from __future__ import annotations
@@ -120,6 +130,33 @@ DAILY_REQUIRED = range(1, 5)  # every cell: a row without a verifier or an evide
 # 7), so a row this host wrote is never dated ahead.
 DAILY_FUTURE_SLACK = 60
 MAX_AGE = re.compile(r"^[1-9][0-9]*$")
+# The daily row's own grammar (U597 round 9; verdict U597-c37800e3 P2 at :393): the verifier as `ledger-row.py daily`
+# composes it, the skill, its pin word (8 or more lowercase hex, SWEEP_VERIFIER's group), the seat (one word), the run
+# and the task `daily-<YYYY-MM-DD>`, the daily dispatch's id alone (a unit id is a `sweep` row's task, never a daily
+# row's), whose day is the ts's UTC day or the day before it (the writer's rule: a sweep that crosses midnight keeps
+# the id it was dispatched under); and the evidence's six `; `-separated fields in the writer's order: the findings
+# file (the sweep rule's field, no whitespace around it), `<n> findings`, the two validators' PASS words, `validators
+# sha256 <8 hex> <8 hex>` (the first 8 hex of the pins the writer held validate-findings.cjs and
+# validate-coverage-ledger.cjs to; pr-merge.sh compares them with the manifest's `validators_sha256` pins) and
+# `recorded <ts>` (the clock at the write, the one ts form). A row of another shape is Malformed naming the field.
+DAILY_VERIFIER = re.compile(
+    r"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "
+    r"TASK daily-([0-9]{4}-[0-9]{2}-[0-9]{2})\)$"
+)
+DAILY_VERIFIER_FORM = (
+    "security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)"
+)
+DAILY_EVIDENCE_FORM = (
+    "sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
+    "validators sha256 <8 hex> <8 hex>; recorded <ts>"
+)
+DAILY_SEPARATOR = "; "
+DAILY_FIELDS = 6
+DAILY_COUNT = re.compile(r"^(0|[1-9][0-9]*) findings$")
+DAILY_PASSES = ("validate-findings.cjs PASS", "validate-coverage-ledger.cjs PASS")
+DAILY_DIGESTS = re.compile(r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+DAILY_RECORDED = "recorded "
+DAY_FORMAT = "%Y-%m-%d"
 
 
 def sweep_pin_of(verifier):
@@ -155,6 +192,51 @@ def sweep_fields_fault(verifier, evidence, kind):
             f"the evidence of {kind} does not name a findings file {SWEEP_EVIDENCE_DIR}/<path>"
             f"{SWEEP_EVIDENCE_SUFFIX} under the store (no '..' or empty component): {evidence!r}"
         )
+    return None
+
+
+def daily_fields_fault(verifier, evidence, at):
+    """Why a verifier and an evidence are not those of the daily row `ledger-row.py daily` writes (U597 round 9),
+    naming the field, or None, after sweep_fields_fault held the fields the sweep rule's rows share: the verifier
+    matches DAILY_VERIFIER with a task day that is the ts `at`'s UTC day or the day before it, and the evidence has
+    exactly DAILY_FIELDS `; `-separated fields, the findings file unpadded, `<n> findings`, the two PASS words, the
+    two 8-hex digests and `recorded <ts>` under the one ts form."""
+    match = DAILY_VERIFIER.match(verifier)
+    if match is None:
+        return (
+            f"the verifier of a daily sweep row is not {DAILY_VERIFIER_FORM!r} (the daily dispatch's task alone, a "
+            f"unit id never): {verifier!r}"
+        )
+    try:
+        task_day = datetime.strptime(match.group(4), DAY_FORMAT)
+    except ValueError:
+        return f"the TASK day of a daily sweep row is no calendar day: daily-{match.group(4)}"
+    behind = (datetime(at.year, at.month, at.day) - task_day).days
+    if behind not in (0, 1):
+        return (
+            f"the TASK day daily-{match.group(4)} of a daily sweep row is neither the UTC day of its ts "
+            f"{at.strftime(TS_FORMAT)} nor the day before it"
+        )
+    fields = evidence.split(DAILY_SEPARATOR)
+    if len(fields) != DAILY_FIELDS:
+        return (
+            f"the evidence of a daily sweep row has {len(fields)} '; '-separated fields, not {DAILY_FIELDS} "
+            f"({DAILY_EVIDENCE_FORM!r}): {evidence!r}"
+        )
+    if fields[0] != fields[0].strip():
+        return f"field 1 of the evidence of a daily sweep row, the findings file, is padded with spaces: {fields[0]!r}"
+    if DAILY_COUNT.match(fields[1]) is None:
+        return f"field 2 of the evidence of a daily sweep row is not '<n> findings': {fields[1]!r}"
+    for number, expected in enumerate(DAILY_PASSES, 3):
+        if fields[number - 1] != expected:
+            return f"field {number} of the evidence of a daily sweep row is not {expected!r}: {fields[number - 1]!r}"
+    if DAILY_DIGESTS.match(fields[4]) is None:
+        return (
+            f"field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>' (the first 8 hex "
+            f"of the two validator pins the writer held the installed files to): {fields[4]!r}"
+        )
+    if not fields[5].startswith(DAILY_RECORDED) or timestamp(fields[5][len(DAILY_RECORDED) :]) is None:
+        return f"field 6 of the evidence of a daily sweep row is not 'recorded <{TS_FORM}>': {fields[5]!r}"
     return None
 
 
@@ -349,6 +431,40 @@ class DailyRow:
     def sweep_evidence_path(self):
         return sweep_evidence_path_of(self.evidence)
 
+    @property
+    def seat(self):
+        """The srt worker seat the verifier names (DAILY_VERIFIER), or None for a verifier of another shape."""
+        match = DAILY_VERIFIER.match(self.verifier)
+        return None if match is None else match.group(2)
+
+    @property
+    def run(self):
+        """The run number the verifier names, as written, or None."""
+        match = DAILY_VERIFIER.match(self.verifier)
+        return None if match is None else match.group(3)
+
+    @property
+    def task_day(self):
+        """The `YYYY-MM-DD` of the verifier's `TASK daily-<day>`, or None."""
+        match = DAILY_VERIFIER.match(self.verifier)
+        return None if match is None else match.group(4)
+
+    @property
+    def validator_digests(self):
+        """The two 8-hex digest prefixes of the evidence's `validators sha256` field (validate-findings.cjs,
+        validate-coverage-ledger.cjs), or None."""
+        fields = self.evidence.split(DAILY_SEPARATOR)
+        match = DAILY_DIGESTS.match(fields[4]) if len(fields) == DAILY_FIELDS else None
+        return None if match is None else (match.group(1), match.group(2))
+
+    @property
+    def recorded(self):
+        """The recording time of the evidence's `recorded <ts>` field as a datetime, or None."""
+        fields = self.evidence.split(DAILY_SEPARATOR)
+        if len(fields) != DAILY_FIELDS or not fields[5].startswith(DAILY_RECORDED):
+            return None
+        return timestamp(fields[5][len(DAILY_RECORDED) :])
+
 
 @dataclass(frozen=True)
 class Daily:
@@ -367,8 +483,9 @@ class Daily:
 def parse_daily(name, text):
     """The Daily of one `daily-sweeps.tsv` text, or Malformed naming `name`, the line and the field, with the
     ledger's strictness: the header exact, four cells split on the tab alone, a ts under the one form, no empty cell,
-    no control character in a cell (a carriage return included: a row ends in LF alone, round 8), a 40-hex head, and
-    the verifier and the evidence the exact fields of the sweep rule (U597 round 4)."""
+    no control character in a cell (a carriage return included: a row ends in LF alone, round 8), a 40-hex head, the
+    verifier and the evidence the exact fields of the sweep rule (U597 round 4) and the daily row's own grammar
+    (round 9: daily_fields_fault, so a row of a unit's sweep shape is Malformed, never a daily row)."""
     lines = text.split("\n")
     if lines and lines[-1] == "":
         lines.pop()
@@ -391,6 +508,8 @@ def parse_daily(name, text):
         if not SHA.match(fields[1]):
             raise Malformed(f"{name}:{number}: the head_sha of a daily sweep row is not 40 hex: {fields[1]!r}")
         fault = sweep_fields_fault(fields[2], fields[3], "a daily sweep row")
+        if fault is None:
+            fault = daily_fields_fault(fields[2], fields[3], at)
         if fault is not None:
             raise Malformed(f"{name}:{number}: {fault}")
         rows.append(DailyRow(at, *fields[1:], number, fields[0]))

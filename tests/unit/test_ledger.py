@@ -12,7 +12,9 @@ ledger's strictness (a missing file None, a malformed row naming the line and th
 window against the clock, or `none`; round 5: the window is bounded above by 60 seconds, so a row dated further in
 the future does not count (and is not refused as malformed); round 7: a cell holding a control byte is Malformed to
 both parsers, naming the line and the field; round 8: a carriage return is such a byte wherever it stands, never
-stripped, so a row ends in LF alone."""
+stripped, so a row ends in LF alone; round 9: the daily row has its own grammar, the exact fields `ledger-row.py
+daily` writes (the verifier's seat, run and daily task, the evidence's six fields with the validators' PASS words, the
+two digest prefixes and the recording time), so a row of a unit's sweep shape is Malformed naming the field."""
 
 import importlib.util
 import os
@@ -285,8 +287,32 @@ DAILY_HEADER = "ts\thead_sha\tverifier\tevidence\n"
 C = "c" * 40
 
 
-def daily(ts, head, verifier=SKILL, evidence="sweeps/daily-2026-11-19/findings.json; 0 findings"):
-    """One row of `daily-sweeps.tsv` as ledger-row.py daily writes it."""
+# The daily row's own grammar (U597 round 9): the fixture rows are the writer's shape, the verifier naming the seat,
+# the run and the task of the ts's day, the evidence its six fields; the two digest prefixes are the manifest's of
+# round 8 (any 8 hex is the reader's; pr-merge.sh compares them with the manifest's pins).
+DAILY_DIGESTS = "e85f232e 2eb280bd"
+DAILY_FINDINGS = "sweeps/daily-2026-11-19/findings.json"
+
+
+def daily_verifier(day, seat="sweep-3", run="170"):
+    """The verifier of a daily row as ledger-row.py daily composes it, the task the daily id of `day`."""
+    return f"{SKILL} (full audit mode on the srt worker seat {seat}, run-{run}; TASK daily-{day})"
+
+
+def daily_evidence(path=DAILY_FINDINGS, count=0, digests=DAILY_DIGESTS, recorded="2026-11-19T10:05:00Z"):
+    """The evidence of a daily row as ledger-row.py daily writes it: its six `; `-separated fields."""
+    return (
+        f"{path}; {count} findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
+        f"validators sha256 {digests}; recorded {recorded}"
+    )
+
+
+def daily(ts, head, verifier=None, evidence=None):
+    """One row of `daily-sweeps.tsv` as ledger-row.py daily writes it (round 9: the task of the ts's day)."""
+    if verifier is None:
+        verifier = daily_verifier(ts[:10])
+    if evidence is None:
+        evidence = daily_evidence()
     return "\t".join((ts, head, verifier, evidence)) + "\n"
 
 
@@ -676,13 +702,213 @@ class LedgerDailyTest(unittest.TestCase):
                 self.reader.read_daily(str(self.daily_file))
             self.assertIn(f"{name}: cannot read:", str(caught.exception))
             self.daily_file.chmod(0o600)
-        # a note after the pin word and after a `;` in the evidence is the exact row still
-        read = self.write(
-            daily(ts, A, verifier=f"{SKILL} (seat sweep-3, run-170)", evidence=" sweeps/d/findings.json ; 2 findings")
-        )
+        # the writer's own row is the exact row (round 9: a note after the pin word or a padded path no longer is;
+        # test_a_row_of_a_unit_s_sweep_shape_is_malformed_to_the_daily_reader_and_the_writer_s_row_parses)
+        read = self.write(daily(ts, A, evidence=daily_evidence("sweeps/d/findings.json", count=2)))
         self.assertEqual(
             (read.rows[0].sweep_pin, read.rows[0].sweep_evidence_path), ("c1c8a8c1", "sweeps/d/findings.json")
         )
+
+    def test_a_row_of_a_unit_s_sweep_shape_is_malformed_to_the_daily_reader_and_the_writer_s_row_parses(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at ledger.py:393): the daily reader applied the sweep row's grammar
+        alone, so a recent row of a unit's shape, `TASK U9` with a pinned verifier and an existing findings path,
+        qualified as the day's sweep of main's head with no daily task and no validator result. The daily row has its
+        own grammar, the exact fields `ledger-row.py daily` writes: the verifier's seat, run and `TASK
+        daily-<YYYY-MM-DD>` (its day the ts's UTC day or the day before it), and the evidence's six `; `-separated
+        fields, the findings file unpadded, `<n> findings`, the two validators' PASS words, `validators sha256 <8 hex>
+        <8 hex>` and `recorded <ts>`. A `TASK U9` row, the pinned skill alone, a note after the pin, a seat of two
+        words, a task day two days before or after the ts or no calendar day, two or seven evidence fields, a padded
+        path, a count that is no number, another word than PASS, the two validators swapped, the round-8 `validators
+        pass` word, a digest of seven, upper-case or one hex, and a recorded time off the form are each Malformed
+        naming the line and the field, to the parser and to the CLI (exit 2, never `none` and never the row beside
+        it); the writer's row parses and exposes its fields, under the ts's day and under the day before."""
+        name = str(self.daily_file)
+        ts = "2026-11-19T10:00:00Z"
+        verifier_form = "security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)"
+        unit_shaped = f"{SKILL} (full audit mode on the srt worker seat sweep-3, run-170; TASK U9)"
+        evidence_form = (
+            "sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; "
+            "validators sha256 <8 hex> <8 hex>; recorded <ts>"
+        )
+        good = daily_evidence()
+        for case, text, message in (
+            (
+                "TASK U9",
+                daily(ts, A, verifier=unit_shaped),
+                f"{name}:2: the verifier of a daily sweep row is not {verifier_form!r} (the daily dispatch's task alone,"
+                f" a unit id never): {unit_shaped!r}",
+            ),
+            (
+                "the pinned skill alone",
+                daily(ts, A, verifier=SKILL),
+                f"{name}:2: the verifier of a daily sweep row is not",
+            ),
+            (
+                "a note after the pin",
+                daily(ts, A, verifier=f"{SKILL} (seat sweep-3, run-170)"),
+                f"{name}:2: the verifier of a daily sweep row is not",
+            ),
+            (
+                "a seat of two words",
+                daily(ts, A, verifier=daily_verifier("2026-11-19", seat="sweep 3")),
+                f"{name}:2: the verifier of a daily sweep row is not",
+            ),
+            (
+                "a task day two days before the ts",
+                daily(ts, A, verifier=daily_verifier("2026-11-17")),
+                f"{name}:2: the TASK day daily-2026-11-17 of a daily sweep row is neither the UTC day of its ts {ts} nor"
+                " the day before it",
+            ),
+            (
+                "a task day after the ts",
+                daily(ts, A, verifier=daily_verifier("2026-11-20")),
+                f"{name}:2: the TASK day daily-2026-11-20 of a daily sweep row is neither the UTC day of its ts",
+            ),
+            (
+                "a task day no calendar holds",
+                daily(ts, A, verifier=daily_verifier("2026-13-45")),
+                f"{name}:2: the TASK day of a daily sweep row is no calendar day: daily-2026-13-45",
+            ),
+            (
+                "two evidence fields",
+                daily(ts, A, evidence=f"{DAILY_FINDINGS}; 0 findings"),
+                f"{name}:2: the evidence of a daily sweep row has 2 '; '-separated fields, not 6 ({evidence_form!r}):"
+                f" '{DAILY_FINDINGS}; 0 findings'",
+            ),
+            (
+                "seven evidence fields",
+                daily(ts, A, evidence=good + "; note"),
+                f"{name}:2: the evidence of a daily sweep row has 7 '; '-separated fields, not 6",
+            ),
+            (
+                "a padded path",
+                daily(ts, A, evidence=" " + good),
+                f"{name}:2: field 1 of the evidence of a daily sweep row, the findings file, is padded with spaces:"
+                f" ' {DAILY_FINDINGS}'",
+            ),
+            (
+                "a count that is no number",
+                daily(ts, A, evidence=good.replace("0 findings", "no findings")),
+                f"{name}:2: field 2 of the evidence of a daily sweep row is not '<n> findings': 'no findings'",
+            ),
+            (
+                "a count with a leading zero",
+                daily(ts, A, evidence=good.replace("0 findings", "01 findings")),
+                f"{name}:2: field 2 of the evidence of a daily sweep row is not '<n> findings': '01 findings'",
+            ),
+            (
+                "another word than PASS",
+                daily(ts, A, evidence=good.replace("validate-findings.cjs PASS", "validate-findings.cjs FAIL")),
+                f"{name}:2: field 3 of the evidence of a daily sweep row is not 'validate-findings.cjs PASS':"
+                " 'validate-findings.cjs FAIL'",
+            ),
+            (
+                "the validators swapped",
+                daily(
+                    ts,
+                    A,
+                    evidence=good.replace(
+                        "validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+                        "validate-coverage-ledger.cjs PASS; validate-findings.cjs PASS",
+                    ),
+                ),
+                f"{name}:2: field 3 of the evidence of a daily sweep row is not 'validate-findings.cjs PASS':"
+                " 'validate-coverage-ledger.cjs PASS'",
+            ),
+            (
+                "the coverage word lower-case",
+                daily(
+                    ts,
+                    A,
+                    evidence=good.replace("validate-coverage-ledger.cjs PASS", "validate-coverage-ledger.cjs pass"),
+                ),
+                f"{name}:2: field 4 of the evidence of a daily sweep row is not 'validate-coverage-ledger.cjs PASS'",
+            ),
+            (
+                "the round-8 validators pass word",
+                daily(ts, A, evidence=good.replace(f"validators sha256 {DAILY_DIGESTS}", "validators pass")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>'",
+            ),
+            (
+                "a digest of seven hex",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232 2eb280bd")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not 'validators sha256 <8 hex> <8 hex>'",
+            ),
+            (
+                "a digest of upper-case hex",
+                daily(ts, A, evidence=daily_evidence(digests="E85F232E 2eb280bd")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not",
+            ),
+            (
+                "one digest",
+                daily(ts, A, evidence=daily_evidence(digests="e85f232e")),
+                f"{name}:2: field 5 of the evidence of a daily sweep row is not",
+            ),
+            (
+                "a recorded time off the form",
+                daily(ts, A, evidence=daily_evidence(recorded="2026-11-19 10:05:00")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
+                " 'recorded 2026-11-19 10:05:00'",
+            ),
+            (
+                "a recorded time of hour 25",
+                daily(ts, A, evidence=daily_evidence(recorded="2026-11-19T25:00:00Z")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>'",
+            ),
+            (
+                "another word than recorded",
+                daily(ts, A, evidence=good.replace("recorded 2026-11-19T10:05:00Z", "written 2026-11-19T10:05:00Z")),
+                f"{name}:2: field 6 of the evidence of a daily sweep row is not 'recorded <YYYY-MM-DDThh:mm:ssZ>':"
+                " 'written 2026-11-19T10:05:00Z'",
+            ),
+            (
+                "a unit-shaped third row beside two good ones",
+                daily(ts, A) + daily(ts, B) + daily(ts, A, verifier=unit_shaped),
+                f"{name}:4: the verifier of a daily sweep row is not",
+            ),
+        ):
+            with self.subTest(case):
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(text)
+                self.assertIn(message, str(caught.exception))
+        # the CLI: a unit-shaped row beside a good one is exit 2 naming the line, never `none` and never the good row
+        self.daily_file.write_text(DAILY_HEADER + daily(ago(3600), A) + daily(ago(600), B, verifier=unit_shaped))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"ledger: {name}:3: the verifier of a daily sweep row is not", run.stderr)
+        # the writer's row parses and exposes its fields, under the ts's day and under the day before (a sweep that
+        # crossed midnight keeps the id it was dispatched under)
+        for day in ("2026-11-19", "2026-11-18"):
+            with self.subTest(day=day):
+                read = self.write(
+                    daily(
+                        ts,
+                        A,
+                        verifier=daily_verifier(day, seat="sweep-3", run="170"),
+                        evidence=daily_evidence(count=3, recorded="2026-11-19T10:07:00Z"),
+                    )
+                )
+                row = read.rows[0]
+                self.assertEqual((row.sweep_pin, row.sweep_evidence_path), ("c1c8a8c1", DAILY_FINDINGS))
+                self.assertEqual((row.seat, row.run, row.task_day), ("sweep-3", "170", day))
+                self.assertEqual(row.validator_digests, ("e85f232e", "2eb280bd"))
+                self.assertEqual(row.recorded, datetime(2026, 11, 19, 10, 7, 0))
+                self.assertEqual(read.newest_within(datetime(2026, 11, 19, 12, 0, 0), 86400).line, 2)
+        # a row of another shape exposes None for the fields it lacks, so no caller reads a field that is not there
+        row = self.reader.DailyRow(datetime(2026, 11, 19, 10, 0, 0), A, SKILL, "sweeps/x.json", 2, ts)
+        self.assertEqual((row.seat, row.run, row.task_day, row.validator_digests, row.recorded), (None,) * 5)
+        # the grammar is stated once in the reader
+        self.assertEqual(self.reader.DAILY_FIELDS, 6)
+        self.assertEqual(self.reader.DAILY_SEPARATOR, "; ")
+        self.assertEqual(self.reader.DAILY_PASSES, ("validate-findings.cjs PASS", "validate-coverage-ledger.cjs PASS"))
+        self.assertEqual(
+            self.reader.DAILY_VERIFIER.pattern,
+            r"^security-audit-skill ([0-9a-f]{8,}) \(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); "
+            r"TASK daily-([0-9]{4}-[0-9]{2}-[0-9]{2})\)$",
+        )
+        self.assertEqual(self.reader.DAILY_DIGESTS.pattern, r"^validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8})$")
+        source = READER.read_text()
+        self.assertIn("            fault = daily_fields_fault(fields[2], fields[3], at)\n", source)
 
     def test_the_cli_prints_the_newest_row_within_the_window_or_none_and_exits_2_on_a_malformed_file(self):
         one_hour, two_hours, day_and_more = ago(3600), ago(7200), ago(25 * 3600)

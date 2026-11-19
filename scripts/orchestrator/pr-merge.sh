@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # @file pr-merge.sh
-# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head when the head's changed paths touch a sweep class (a lever, a policy, credential handling or a deployed executable) or when no daily sweep of main's head stands within 24 hours, and CI passed, the orchestrator seat's merge lever.
+# @brief Squash-merge a pull request only at a head the program's ledger records as `correct`, or as `carried` from an earlier `correct` head with the same diff, with the unit's `sweep` row at that head when the head's changed paths touch a sweep class (a lever, a policy, credential handling or a deployed executable), when no daily sweep of main's head stands within 24 hours, or when the main ruleset does not require branches to be up to date before merging (U613), and CI passed, the orchestrator seat's merge lever.
 # @description
 #   Regime-cutover U71 (finding F010), the orchestrator seat's only merge path: `home/dot_agents/omp/policies/orchestrator.yml`
 #   allows `~/.local/bin/common/pr-merge.sh *` and denies the `gh pr merge` command text (a speed bump: text rows do
@@ -191,17 +191,38 @@
 #   helper_pin_check idiom, U310f): a differing digest or a missing or doubled pin is a refusal naming the reader and
 #   both digests before the first `gh` read, and the copy is the one read of the file, so a file swapped after the
 #   hash is not the file run; `sweep-scope.py` gets its pin and its deployed twin `~/.local/bin/common/sweep-scope.py`
-#   from the generator as `ledger.py` has them (`claude.levers.sha256.sweep-scope.py`). The window between the tip
-#   read and the merge: `--match-head-commit` pins the head alone, and the main ruleset `main integration gate` has
-#   `strict_required_status_checks_policy: false` (read 2026-11-19 through the rulesets API), so nothing server-side
-#   requires the head to be up to date with `main` at merge time and `main` may move after require_sweep_scope read
-#   its tip; after the merge the lever reads the merge commit's first parent (`gh api
-#   repos/{owner}/{repo}/commits/<commit> --jq '.parents[0].sha'`, status read, 40 hex) and requires it to equal the
-#   tip read earlier, else exits 1 with one line naming the merge commit, its parent and that tip and no receipt:
-#   the merge happened on a moved `main`, the classified listing may not be the landed diff, and the coordinator
-#   must sweep the merge commit. Were the operator to enable the ruleset's strict policy, GitHub would refuse a merge
-#   of a head behind `main` and close the window server-side, and this check would then never fire; it stays as the
-#   lever's own record of what it merged onto.
+#   from the generator as `ledger.py` has them (`claude.levers.sha256.sweep-scope.py`). Round 9 (the round-8 P1 at
+#   :1282, the second strike of the diff-basis class; the mechanism-change decisions row of 2026-11-19T11:56:54Z):
+#   `--match-head-commit` pins the head alone, and no client-side read can hold `main` still between the tip read in
+#   require_sweep_scope and the moment GitHub writes the squash, so the classified listing is the landed diff only
+#   when the server itself refuses a merge of a head that is not up to date, the main ruleset's
+#   `strict_required_status_checks_policy` (require branches to be up to date before merging). The lever reads it
+#   once, before the listing (require_ruleset_policy): `gh api "repos/{owner}/{repo}/rulesets"` lists the rulesets
+#   (each `id`, `enforcement` and `target`, held to their types by the jq), and for each active branch ruleset the
+#   per-id read `gh api "repos/{owner}/{repo}/rulesets/<id>"` gives its `conditions.ref_name.include` and
+#   `exclude` lists and the `strict_required_status_checks_policy` of its `required_status_checks` rule; a ruleset
+#   counts when its include names `~DEFAULT_BRANCH` or `refs/heads/<base>` and its exclude names neither, and
+#   `strict_policy` is `true` when at least one counting ruleset's rule has it true, else `false`. A failed read, a
+#   value that is not a boolean, an id that is no number, an enforcement that is none of GitHub's three, two such
+#   rules in one ruleset, a shape the jq cannot hold, and no counting ruleset holding the rule at all are failures
+#   (exit 1, never read as true). While the policy is `false` (today's value, measured 2026-11-19; only the
+#   repository's admin can change it, asked in U613) the lever grants no exemption: a `not-required` head reads no
+#   daily row, `sweep_reason` names the policy and U613, and require_sweep_row runs as for a required head, so every
+#   head gets its per-head sweep as before U597 and the daily machinery is dormant; when it is `true` GitHub refuses
+#   a merge of a head behind `main`, the classified listing is the landed diff by construction (the window is closed
+#   by the server, not by a check), and the daily rule applies as rounds 4 to 8 built it. The post-merge first-parent
+#   read (`gh api repos/{owner}/{repo}/commits/<commit> --jq '.parents[0].sha'`, status read, 40 hex) stays as the
+#   lever's own record of what it merged onto: a parent other than the tip read earlier is exit 1 with no receipt
+#   naming the merge commit, its parent and that tip, and the coordinator sweeps the merge commit (the
+#   hcom-orchestration SKILL step 6). Round 9 also reads the daily freshness again right before the merge write,
+#   after the CI read and the final pull request reread, with the same window (recheck_daily_sweep): a head that
+#   rested on a daily row whose window closed during the checks is refused, never merged on a sweep that no longer
+#   stands; and the daily row is read by its own grammar (daily_row_fields), the verifier `security-audit-skill <pin>
+#   (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)` and the evidence
+#   `sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators
+#   sha256 <8 hex> <8 hex>; recorded <ts>`, the two digest prefixes the writer checked held to the manifest's
+#   `assets.security-audit-skill.validators_sha256` pins through one probe (validators_pin_probe), so a row of a
+#   unit's sweep shape (`TASK U<n>`, no validators) or one whose validators were held to other pins admits nothing.
 # @arg $1 int The pull request number.
 # @option --records <dir> The program store holding `ledger.tsv`, `verdicts/`, `dispositions.tsv` and `units.tsv`
 #   (required; must resolve to the store `store_resolve` chose: `${REGIME_STORE_ROOT}/<program>` when it exists, else
@@ -209,9 +230,12 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `merged pr=<pr> head=<head> commit=<merge commit> verdict=<ledger row ts>` (the `carried` row's ts for a carried head).
 # @exitcode 0 The pull request is merged at the head.
-# @exitcode 1 A `gh` or `git` read (the tip of `main` that fails or is not 40 hex, the compare listing, a response
+# @exitcode 1 A `gh` or `git` read (the rulesets listing or a ruleset's read, a ruleset id, enforcement, target,
+#   `conditions.ref_name.include` or `strict_required_status_checks_policy` of another shape than the lever reads, two
+#   `required_status_checks` rules in one ruleset, no active ruleset on the base holding that rule (round 9), the tip
+#   of `main` that fails or is not 40 hex, the compare listing, a response
 #   whose `files` is not an array or whose `merge_base_commit.sha` is no string, and a first line that is not
-#   `merge-base <40 hex>` among its failures), the manifest pin probe, the scope reader or the ledger reader (any
+#   `merge-base <40 hex>` among its failures), the manifest pin probes, the scope reader or the ledger reader (any
 #   status but 0 or 2), or the merge, failed; or the merge commit's first parent could not be read, is not 40 hex, or
 #   is not the tip of `main` read before the listing (round 8: the merge happened on a moved `main`; no receipt, and
 #   the coordinator sweeps the merge commit).
@@ -224,9 +248,13 @@
 #   a symlink or not a regular file of this user, one the checkout's `ledger.py` cannot read as data (its exit 2
 #   naming the line and field), a daily answer of the reader that is neither `none` nor one row of four tab-separated
 #   fields with a ts and a 40-hex head, a daily row whose verifier or evidence is not the exact row of the rule (as
-#   for a unit's sweep row, below), no `sweep` row of
-#   the unit or a fix unit of it at the audited head when the sweep row is required (a class, or no daily sweep of
-#   main's head within 86400 seconds), a sweep answer of the reader that is
+#   for a unit's sweep row, below) or not the daily row's own grammar (the verifier's seat, run and `TASK
+#   daily-<YYYY-MM-DD>`, the evidence's six fields, the two validator digest prefixes held to the manifest's
+#   `validators_sha256` pins; round 9), a daily row whose window closed between the first read and the merge write
+#   (recheck_daily_sweep), no `sweep` row of
+#   the unit or a fix unit of it at the audited head when the sweep row is required (a class, no daily sweep of
+#   main's head within 86400 seconds, or the main ruleset's `strict_required_status_checks_policy` false, U613,
+#   under which no head is exempt), a sweep answer of the reader that is
 #   neither `none` nor one row of four tab-separated fields with a ts, a sweep row whose verifier is not
 #   `security-audit-skill <pin>` with the
 #   pin word a prefix (8 or more characters) of the manifest's `assets.security-audit-skill.pin`, whose evidence does
@@ -447,6 +475,89 @@ except BaseException as error:
     print(f"manifest: cannot read {manifest}: {type(error).__name__}: {error}", file=sys.stderr)
     sys.exit(2)
 print(pins[0])'
+# The two validator pins of the daily row (U597 round 9): `assets.security-audit-skill.validators_sha256.<validator>`
+# of LEVER_MANIFEST, read by the indentation rule of sweep_pin_probe (ledger-row.py's manifest_asset reads the writer's
+# side the same way): under the asset's `validators_sha256:` key, the one `<validator>: <64 hex>` line of each of
+# `validate-findings.cjs` and `validate-coverage-ledger.cjs`, printed as one tab-separated line in that order. A daily
+# row carries the first 8 hex of the digests its writer checked (`validators sha256 <8 hex> <8 hex>`), and
+# daily_row_fields requires each to be a prefix of the pin here, so a row whose validators were held to other pins
+# admits nothing. Zero or two lines of a key, a manifest that cannot be read or is not UTF-8, and any other exception
+# are exit 2 naming the manifest and the key (standing order 21). Single-quoted, so the Python holds no single quote.
+validators_pin_probe='import re
+import sys
+
+manifest = sys.argv[1]
+VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs")
+MAPPING_KEY = re.compile(r"^(\S+):$")
+DIGEST = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*): ([0-9a-f]{64})$")
+try:
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    except (OSError, UnicodeDecodeError) as error:
+        print(f"manifest: cannot read {manifest}: {error}", file=sys.stderr)
+        sys.exit(2)
+    keys = []
+    asset = None
+    fields = None
+    digests_open = False
+    digest_fields = None
+    digests = {}
+    for line in lines:
+        text = line.lstrip(" ")
+        if not text or text.startswith("#"):
+            continue
+        indent = len(line) - len(text)
+        if asset is not None:
+            if indent > asset:
+                if fields is None:
+                    fields = indent
+                if indent == fields:
+                    digests_open = text == "validators_sha256:"
+                    digest_fields = None
+                elif digests_open and indent > fields:
+                    if digest_fields is None:
+                        digest_fields = indent
+                    match = DIGEST.match(text)
+                    if match and indent == digest_fields:
+                        digests.setdefault(match.group(1), []).append(match.group(2))
+                continue
+            asset = None
+            fields = None
+            digests_open = False
+        while keys and indent <= keys[-1][0]:
+            keys.pop()
+        match = MAPPING_KEY.match(text)
+        if match and (keys or indent == 0):
+            keys.append((indent, match.group(1)))
+            if [key for _, key in keys] == ["assets", "security-audit-skill"]:
+                asset = indent
+                fields = None
+    pins = []
+    for validator in VALIDATORS:
+        found = digests.get(validator, [])
+        if len(found) != 1:
+            print(f"manifest: {manifest} holds {len(found)} assets.security-audit-skill.validators_sha256.{validator} lines of 64 hex, not one", file=sys.stderr)
+            sys.exit(2)
+        pins.append(found[0])
+except SystemExit:
+    raise
+except BaseException as error:
+    print(f"manifest: cannot read {manifest}: {type(error).__name__}: {error}", file=sys.stderr)
+    sys.exit(2)
+print("\t".join(pins))'
+# The probe's answer: the two pins, 64 hex each, tab-separated.
+validators_pins_re="^([0-9a-f]{64})"$'\t'"([0-9a-f]{64})\$"
+# The daily row's own grammar (U597 round 9; the round-8 P2 at ledger.py:393: the daily reader applied the sweep row's
+# grammar, so a row of a unit's shape, `TASK U9` and no validators, stood as the day's sweep of main's head): the
+# verifier as `ledger-row.py daily` composes it, the skill, its pin word (8 or more lowercase hex, a prefix of the
+# manifest's pin, held by sweep_row_fields), the seat, the run and the task `daily-<YYYY-MM-DD>`; the evidence's six
+# `; `-separated fields, the findings file (held by sweep_row_fields), the count, the two validators' PASS words, the
+# two digest prefixes the writer checked (8 hex each, prefixes of the manifest's `validators_sha256` pins) and the
+# recording time. `ledger.py` refuses any other daily row as a malformed store (parse_daily); the lever holds the row
+# by its shape all the same (daily_row_fields), as it holds a unit's sweep row.
+daily_verifier_re='^security-audit-skill [0-9a-f]{8,} \(full audit mode on the srt worker seat [^[:space:]]+, run-(0|[1-9][0-9]*); TASK daily-[0-9]{4}-[0-9]{2}-[0-9]{2}\)$'
+daily_evidence_re='^sweeps/[^;[:space:]]+\.json; (0|[1-9][0-9]*) findings; validate-findings\.cjs PASS; validate-coverage-ledger\.cjs PASS; validators sha256 ([0-9a-f]{8}) ([0-9a-f]{8}); recorded [0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
 # The reference of a `residual` disposition row, the thread rule's form (pr-threads-check.sh `disposition`).
 residual_re='^unit=(U[0-9]+[a-z]?) gate=[^[:space:]]'
 
@@ -755,6 +866,85 @@ require_dispositions() {
     done
 }
 
+# @description Read the main ruleset's up-to-date policy once, before the listing (regime-cutover U597 round 9; the
+#   round-8 P1 at :1282, the second strike of the diff-basis class, and the mechanism-change decisions row of
+#   2026-11-19T11:56:54Z): the lever classifies the diff against a snapshot of `main`, and no client-side read can pin
+#   `main` at the moment GitHub writes the squash, so the only pre-merge control is the server's own, the main
+#   ruleset's `strict_required_status_checks_policy` (require branches to be up to date before merging). The rulesets
+#   are listed once, `gh api "repos/{owner}/{repo}/rulesets"` with a jq that holds the response to an array and each
+#   ruleset's `id` to a number, `enforcement` and `target` to strings (`<id>\t<enforcement>\t<target>` per ruleset);
+#   an enforcement that is none of `active`, `evaluate` or `disabled` is a failure, and the active branch rulesets are
+#   read one by one, `gh api "repos/{owner}/{repo}/rulesets/<id>"` with a jq that prints `include <ref>` for each entry
+#   of `conditions.ref_name.include` (an array of strings, else its error), `exclude <ref>` for each of `exclude`
+#   (null read as none), and `strict <true|false>` for each `required_status_checks` rule's
+#   `strict_required_status_checks_policy` (a boolean, else its error). A ruleset counts when its include names
+#   `~DEFAULT_BRANCH` or `refs/heads/<base>` and its exclude names neither; `strict_policy` is `true` when at least
+#   one counting ruleset's rule has it true, else `false`. Two such rules in one ruleset, a line the lever did not
+#   ask for, a failed read and no counting ruleset holding the rule at all are failures (exit 1): the policy is never
+#   read as true from a shape the lever does not know, and never read as false by default either, since an unread
+#   policy would hide a ruleset the operator set (standing order 21). The value is printed once on stderr.
+# @set strict_policy `true` or `false`, the policy as read; nothing else (every other outcome is a failure).
+require_ruleset_policy() {
+    local listing line id enforcement target rules kind value includes excluded strict rest listed='' with_rule=''
+    listing=$(gh_bounded api "repos/{owner}/{repo}/rulesets" --jq '(if type == "array" then . else error("rulesets is " + type + ", not an array") end) | .[] | [(.id | if type == "number" then tostring else error("id is " + type + ", not a number") end), (.enforcement | if type == "string" then . else error("enforcement is " + type + ", not a string") end), (.target | if type == "string" then . else error("target is " + type + ", not a string") end)] | @tsv') ||
+        fail "cannot list the rulesets (gh api repos/{owner}/{repo}/rulesets), or the listing is not an array of rulesets with a numeric id and string enforcement and target (the jq's own error names the field); whether the main ruleset requires branches to be up to date before merging (strict_required_status_checks_policy) decides whether any head is exempt from its per-head sweep, so an unread policy admits no exemption and no merge"
+    strict_policy=false
+    # One ruleset per line, `<id>\t<enforcement>\t<target>`, each cell the text up to the next tab.
+    while IFS= read -r line; do
+        [[ -n ${line} ]] || continue
+        id=${line%%$'\t'*}
+        rest=${line#*$'\t'}
+        enforcement=${rest%%$'\t'*}
+        target=${rest#*$'\t'}
+        [[ ${id} =~ ^[1-9][0-9]*$ ]] ||
+            fail "the rulesets listing (gh api repos/{owner}/{repo}/rulesets) names a ruleset id that is not a decimal number: '${id}'; the policy is read from a shape the lever knows alone"
+        case ${enforcement} in
+        active) ;;
+        evaluate | disabled) continue ;;
+        *) fail "the rulesets listing names an enforcement that is none of active, evaluate or disabled for ruleset ${id}: '${enforcement}'; the policy is read from a shape the lever knows alone" ;;
+        esac
+        [[ ${target} == branch ]] || continue
+        rules=$(gh_bounded api "repos/{owner}/{repo}/rulesets/${id}" --jq '((.conditions.ref_name.include | if type == "array" then . else error("conditions.ref_name.include is " + type + ", not an array") end) | .[] | "include " + (if type == "string" then . else error("a ref_name.include entry is " + type + ", not a string") end)), ((.conditions.ref_name.exclude | if type == "array" then . elif . == null then [] else error("conditions.ref_name.exclude is " + type + ", not an array") end) | .[] | "exclude " + (if type == "string" then . else error("a ref_name.exclude entry is " + type + ", not a string") end)), ((.rules | if type == "array" then . else error("rules is " + type + ", not an array") end) | .[] | select(.type == "required_status_checks") | "strict " + (.parameters.strict_required_status_checks_policy | if type == "boolean" then tostring else error("strict_required_status_checks_policy is " + type + ", not a boolean") end))') ||
+            fail "cannot read ruleset ${id} (gh api repos/{owner}/{repo}/rulesets/${id}), or its shape is not the one the lever reads (conditions.ref_name.include an array of strings, rules an array whose required_status_checks rule has a boolean strict_required_status_checks_policy; the jq's own error names the field); the policy decides whether any head is exempt from its per-head sweep, so an unread policy admits no exemption and no merge"
+        includes='' excluded='' strict=''
+        while IFS= read -r line; do
+            [[ -n ${line} ]] || continue
+            kind=${line%% *}
+            value=${line#* }
+            case ${kind} in
+            include)
+                if [[ ${value} == '~DEFAULT_BRANCH' || ${value} == "refs/heads/${base}" ]]; then # lint-comparisons: allow the ref name is compared as the text GitHub lists, never resolved
+                    includes=1
+                fi
+                ;;
+            exclude)
+                if [[ ${value} == '~DEFAULT_BRANCH' || ${value} == "refs/heads/${base}" ]]; then # lint-comparisons: allow the ref name is compared as the text GitHub lists, never resolved
+                    excluded=1
+                fi
+                ;;
+            strict)
+                case ${value} in
+                true | false) ;;
+                *) fail "ruleset ${id} answered a strict_required_status_checks_policy that is neither true nor false: '${value}'; the policy is never read as true from a shape the lever does not know" ;;
+                esac
+                [[ -z ${strict} ]] ||
+                    fail "ruleset ${id} holds two required_status_checks rules; the lever reads one strict_required_status_checks_policy per ruleset and takes no side"
+                strict=${value}
+                ;;
+            *) fail "the read of ruleset ${id} (gh api repos/{owner}/{repo}/rulesets/${id}) printed a line the lever did not ask for: '${line}'" ;;
+            esac
+        done <<< "${rules}"
+        [[ -n ${includes} && -z ${excluded} ]] || continue
+        listed+="${listed:+, }${id}"
+        [[ -n ${strict} ]] || continue
+        with_rule+="${with_rule:+, }${id}"
+        [[ ${strict} != true ]] || strict_policy=true
+    done <<< "${listing}"
+    [[ -n ${with_rule} ]] ||
+        fail "no active branch ruleset on ${base} (its conditions naming ~DEFAULT_BRANCH or refs/heads/${base}; listed: ${listed:-none}) holds a required_status_checks rule, so strict_required_status_checks_policy cannot be read (gh api repos/{owner}/{repo}/rulesets); the policy decides whether any head is exempt from its per-head sweep, and an unread policy admits no exemption and no merge (the main ruleset 'main integration gate', 24397953, holds the rule; U613 asks the operator to set it)"
+    echo "${lever}: ruleset: strict_required_status_checks_policy ${strict_policy} (active ruleset(s) on ${base} with a required_status_checks rule: ${with_rule})" >&2
+}
+
 # @description Decide whether the head needs its sweep row (regime-cutover U597, the operator's sweep rule C of
 #   2026-11-18): the audited head's changed files as data, the diff the squash lands, listed by the GitHub compare
 #   API keyed by two shas. First the tip of the base is read once, `gh api "repos/{owner}/{repo}/git/ref/heads/${base}"
@@ -799,8 +989,12 @@ require_dispositions() {
 #   maps to null, round 4), any other non-zero a failure. The exit-0 answer is read by its shape: `required cap` sets
 #   `sweep_class` to `cap` and `sweep_reason` to the cap's clause; `required <class>` with the class one lowercase
 #   word (letters and hyphens) sets `sweep_class` to it and `sweep_reason` to the class clause; `not-required` alone
-#   sets `sweep_class` empty and asks require_daily_sweep whether the standing control stands (round 4: the exemption
-#   is bound to the daily sweep); anything else, a second line included, is a refusal naming the reader and the
+#   sets `sweep_class` empty and, while `strict_policy` is `true`, asks require_daily_sweep whether the standing
+#   control stands (round 4: the exemption is bound to the daily sweep; round 9: and to the main ruleset's up-to-date
+#   policy, read by require_ruleset_policy before this function runs, since the classified listing is the landed diff
+#   only while the server refuses a merge of a head behind `main`; while the policy is `false` the daily row is not
+#   read, `sweep_reason` names the policy and U613, and require_sweep_row runs as for a required head, so no head is
+#   exempt); anything else, a second line included, is a refusal naming the reader and the
 #   answer. The lever reads the listing as text it passes on and judges no class itself. The reader run is the
 #   lever's pinned copy, `scope_copy` (reader_copy, round 8); the refusals name the checkout's path.
 # @set base_tip The tip of the base read before the listing, 40 hex; after the merge the merge commit's first parent must equal it (round 8).
@@ -833,7 +1027,13 @@ require_sweep_scope() {
     case ${answer} in
     not-required)
         sweep_class=''
-        require_daily_sweep
+        if [[ ${strict_policy} == true ]]; then
+            require_daily_sweep
+        else
+            # Round 9: while the main ruleset does not hold `main` still at the merge, the classified listing is not
+            # known to be the landed diff, so no head is exempt and the daily row is not read (U613).
+            sweep_reason="this head changes no sweep-class path, but the main ruleset does not require branches to be up to date before merging (strict_required_status_checks_policy false), so the diff the squash lands is not the diff classified and no head is exempt; the per-head sweep stands (U613)"
+        fi
         ;;
     'required cap')
         # The listing is at the compare API's cap (round 5): 300 or more entries, so it may be cut short and the
@@ -856,57 +1056,125 @@ require_sweep_scope() {
 # seconds of now stands for a head outside every class; the rule's one day, named once here and in the reader's call.
 DAILY_SWEEP_MAX_AGE=86400
 
-# @description Bind the exemption to its standing control (regime-cutover U597 round 4; the round-2 and round-3 P2 at
-#   AGENTS.md:71): a head outside every sweep class skips its per-head sweep row only while the store holds a daily
-#   sweep of main's head within the last DAILY_SWEEP_MAX_AGE seconds (24 hours), the standing control rule C rests on,
-#   which until round 4 no merge gate read, so an exempt head could merge with no sweep anywhere near it. The rows
+# @description Read the daily sweep of main's head within the window (regime-cutover U597 round 4; round 9 split it
+#   from require_daily_sweep so that recheck_daily_sweep reads the same way right before the merge write): the rows
 #   live in the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`; `ledger-row.py daily` writes them
 #   after the coordinator's daily dispatch, the hcom-orchestration SKILL step 4), held as the ledger is when the file
 #   exists (a readable regular file of this user, no symlink; a missing file is `none` to the reader), and read by the
-#   checkout's `ledger.py <store> daily <seconds>`, the one reader, run as `python3 -I -S` with its status read as
-#   ledger_verdict reads it: 2 a refusal carrying its line (a malformed file naming the line and field, standing order
-#   21), any other non-zero a failure. The exit-0 answer is read by its shape: `none` sets `sweep_reason` so that
-#   require_sweep_row runs as for a required head (its refusal names both: no daily sweep within the window, so the
-#   per-head rule stands); one row of four tab-separated fields (ts, head_sha, verifier, evidence) with a ts and a
-#   40-hex head is the daily sweep, and its verifier and evidence are held to the exact row of the rule as
-#   require_sweep_row holds a unit's row (sweep_row_fields: the pin word a prefix of the manifest's pin, the findings
-#   file a regular file of this user under the store, never opened), then the per-head row is skipped with one stderr
-#   line naming the daily row's ts and head; any other answer is a refusal naming the reader and the answer.
-# @set sweep_reason Empty when the daily sweep stands; the reason require_sweep_row names otherwise.
-require_daily_sweep() {
-    local status=0 daily_file row daily_ts daily_head rest verifier evidence
+#   lever's pinned copy of `ledger.py` (`<store> daily <seconds>`, the one reader), run as `python3 -I -S` with its
+#   status read as ledger_verdict reads it: 2 a refusal carrying its line (a malformed file naming the line and field,
+#   standing order 21), any other non-zero a failure. The exit-0 answer is read by its shape: `none`, or one row of
+#   four tab-separated fields (ts, head_sha, verifier, evidence) with a ts and a 40-hex head, whose verifier and
+#   evidence are then held to the exact row of the rule as require_sweep_row holds a unit's row (sweep_row_fields:
+#   the pin word a prefix of the manifest's pin, the findings file a regular file of this user under the store, never
+#   opened) and to the daily row's own grammar (daily_row_fields, round 9: the seat, the run, the daily task, the
+#   validators' PASS words and the two digest prefixes held to the manifest's `validators_sha256` pins); any other
+#   answer is a refusal naming the reader and the answer.
+# @set daily_row `none`, or the row as the reader printed it.
+# @set daily_ts daily_head daily_verifier daily_evidence The row's four cells when daily_row is a row.
+daily_sweep_read() {
+    local status=0 daily_file rest subject
     daily_file=${store}/daily-sweeps.tsv
     if [[ -L ${daily_file} || -e ${daily_file} ]]; then
         [[ ! -L ${daily_file} && -f ${daily_file} && -O ${daily_file} && -r ${daily_file} ]] ||
             refuse "${daily_file} is not a readable regular file of this user (a symlink or another kind of entry); the daily sweep rows are read from the store alone"
     fi
-    row=$("${python}" -I -S "${ledger_copy}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}" 2>&1) || status=$?
+    daily_row=$("${python}" -I -S "${ledger_copy}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}" 2>&1) || status=$?
     case ${status} in
     0) ;;
-    2) refuse "${row#ledger: }" ;;
-    *) fail "${ledger_reader} exited ${status} reading ${daily_file} for the daily sweep of main's head: ${row:-no output}" ;;
+    2) refuse "${daily_row#ledger: }" ;;
+    *) fail "${ledger_reader} exited ${status} reading ${daily_file} for the daily sweep of main's head: ${daily_row:-no output}" ;;
     esac
-    if [[ ${row} == none ]]; then
-        sweep_reason="this head changes no sweep-class path, but ${daily_file} holds no daily sweep of main's head within the last ${DAILY_SWEEP_MAX_AGE} seconds (24 hours), so the per-head rule stands until the day's sweep runs and its row is written (ledger-row.py daily)"
-        return 0
-    fi
+    [[ ${daily_row} != none ]] || return 0
     # The answer is read by its shape, as require_sweep_row reads a row: one line of four tab-separated fields,
     # `<ts> <head_sha> <verifier> <evidence>`, with a ts and a 40-hex head.
-    case ${row//[!$'\t']/} in
+    case ${daily_row//[!$'\t']/} in
     $'\t\t\t') ;;
-    *) refuse "${ledger_reader} answered the daily sweep question with neither none nor one row of four tab-separated fields (ts, head_sha, verifier, evidence): ${row:-nothing}" ;;
+    *) refuse "${ledger_reader} answered the daily sweep question with neither none nor one row of four tab-separated fields (ts, head_sha, verifier, evidence): ${daily_row:-nothing}" ;;
     esac
-    daily_ts=${row%%$'\t'*}
-    rest=${row#*$'\t'}
+    daily_ts=${daily_row%%$'\t'*}
+    rest=${daily_row#*$'\t'}
     daily_head=${rest%%$'\t'*}
     rest=${rest#*$'\t'}
-    verifier=${rest%%$'\t'*}
-    evidence=${rest#*$'\t'}
-    [[ ${row} != *$'\n'* && -n ${daily_ts} && ${daily_head} =~ ^[0-9a-f]{40}$ ]] ||
-        refuse "${ledger_reader} answered the daily sweep question with text beside the row, an empty ts or a head that is not 40 hex, not one row of four tab-separated fields: ${row}"
-    sweep_row_fields "the daily sweep row of ${daily_ts} at main's head ${daily_head}" "${verifier}" "${evidence}"
+    daily_verifier=${rest%%$'\t'*}
+    daily_evidence=${rest#*$'\t'}
+    [[ ${daily_row} != *$'\n'* && -n ${daily_ts} && ${daily_head} =~ ^[0-9a-f]{40}$ ]] ||
+        refuse "${ledger_reader} answered the daily sweep question with text beside the row, an empty ts or a head that is not 40 hex, not one row of four tab-separated fields: ${daily_row}"
+    subject="the daily sweep row of ${daily_ts} at main's head ${daily_head}"
+    sweep_row_fields "${subject}" "${daily_verifier}" "${daily_evidence}"
+    daily_row_fields "${subject}" "${daily_verifier}" "${daily_evidence}"
+}
+
+# @description Bind the exemption to its standing control (regime-cutover U597 round 4; the round-2 and round-3 P2 at
+#   AGENTS.md:71): a head outside every sweep class skips its per-head sweep row only while the store holds a daily
+#   sweep of main's head within the last DAILY_SWEEP_MAX_AGE seconds (24 hours), the standing control rule C rests on,
+#   which until round 4 no merge gate read, so an exempt head could merge with no sweep anywhere near it; since round
+#   9 only while require_ruleset_policy read the main ruleset's up-to-date policy as `true` (the caller's test). The
+#   row is daily_sweep_read's: `none` sets `sweep_reason` so that require_sweep_row runs as for a required head (its
+#   refusal names both: no daily sweep within the window, so the per-head rule stands); a row skips the per-head row
+#   with one stderr line naming the daily row's ts and head, and recheck_daily_sweep reads the file again right
+#   before the merge write.
+# @set sweep_reason Empty when the daily sweep stands; the reason require_sweep_row names otherwise.
+require_daily_sweep() {
+    daily_sweep_read
+    if [[ ${daily_row} == none ]]; then
+        sweep_reason="this head changes no sweep-class path, but ${store}/daily-sweeps.tsv holds no daily sweep of main's head within the last ${DAILY_SWEEP_MAX_AGE} seconds (24 hours), so the per-head rule stands until the day's sweep runs and its row is written (ledger-row.py daily)"
+        return 0
+    fi
     sweep_reason=''
     echo "${lever}: sweep: not required (no lever, policy, credential or deployed-executable path changed); the daily sweep of main's head ${daily_head} at ${daily_ts} stands within ${DAILY_SWEEP_MAX_AGE} seconds" >&2
+}
+
+# @description Read the daily freshness again right before the merge write (regime-cutover U597 round 9; the round-8
+#   P3 at :1282): the first read came before the CI read and the final pull request reread, and a row whose window
+#   closed during those calls still authorized the merge after the 24 hours were over. The same read, the same window
+#   (daily_sweep_read, DAILY_SWEEP_MAX_AGE): a row within the window, the one rested on or a newer one, stands and is
+#   named on stderr; `none` is a refusal naming the row this head rested on, with no merge.
+recheck_daily_sweep() {
+    local rested_ts=${daily_ts} rested_head=${daily_head}
+    daily_sweep_read
+    [[ ${daily_row} != none ]] ||
+        refuse "the daily sweep of main's head ${rested_head} at ${rested_ts}, which this head rested on, no longer stands within ${DAILY_SWEEP_MAX_AGE} seconds (24 hours) at the merge write: its window closed during the checks, so the per-head rule stands; run the day's sweep and write its row (ledger-row.py daily), or write the unit's sweep row, then run the lever again"
+    echo "${lever}: sweep: the daily sweep of main's head ${daily_head} at ${daily_ts} still stands within ${DAILY_SWEEP_MAX_AGE} seconds at the merge write" >&2
+}
+
+# @description Hold a daily sweep row to its own grammar (regime-cutover U597 round 9; the round-8 P2 at ledger.py:393:
+#   the daily reader applied the sweep row's grammar alone, so a recent row of a unit's shape, `TASK U9`, a pinned
+#   verifier and an existing findings path, qualified as the day's sweep of main's head with no daily task and no
+#   validator result), after sweep_row_fields held the fields the two rows share. The verifier is the one
+#   `ledger-row.py daily` composes (daily_verifier_re: the skill, its pin word, the seat, the run, `TASK
+#   daily-<YYYY-MM-DD>`), the evidence its six fields (daily_evidence_re: the findings file, `<n> findings`, the two
+#   validators' PASS words, `validators sha256 <8 hex> <8 hex>`, `recorded <ts>`), and each digest prefix must be a
+#   prefix of the manifest's `assets.security-audit-skill.validators_sha256` pin of its validator, read through
+#   validators_pin_probe over LEVER_MANIFEST (exit 0 the two pins, 2 a refusal carrying its line, anything else a
+#   failure), so a row whose validators were held to other pins than the manifest's admits nothing. `ledger.py`
+#   already refuses a daily row of another shape as a malformed store; the lever reads the answer by its shape all
+#   the same. Every other shape is a refusal naming the row and the field.
+# @arg $1 string The row, as the refusals name it (`the daily sweep row of <ts> at main's head <head>`).
+# @arg $2 string The row's verifier.
+# @arg $3 string The row's evidence.
+daily_row_fields() {
+    local subject=$1 verifier=$2 evidence=$3 status=0 pins findings_pin coverage_pin findings_digest coverage_digest
+    [[ ${verifier} =~ ${daily_verifier_re} ]] ||
+        refuse "${subject} names '${verifier}' as its verifier, not the daily row's own 'security-audit-skill <pin> (full audit mode on the srt worker seat <seat>, run-<n>; TASK daily-<YYYY-MM-DD>)' as ledger-row.py daily writes it; a row of a unit's sweep shape (TASK U<n>) is no daily sweep of main's head"
+    [[ ${evidence} =~ ${daily_evidence_re} ]] ||
+        refuse "${subject} names '${evidence}' as its evidence, not the daily row's own 'sweeps/<path>.json; <n> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex>; recorded <ts>' as ledger-row.py daily writes it; a row without the validators' results and the digests they were held to is no daily sweep of main's head"
+    findings_digest=${BASH_REMATCH[2]}
+    coverage_digest=${BASH_REMATCH[3]}
+    pins=$("${python}" -I -S -c "${validators_pin_probe}" "${LEVER_MANIFEST}" 2>&1) || status=$?
+    case ${status} in
+    0) ;;
+    2) refuse "${pins#manifest: }; the daily row's validator digests are compared with those pins, so a manifest without them admits no daily sweep" ;;
+    *) fail "the validators pin probe over ${LEVER_MANIFEST} exited ${status}, neither the pins (0) nor a refusal (2): ${pins:-no output}" ;;
+    esac
+    [[ ${pins} =~ ${validators_pins_re} ]] ||
+        refuse "the validators pin probe over ${LEVER_MANIFEST} answered with no two 64-hex pins: ${pins:-nothing}"
+    findings_pin=${BASH_REMATCH[1]}
+    coverage_pin=${BASH_REMATCH[2]}
+    [[ ${findings_pin} == "${findings_digest}"* ]] ||
+        refuse "${subject} names validators sha256 ${findings_digest} for validate-findings.cjs, which is not a prefix of the manifest's assets.security-audit-skill.validators_sha256.validate-findings.cjs ${findings_pin} (${LEVER_MANIFEST}); the sweep's validators were held to other pins than the manifest's, or the row was written by hand"
+    [[ ${coverage_pin} == "${coverage_digest}"* ]] ||
+        refuse "${subject} names validators sha256 ${coverage_digest} for validate-coverage-ledger.cjs, which is not a prefix of the manifest's assets.security-audit-skill.validators_sha256.validate-coverage-ledger.cjs ${coverage_pin} (${LEVER_MANIFEST}); the sweep's validators were held to other pins than the manifest's, or the row was written by hand"
 }
 
 # @description Hold a sweep row's verifier and evidence to the exact row of the AGENTS.md Audit sweep rule (U147 round
@@ -1232,6 +1500,8 @@ resolve_store
 
 require_verdict_row "${head}"
 require_dispositions "${audited_head}" "${audited_unit}" "${head}"
+# The main ruleset's up-to-date policy, read once before the listing (round 9): while it is false no head is exempt.
+require_ruleset_policy
 require_sweep_scope
 [[ -z ${sweep_reason} ]] || require_sweep_row
 
@@ -1277,6 +1547,10 @@ done
 [[ -z ${missing} ]] ||
     refuse "CI has no result for: ${missing}; every check of REQUIRED_CHECKS (the main ruleset's required contexts) must pass on the head ${head}, and a pull request whose pull_request workflows never ran (a conflict with main) lists none of them"
 ((status == 0)) || fail "gh pr checks ${pr} exited ${status} although every listed check passed"
+# The daily freshness again, right before the merge write (round 9; the round-8 P3 at :1282): a head that rested on a
+# daily row (an empty `sweep_reason`) rests on it only while it is still within the window after the CI read and the
+# reread above; a row that expired meanwhile is a refusal, never a merge.
+[[ -n ${sweep_reason} ]] || recheck_daily_sweep
 
 merge_status=0
 gh_bounded pr merge "${pr}" --squash --match-head-commit "${head}" >&2 || merge_status=$?
@@ -1295,12 +1569,13 @@ IFS=$'\t' read -r state commit merged_base merged_head <<< "${after}"
 [[ ${merged_base} == main ]] ||
     fail "pull request ${pr} merged into ${merged_base:-an unreadable base}, not main: it was retargeted after the last read; tell the operator"
 # The merge landed on the tip the listing was classified against (round 8; the round-7 P3 at :782): `--match-head-commit`
-# pins the head alone, and the main ruleset's `strict_required_status_checks_policy` is false (read 2026-11-19), so
-# nothing server-side holds `main` still between the tip read in require_sweep_scope and the merge. The merge commit's
-# first parent is the `main` the squash landed on, read with its status and held to 40 hex, and it must be the tip
-# read earlier; a merge onto a moved `main` is exit 1 with no receipt naming the commit, its parent and that tip,
-# since the classified listing may not be the landed diff and the coordinator must sweep the merge commit. Were the
-# operator to enable the strict policy, GitHub would refuse such a merge and this check would never fire.
+# pins the head alone. While the main ruleset's `strict_required_status_checks_policy` is false (round 9: read before
+# the listing by require_ruleset_policy, and no head is exempt then) nothing server-side holds `main` still between the
+# tip read in require_sweep_scope and the merge; when it is true GitHub refuses a merge of a head behind `main` and this
+# check never fires. The merge commit's first parent is the `main` the squash landed on, read with its status and held
+# to 40 hex, and it must be the tip read earlier; a merge onto a moved `main` is exit 1 with no receipt naming the
+# commit, its parent and that tip, since the classified listing may not be the landed diff and the coordinator must
+# sweep the merge commit (the hcom-orchestration SKILL step 6): the lever's own record of what it merged onto.
 parent=$(gh_bounded api "repos/{owner}/{repo}/commits/${commit}" --jq '.parents[0].sha') ||
     fail "pull request ${pr} is MERGED as ${commit}, but the first parent of that commit could not be read (gh api repos/{owner}/{repo}/commits/${commit}); whether the merge landed on the tip ${base_tip} of main the listing was classified against is unknown, so the classified listing may not be the landed diff: the coordinator must sweep the merge commit ${commit}"
 [[ ${parent} =~ ^[0-9a-f]{40}$ ]] ||

@@ -4,11 +4,13 @@ words chosen by the kind, the ledger plus the new line re-read through `ledger.p
 written, and the four shapes that cost a round refused by name. Every test runs over a scratch store (a ledger with
 the header and three rows, `verdicts/`, `sweeps/`, a scratch HOME whose `.agents/agent-config.yaml` holds the pin and
 whose `.agents/skills/security-audit/` holds the two validators the `daily` kind runs through a fake `node` first on
-PATH; U597 round 7) as a subprocess under `python3 -I -S`, the form the coordinator runs."""
+PATH; U597 round 7; round 9: the three pinned files the writer copies into a private directory under a scratch TMPDIR
+and runs from there) as a subprocess under `python3 -I -S`, the form the coordinator runs."""
 
 import concurrent.futures
 import gc
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -52,14 +54,27 @@ DAILY_TASK_ID = f"daily-{DAILY_DAY}"
 # (round 8): the writer hashes each installed validator against the manifest's
 # `assets.security-audit-skill.validators_sha256.<validator>` before `node` runs it.
 VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs")
-FAKE_VALIDATOR = "// the fake node answers for {validator}\n"
-VALIDATOR_PINS = {
-    validator: hashlib.sha256(FAKE_VALIDATOR.format(validator=validator).encode()).hexdigest()
-    for validator in VALIDATORS
+SCHEMA = "report-schema.json"
+# The three pinned files of the installed skill (round 9): the two validators and the schema validate-findings.cjs
+# loads from its own directory (the fake names it as the real one does, `path.join(__dirname, "report-schema.json")`,
+# the line the writer's sibling scan reads).
+VALIDATOR_FILES = (*VALIDATORS, SCHEMA)
+FAKE_FILES = {
+    "validate-findings.cjs": (
+        "// the fake node answers for validate-findings.cjs\n"
+        'const schemaPath = path.join(__dirname, "report-schema.json");\n'
+    ),
+    "validate-coverage-ledger.cjs": "// the fake node answers for validate-coverage-ledger.cjs\n",
+    SCHEMA: '{"$schema": "fake", "title": "findings"}\n',
 }
+VALIDATOR_PINS = {name: hashlib.sha256(content.encode()).hexdigest() for name, content in FAKE_FILES.items()}
 VALIDATORS_BLOCK = "    validators_sha256:\n" + "".join(
-    f"      {validator}: {VALIDATOR_PINS[validator]}\n" for validator in VALIDATORS
+    f"      {name}: {VALIDATOR_PINS[name]}\n" for name in VALIDATOR_FILES
 )
+# The daily row's evidence after the count (round 9): the two validators' PASS words and the first 8 hex of the two
+# validator pins the copies were held to, in the writer's order; `recorded <ts>` follows at the write.
+DIGESTS8 = f"{VALIDATOR_PINS['validate-findings.cjs'][:8]} {VALIDATOR_PINS['validate-coverage-ledger.cjs'][:8]}"
+DAILY_TAIL = f"validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 {DIGESTS8}"
 MANIFEST = (
     "assets:\n"
     "  other-skill:\n"
@@ -84,13 +99,16 @@ VERDICT_INCORRECT = (
 
 
 # The fake `node` the daily kind's validators run under (U597 round 7): it logs its argv, its working directory, its
-# environment and its stdin as one JSON line, then answers by the mode file beside the log (absent: exit 0 with a PASS
-# line; `fail <validator>`: exit 1 with two stderr lines for that validator; `silent <validator>`: exit 3 with no
-# stderr). The log and the mode are spelled into the script, since the writer hands node no environment but PATH.
+# environment and its stdin as one JSON line (round 9: and the directory the validator it runs lies in, that
+# directory's mode and its entries, so the tests see the private copies), then answers by the mode file beside the
+# log (absent: exit 0 with a PASS line; `fail <validator>`: exit 1 with two stderr lines for that validator; `silent
+# <validator>`: exit 3 with no stderr). The log and the mode are spelled into the script, since the writer hands node
+# no environment but PATH.
 FAKE_NODE = """#!{python}
 import json, os, sys
+here = os.path.dirname(sys.argv[1]) if len(sys.argv) > 1 else ""
 with open({log!r}, "a", encoding="utf-8") as log:
-    log.write(json.dumps({{"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ), "stdin": sys.stdin.read()}}) + "\\n")
+    log.write(json.dumps({{"argv": sys.argv[1:], "cwd": os.getcwd(), "env": dict(os.environ), "stdin": sys.stdin.read(), "dir": here, "mode": oct(os.stat(here).st_mode & 0o777) if here else "", "entries": sorted(os.listdir(here)) if here else []}}) + "\\n")
 mode = ""
 try:
     with open({mode!r}, encoding="utf-8") as handle:
@@ -145,8 +163,11 @@ class LedgerRowTest(unittest.TestCase):
         # first on PATH (round 7); the caller's NODE_OPTIONS and a canary must reach no validator.
         self.skill = self.home / ".agents/skills/security-audit"
         self.skill.mkdir(parents=True)
-        for validator in VALIDATORS:
-            (self.skill / validator).write_text(FAKE_VALIDATOR.format(validator=validator))
+        for name, content in FAKE_FILES.items():
+            (self.skill / name).write_text(content)
+        # The private directory of the validators' copies (round 9) is made under TMPDIR, a scratch one here.
+        self.tmp = root / "tmp"
+        self.tmp.mkdir()
         self.bin = root / "bin"
         self.bin.mkdir()
         self.node_log = root / "node-calls.jsonl"
@@ -157,6 +178,7 @@ class LedgerRowTest(unittest.TestCase):
         self.env = {
             "PATH": f"{self.bin}:{os.environ['PATH']}",
             "HOME": str(self.home),
+            "TMPDIR": str(self.tmp),
             "LC_ALL": "C",
             "NODE_OPTIONS": "--require /nonexistent/preload.js",
             "SECRET_OF_THE_CALLER": "never reaches node",
@@ -357,17 +379,19 @@ class LedgerRowTest(unittest.TestCase):
         end = datetime.now(timezone.utc)
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
         # round 7: the row is written after both validators ran, in order, over the findings file and the coverage
-        # ledger beside it, from the installed skill directory alone (round 8: `--skill-dir` is gone)
-        skill = self.skill
+        # ledger beside it, from the installed skill directory alone (round 8: `--skill-dir` is gone); round 9: each
+        # from its private copy, never the installed path
         findings = self.store / args[args.index("--findings") + 1]
+        calls = self.node_calls()[calls_before:]
         self.assertEqual(
-            [call["argv"] for call in self.node_calls()[calls_before:]],
-            [
-                [str(skill / "validate-findings.cjs"), str(findings)],
-                [str(skill / "validate-coverage-ledger.cjs"), str(findings.parent / "coverage-ledger.json")],
-            ],
+            [os.path.basename(call["argv"][0]) for call in calls],
+            list(VALIDATORS),
             "the two validators ran, in order, before the row was written",
         )
+        self.assertEqual(
+            [call["argv"][1] for call in calls], [str(findings), str(findings.parent / "coverage-ledger.json")]
+        )
+        self.assert_private_copies(calls)
         after = daily.read_bytes()
         self.assertTrue(after.startswith(before), "the file is appended, never rewritten")
         added = after[len(before) :].decode()
@@ -388,11 +412,29 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(self.ledger.read_bytes(), ledger_before, "the ledger is not the daily row's file")
         return cells
 
+    def leftovers(self):
+        """The private directories of the validators' copies still under TMPDIR: none after any run (round 9)."""
+        return sorted(entry.name for entry in self.tmp.glob("ledger-row.validators.*"))
+
+    def assert_private_copies(self, calls):
+        """The validators ran from copies in one private directory under TMPDIR (round 9), `ledger-row.validators.*`
+        of mode 0700 holding the three pinned files and nothing else, never from the installed path, and the
+        directory is gone after the run."""
+        directories = {call["dir"] for call in calls}
+        self.assertEqual(len(directories), 1, directories)
+        directory = directories.pop()
+        self.assertTrue(directory.startswith(f"{self.tmp}/ledger-row.validators."), directory)
+        self.assertNotEqual(directory, str(self.skill), "never the installed path")
+        for call in calls:
+            self.assertEqual(call["mode"], "0o700")
+            self.assertEqual(call["entries"], sorted(VALIDATOR_FILES))
+        self.assertEqual(self.leftovers(), [], "the private directory is removed after the run")
+
     def test_a_daily_row_writes_the_exact_row_of_daily_sweeps_tsv_making_the_file_with_its_header(self):
         """U597 round 4: the `daily` kind writes the one row of the store's `daily-sweeps.tsv`, main's head, the
         verifier of the `sweep` kind with the daily task id, the findings file and the count read from it (round 6:
-        no `--count`; the ts is `--swept-at`, the evidence ends with the coordinator's `validators pass` and the
-        recording time); the file is made with its header when absent and appended when present; the ledger is
+        no `--count`; the ts is `--swept-at`, the evidence ends with the validators' PASS words, the digests the copies
+        were held to (round 9) and the recording time); the file is made with its header when absent and appended when present; the ledger is
         untouched; `ledger.py daily` reads the newest row back; a unit's id is refused as the task (round 8, verdict
         U597-a28e4793 P2 at ledger-row.py:468: the row that recorded `U9` here read back as the active daily exemption)
         and the second row is another run of the day's id, with its own findings file, since a findings file already
@@ -417,7 +459,7 @@ class LedgerRowTest(unittest.TestCase):
             f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-3, run-170; "
             f"TASK {DAILY_TASK_ID})"
         )
-        evidence = "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validators pass"
+        evidence = f"sweeps/U9-bbbbbbbb/findings.json; 0 findings; {DAILY_TAIL}"
         self.assertFalse(daily.exists())
         self.assert_daily_appended(args, A, verifier, evidence)
         text = daily.read_text()
@@ -574,14 +616,15 @@ class LedgerRowTest(unittest.TestCase):
         SWEPT_AT,
     )
     DAILY_VERIFIER = f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-3, run-170; TASK {DAILY_TASK_ID})"
-    DAILY_EVIDENCE = "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validators pass"
+    DAILY_EVIDENCE = f"sweeps/U9-bbbbbbbb/findings.json; 0 findings; {DAILY_TAIL}"
 
     def test_a_daily_row_refuses_a_findings_path_an_existing_row_already_names(self):
         """U597 round 5 (verdict U597-1b3c4b1d P2 at ledger-row.py:408): the writer dated the row by the clock, not
         the sweep, so recording a finished run again refreshed the exemption's window without a new sweep. A
         `--findings` path any existing daily row names (the evidence's first `;`-separated field, stripped) is refused
         with one line naming that row's ts and line, the file unchanged byte for byte; another findings file of
-        another run appends; a hand-written row with spaces around the path names it all the same."""
+        another run appends; a hand-written row with spaces around the path is a malformed file to the writer (round
+        9: the daily row's own grammar, whose first field is the path unpadded), never a recorded path."""
         daily = self.store / "daily-sweeps.tsv"
         first = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
         before = daily.read_bytes()
@@ -616,19 +659,22 @@ class LedgerRowTest(unittest.TestCase):
             other,
             A,
             self.DAILY_VERIFIER.replace("run-170", "run-171"),
-            "sweeps/daily-2026-11-20/findings.json; 1 findings; validators pass",
+            f"sweeps/daily-2026-11-20/findings.json; 1 findings; {DAILY_TAIL}",
         )
         self.assertEqual(daily.read_text().count("\n"), 3)
-        # a hand-written earlier row with spaces around the path still names the path (the field is stripped)
+        # a hand-written earlier row with spaces around the path is a malformed file (round 9), refused naming the
+        # field before any guard, the file unchanged
         daily.write_text(
             DAILY_HEADER
-            + f"2026-11-19T01:00:00Z\t{B}\t{self.DAILY_VERIFIER}\t sweeps/U9-bbbbbbbb/findings.json ; 0 findings\n"
+            + f"{SWEPT_AT}\t{B}\t{self.DAILY_VERIFIER}\t sweeps/U9-bbbbbbbb/findings.json ; 0 findings; {DAILY_TAIL};"
+            f" recorded {SWEPT_AT}\n"
         )
         run = self.run_writer(*self.DAILY_ARGS)
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn(
-            f"is already recorded by the daily sweep row of 2026-11-19T01:00:00Z ({daily}:2); a finished run",
+        self.assertEqual(
             run.stderr,
+            f"ledger-row: refused: {daily}:2: field 1 of the evidence of a daily sweep row, the findings file, is padded"
+            " with spaces: ' sweeps/U9-bbbbbbbb/findings.json '\n",
         )
         self.assertEqual(daily.read_text().count("\n"), 2, "unchanged")
 
@@ -638,7 +684,7 @@ class LedgerRowTest(unittest.TestCase):
         and task. The `(seat, run)` an existing row's verifier carries (`seat <seat>, run-<n>;`, as the writer
         composes it) is refused with one line naming that row's ts and line, the file unchanged byte for byte,
         whatever the head or the time; another run of the seat and the same run of another seat append; a
-        hand-written row whose verifier lacks the fields keys on its findings path alone."""
+        hand-written row whose verifier lacks the fields is a malformed file to the writer (round 9), never a row."""
         daily = self.store / "daily-sweeps.tsv"
         first = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
         before = daily.read_bytes()
@@ -675,25 +721,25 @@ class LedgerRowTest(unittest.TestCase):
             (*copied[:6], "171", *copied[7:10], "sweeps/daily-2026-11-19-run-171/findings.json", *copied[11:]),
             A,
             verifier.replace("run-170", "run-171"),
-            "sweeps/daily-2026-11-19-run-171/findings.json; 0 findings; validators pass",
+            f"sweeps/daily-2026-11-19-run-171/findings.json; 0 findings; {DAILY_TAIL}",
         )
         self.assert_daily_appended(
             (*copied[:4], "sweep-4", *copied[5:]),
             A,
             verifier.replace("seat sweep-3,", "seat sweep-4,"),
-            "sweeps/daily-2026-11-19-run-170/findings.json; 0 findings; validators pass",
+            f"sweeps/daily-2026-11-19-run-170/findings.json; 0 findings; {DAILY_TAIL}",
         )
         self.assertEqual(daily.read_text().count("\n"), 4)
-        # a hand-written earlier row without the seat and run fields keys on its path alone
+        # a hand-written earlier row without the seat and run fields is a malformed file (round 9): refused naming
+        # the verifier, nothing appended
         daily.write_text(
-            DAILY_HEADER + f"2026-11-19T01:00:00Z\t{B}\tsecurity-audit-skill {PIN[:8]} (x)\t"
-            "sweeps/daily-2026-11-19-run-170-b/findings.json; 0 findings\n"
+            DAILY_HEADER + f"{SWEPT_AT}\t{B}\tsecurity-audit-skill {PIN[:8]} (x)\t"
+            f"sweeps/daily-2026-11-19-run-170-b/findings.json; 0 findings; {DAILY_TAIL}; recorded {SWEPT_AT}\n"
         )
-        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
         run = self.run_writer(*copied[:10], "sweeps/daily-2026-11-19-run-170-b/findings.json", *copied[11:])
         self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-        self.assertIn("is already recorded by the daily sweep row of 2026-11-19T01:00:00Z", run.stderr)
-        self.assertIn("the findings file sweeps/daily-2026-11-19-run-170-b/findings.json", run.stderr)
+        self.assertIn(f"ledger-row: refused: {daily}:2: the verifier of a daily sweep row is not", run.stderr)
+        self.assertEqual(daily.read_text().count("\n"), 2, "unchanged")
 
     def test_a_daily_row_s_ts_is_its_swept_at_time_and_a_future_or_stale_one_is_refused(self):
         """U597 round 6 (verdict U597-10d46fe0 P2 at ledger-row.py:417): round 5 dated the row at recording time, so
@@ -763,7 +809,7 @@ class LedgerRowTest(unittest.TestCase):
                     ),
                     A,
                     self.DAILY_VERIFIER.replace("run-170", f"run-{run_number}").replace(DAILY_TASK_ID, task),
-                    f"sweeps/daily-2026-11-19-run-{run_number}/findings.json; 0 findings; validators pass",
+                    f"sweeps/daily-2026-11-19-run-{run_number}/findings.json; 0 findings; {DAILY_TAIL}",
                 )
 
     def refused_daily(self, arguments, *reasons):
@@ -776,6 +822,7 @@ class LedgerRowTest(unittest.TestCase):
         for reason in reasons:
             self.assertIn(reason, run.stderr)
         self.assertFalse(daily.exists(), "a refusal makes no file")
+        self.assertEqual(self.leftovers(), [], "no private directory remains after a refusal")
         ran = [os.path.basename(call["argv"][0]) for call in self.node_calls()]
         self.node_log.unlink(missing_ok=True)
         return ran
@@ -798,11 +845,8 @@ class LedgerRowTest(unittest.TestCase):
         self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
         calls = self.node_calls()
         self.assertEqual(
-            [call["argv"] for call in calls],
-            [
-                [str(self.skill / "validate-findings.cjs"), str(findings)],
-                [str(self.skill / "validate-coverage-ledger.cjs"), str(coverage)],
-            ],
+            [[os.path.basename(call["argv"][0]), call["argv"][1]] for call in calls],
+            [["validate-findings.cjs", str(findings)], ["validate-coverage-ledger.cjs", str(coverage)]],
         )
         for call in calls:
             self.assertEqual(call["cwd"], "/", "a neutral working directory")
@@ -861,9 +905,9 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(
             refused(
                 self.DAILY_ARGS,
-                f"the validator {self.skill}/validate-findings.cjs is not a regular file of this user under the installed"
-                f" skill ({self.skill}: No such file or directory); the daily row states 'validators pass' only after the"
-                " pinned validator ran",
+                f"the validator file {self.skill}/validate-findings.cjs is not a regular file of this user under the"
+                f" installed skill ({self.skill}: No such file or directory); the daily row states a validator's PASS only"
+                " after the pinned validator ran",
             ),
             [],
         )
@@ -872,8 +916,8 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(
             refused(
                 self.DAILY_ARGS,
-                f"the validator {self.skill}/validate-coverage-ledger.cjs is not a regular file of this user under the"
-                f" installed skill ({self.skill}/validate-coverage-ledger.cjs: No such file or directory)",
+                f"the validator file {self.skill}/validate-coverage-ledger.cjs is not a regular file of this user under"
+                f" the installed skill ({self.skill}/validate-coverage-ledger.cjs: No such file or directory)",
             ),
             [],
         )
@@ -885,6 +929,7 @@ class LedgerRowTest(unittest.TestCase):
         path = self.env["PATH"]
         self.env["PATH"] = str(empty)
         self.assertEqual(refused(self.DAILY_ARGS, "no node on PATH; the skill's validators run under it"), [])
+        self.assertFalse(self.leftovers(), "no copy is made before node is found")
         self.env["PATH"] = path
         # with everything in place the row is written
         self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
@@ -904,22 +949,19 @@ class LedgerRowTest(unittest.TestCase):
         node's resolution from `/`. Each validator is read from `~/.agents/skills/security-audit/` alone (HOME
         expanded, an absolute path, every component below HOME `lstat`ed and no symlink, the file opened with no link
         followed and a regular file of this user) and its sha256 compared with the manifest's
-        `assets.security-audit-skill.validators_sha256.<validator>` before `node` runs it: the pinned bytes pass with
-        the fake node, run from the installed path; a validator with one more byte refuses naming the file and both
-        digests with no node run and nothing written; a manifest without the block, without one key, with a key twice
-        or with a digest of 63 hex, and one whose block sits under another asset, refuses naming the key; `--manifest
-        <path>` names the manifest read, so a file holding the pins passes while HOME's lacks them, and a missing one
-        refuses naming it; a symbolic link at the skill directory or at the validator refuses naming the component;
-        a HOME that is no absolute path refuses."""
+        `assets.security-audit-skill.validators_sha256.<validator>` before `node` runs it (round 9: the copy is what
+        is hashed and run, test_a_daily_row_runs_the_validators_from_private_copies_held_to_three_pins): the pinned
+        bytes pass with the fake node; a validator with one more byte refuses naming the file and both digests with no
+        node run and nothing written; a manifest without the block, without one key, with a key twice or with a
+        digest of 63 hex, and one whose block sits under another asset, refuses naming the key; the manifest is
+        HOME's alone (round 9: `--manifest` is gone, argparse refuses it); a symbolic link at the skill directory or
+        at the validator refuses naming the component; a HOME that is no absolute path refuses."""
         daily = self.store / "daily-sweeps.tsv"
         findings_validator = self.skill / "validate-findings.cjs"
-        coverage_validator = self.skill / "validate-coverage-ledger.cjs"
         refused = self.refused_daily
-        # the pinned bytes pass with the fake node, run from the installed path
+        # the pinned bytes pass with the fake node, run from their copies
         self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
-        self.assertEqual(
-            [call["argv"][0] for call in self.node_calls()], [str(findings_validator), str(coverage_validator)]
-        )
+        self.assertEqual([os.path.basename(call["argv"][0]) for call in self.node_calls()], list(VALIDATORS))
         daily.unlink()
         self.node_log.unlink()
         # a validator whose bytes differ from the pin: refused naming the file and both digests, no node run
@@ -932,9 +974,11 @@ class LedgerRowTest(unittest.TestCase):
                 self.assertEqual(
                     refused(
                         self.DAILY_ARGS,
-                        f"sha256 {hashlib.sha256(changed).hexdigest()} of the validator {path} differs from the pin"
-                        f" {VALIDATOR_PINS[validator]} of assets.security-audit-skill.validators_sha256.{validator} in"
-                        f" {self.manifest}; the installed skill is not the pinned one, so nothing is written",
+                        f"sha256 {hashlib.sha256(changed).hexdigest()} of the validator file {path} (hashed as its copy"
+                        f" {self.tmp}/ledger-row.validators.",
+                        f"/{validator}) differs from the pin {VALIDATOR_PINS[validator]} of"
+                        f" assets.security-audit-skill.validators_sha256.{validator} in {self.manifest}; the installed"
+                        " skill is not the pinned one, so nothing is written",
                     ),
                     [],
                 )
@@ -976,20 +1020,19 @@ class LedgerRowTest(unittest.TestCase):
                 self.manifest.write_text(manifest_text)
                 self.assertEqual(refused(self.DAILY_ARGS, message, str(self.manifest)), [])
         self.manifest.write_text(MANIFEST)
-        # --manifest names the manifest read: a file holding the pins passes while HOME's lacks them; a missing one
-        # refuses naming it
+        # the manifest is HOME's alone (round 9): `--manifest` is no argument, and HOME's manifest without the block
+        # refuses whatever another file holds
         other = Path(self.temp.name).resolve() / "other-manifest.yaml"
         other.write_text(MANIFEST)
         self.manifest.write_text(MANIFEST.replace(VALIDATORS_BLOCK, ""))
-        self.assert_daily_appended(
-            (*self.DAILY_ARGS, "--manifest", str(other)), A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE
-        )
-        daily.unlink()
-        self.node_log.unlink()
+        run = self.run_writer(*self.DAILY_ARGS, "--manifest", str(other))
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("unrecognized arguments: --manifest", run.stderr)
+        self.assertFalse(daily.exists())
         self.assertEqual(
             refused(
-                (*self.DAILY_ARGS, "--manifest", f"{other}.missing"),
-                f"cannot read the manifest {other}.missing: No such file or directory",
+                self.DAILY_ARGS,
+                "holds 0 assets.security-audit-skill.validators_sha256.validate-findings.cjs lines of 64 hex, not one",
             ),
             [],
         )
@@ -1001,7 +1044,7 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(
             refused(
                 self.DAILY_ARGS,
-                f"{self.skill}, a component of the validator path {findings_validator}, is a symbolic link; the"
+                f"{self.skill}, a component of the validator file path {findings_validator}, is a symbolic link; the"
                 " installed skill is read through real directories alone",
             ),
             [],
@@ -1015,7 +1058,7 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(
             refused(
                 self.DAILY_ARGS,
-                f"{findings_validator}, a component of the validator path {findings_validator}, is a symbolic link",
+                f"{findings_validator}, a component of the validator file path {findings_validator}, is a symbolic link",
             ),
             [],
         )
@@ -1024,10 +1067,7 @@ class LedgerRowTest(unittest.TestCase):
         # a HOME that is no absolute path: the manifest named, the validator path refused
         home = self.env["HOME"]
         self.env["HOME"] = "relative/home"
-        self.assertEqual(
-            refused((*self.DAILY_ARGS, "--manifest", str(other)), "HOME 'relative/home' is not an absolute path"),
-            [],
-        )
+        self.assertEqual(refused(self.DAILY_ARGS, "HOME 'relative/home' is not an absolute path"), [])
         self.env["HOME"] = home
         # with everything restored the row is written
         self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
@@ -1036,21 +1076,218 @@ class LedgerRowTest(unittest.TestCase):
         self.assertIn('SKILL_PARTS = (".agents", "skills", "security-audit")', text)
         self.assertIn('VALIDATORS_KEY = "validators_sha256"', text)
         self.assertIn("descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)", text)
-        self.assertIn("digest = hashlib.sha256(data).hexdigest()", text)
-        self.assertIn("if digest != pins[validator]:", text)
+        self.assertIn("digest = hashlib.sha256(copied).hexdigest()", text)
+        self.assertIn("if digest != pins[name]:", text)
 
-    def test_a_daily_row_s_task_is_the_daily_id_of_the_swept_at_day_alone(self):
-        """U597 round 8 (verdict U597-a28e4793 P2 at ledger-row.py:468): the daily writer accepted an ordinary unit's
-        task, so a unit's scoped sweep could be read back as the active daily exemption of main's head. The task is
-        `daily-<YYYY-MM-DD>` alone, the UTC day the `--swept-at` falls on: a unit id (`U9`, `U9b`), a word, an
-        unpadded date and the daily id with another day are each refused naming the grammar or both days, with one
-        stderr line, no file and no validator run; the matching day passes, and a `--swept-at` of 23 hours ago passes
-        under its own day's id."""
+    def test_a_daily_row_runs_the_validators_from_private_copies_held_to_three_pins(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at ledger-row.py:654): round 8 hashed each installed validator and
+        then had node reopen it by pathname, and validate-findings.cjs loaded report-schema.json from the installation
+        directory unhashed, so a concurrent skill update could make the writer record a pass for bytes outside the
+        checked installation. The two validators and the schema are copied into a private directory under TMPDIR
+        (`ledger-row.validators.*`, mode 0700), each copy hashed against its manifest pin (three pins), the validator
+        copies scanned for a sibling they load that has no pin, and node run on the copies: the fake node records the
+        directory it ran from, its mode and its entries, never the installed path, and nothing remains after; a
+        schema off its pin or missing, a manifest without the schema's pin, a validator loading an unpinned sibling
+        (`require("./helper.cjs")`, `path.join(__dirname, "other.json")`, `require('../lib/up.js')`), a private
+        directory that cannot be made and a copy that cannot be written each refuse with one line naming the file,
+        no node run, no daily file and no directory left."""
+        daily = self.store / "daily-sweeps.tsv"
+        schema = self.skill / SCHEMA
+        findings_validator = self.skill / "validate-findings.cjs"
+        refused = self.refused_daily
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        calls = self.node_calls()
+        self.assertEqual([os.path.basename(call["argv"][0]) for call in calls], list(VALIDATORS))
+        self.assert_private_copies(calls)
+        for call in calls:
+            self.assertFalse(call["argv"][0].startswith(str(self.skill)), "never the installed path")
+        daily.unlink()
+        self.node_log.unlink()
+        # the schema off its pin: refused naming the file and both digests, no node run
+        original = schema.read_bytes()
+        changed = original + b"\n"
+        schema.write_bytes(changed)
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                f"sha256 {hashlib.sha256(changed).hexdigest()} of the validator file {schema} (hashed as its copy"
+                f" {self.tmp}/ledger-row.validators.",
+                f"/{SCHEMA}) differs from the pin {VALIDATOR_PINS[SCHEMA]} of"
+                f" assets.security-audit-skill.validators_sha256.{SCHEMA} in {self.manifest}; the installed skill is not"
+                " the pinned one, so nothing is written",
+            ),
+            [],
+        )
+        schema.write_bytes(original)
+        # a missing schema, and a manifest without the schema's pin
+        schema.unlink()
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                f"the validator file {schema} is not a regular file of this user under the installed skill ({schema}:"
+                " No such file or directory)",
+            ),
+            [],
+        )
+        schema.write_bytes(original)
+        self.manifest.write_text(MANIFEST.replace(f"      {SCHEMA}: {VALIDATOR_PINS[SCHEMA]}\n", ""))
+        self.assertEqual(
+            refused(
+                self.DAILY_ARGS,
+                f"holds 0 assets.security-audit-skill.validators_sha256.{SCHEMA} lines of 64 hex, not one; the installed"
+                " file's copy is compared with it before the validators run",
+            ),
+            [],
+        )
+        self.manifest.write_text(MANIFEST)
+        # a validator that loads an unpinned sibling: its bytes re-pinned so the hash passes, the sibling refused
+        for name, line, sibling in (
+            ("a relative require", 'const helper = require("./helper.cjs");\n', "helper.cjs"),
+            ("a __dirname join", 'const other = path.join(__dirname, "other.json");\n', "other.json"),
+            ("a parent-directory require", "const up = require('../lib/up.js');\n", "lib/up.js"),
+        ):
+            with self.subTest(name):
+                content = FAKE_FILES["validate-findings.cjs"] + line
+                findings_validator.write_text(content)
+                self.manifest.write_text(
+                    MANIFEST.replace(
+                        VALIDATOR_PINS["validate-findings.cjs"], hashlib.sha256(content.encode()).hexdigest()
+                    )
+                )
+                self.assertEqual(
+                    refused(
+                        self.DAILY_ARGS,
+                        f"{findings_validator} loads {sibling!r} from its own directory, a file with no"
+                        " assets.security-audit-skill.validators_sha256 pin; every file a validator loads beside itself"
+                        " is pinned and copied with it, so nothing is written",
+                    ),
+                    [],
+                )
+        findings_validator.write_text(FAKE_FILES["validate-findings.cjs"])
+        self.manifest.write_text(MANIFEST)
+        # the private directory cannot be made (`os.mkdir` raises EIO under mkdtemp), or a copy cannot be written
+        # (`os.write` raises EIO): one line naming the place, nothing run, nothing written, nothing left
+        for function, message in (
+            ("mkdir", "cannot make the private directory for the validators' copies under "),
+            ("write", f"cannot copy the validator file {findings_validator} into {self.tmp}/ledger-row.validators."),
+        ):
+            with self.subTest(function):
+                run = self.inject(function, *self.DAILY_ARGS)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertIn(f"ledger-row: refused: {message}", run.stderr)
+                self.assertIn("Input/output error", run.stderr)
+                self.assertNotIn("Traceback", run.stderr)
+                self.assertFalse(daily.exists())
+                self.assertEqual(self.node_calls(), [])
+                self.assertEqual(self.leftovers(), [])
+        # with everything in place the row is written from the copies
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        # the writer spells the copies as this test describes them
+        text = WRITER.read_text()
+        self.assertIn('VALIDATOR_FILES = ("validate-findings.cjs", "validate-coverage-ledger.cjs", SCHEMA)', text)
+        self.assertIn('PRIVATE_PREFIX = "ledger-row.validators."', text)
+        self.assertIn("directory = tempfile.mkdtemp(prefix=PRIVATE_PREFIX, dir=base)", text)
+        self.assertIn("while view:", text)
+        self.assertIn("os.chmod(directory, 0o700)", text)
+        self.assertIn("descriptor = os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)", text)
+        self.assertIn("[node, copies[validator][0], path],", text)
+        self.assertIn("shutil.rmtree(private, ignore_errors=True)", text)
+        self.assertNotIn("[node, scripts[validator], path]", text, "the installed path is never run (round 9)")
+
+    def test_the_manifest_is_the_deployed_one_alone_and_the_row_records_the_validator_digests(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at ledger-row.py:821): the deployed writer accepted a caller-selected
+        manifest for the validator digests while the lever checked only the skill commit prefix in the row, so a row
+        could carry the expected pin while its validators were checked against other digests. `--manifest` is gone
+        (argparse refuses it for the daily and the sweep kind, nothing run, nothing written), the writer reads
+        `~/.agents/agent-config.yaml` alone (a missing one is refused by name for both kinds, with no fall-through to
+        the checkout's copy), and the daily row's evidence carries `validators sha256 <8 hex> <8 hex>`, the first 8 hex
+        of the two validator pins the copies were held to in the writer's order, which the reader exposes and
+        pr-merge.sh compares with the manifest's; with other pins in the manifest and the installed files rewritten
+        to match, the row records those."""
+        daily = self.store / "daily-sweeps.tsv"
+        other = Path(self.temp.name).resolve() / "other-manifest.yaml"
+        other.write_text(MANIFEST)
+        for kind, arguments in (("daily", self.DAILY_ARGS), ("sweep", self.sweep_args())):
+            with self.subTest(kind):
+                run = self.run_writer(*arguments, "--manifest", str(other))
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertIn("unrecognized arguments: --manifest", run.stderr)
+        self.assertFalse(daily.exists())
+        self.assertEqual(self.node_calls(), [])
+        self.assertEqual(self.ledger.read_text(), HEADER + "".join(ROWS))
+        # HOME's manifest alone: a missing one refuses naming it, for both kinds
+        self.manifest.unlink()
+        self.assertEqual(
+            self.refused_daily(self.DAILY_ARGS, f"cannot read the manifest {self.manifest}: No such file or directory"),
+            [],
+        )
+        self.assert_refused(self.sweep_args(), f"cannot read the manifest {self.manifest}: No such file or directory")
+        self.manifest.write_text(MANIFEST)
+        # the row carries the two digests' first 8 hex in the order the validators run, and the reader exposes them
+        cells = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        fields = cells[3].split("; ")
+        self.assertEqual(len(fields), 6)
+        self.assertEqual(fields[4], f"validators sha256 {DIGESTS8}")
+        spec = importlib.util.spec_from_file_location("ledger", READER)
+        reader = importlib.util.module_from_spec(spec)
+        sys.modules["ledger"] = reader
+        spec.loader.exec_module(reader)
+        row = reader.read_daily(str(daily)).rows[0]
+        self.assertEqual(
+            row.validator_digests,
+            (VALIDATOR_PINS["validate-findings.cjs"][:8], VALIDATOR_PINS["validate-coverage-ledger.cjs"][:8]),
+        )
+        self.assertEqual((row.seat, row.run, row.task_day), ("sweep-3", "170", DAILY_DAY))
+        self.assertIsNotNone(row.recorded)
+        # other pins in the manifest, the installed files rewritten to match: the row records those pins' prefixes
+        rewritten = {name: content + "// v2\n" for name, content in FAKE_FILES.items()}
+        pins = {name: hashlib.sha256(content.encode()).hexdigest() for name, content in rewritten.items()}
+        for name, content in rewritten.items():
+            (self.skill / name).write_text(content)
+        manifest = MANIFEST
+        for name in VALIDATOR_FILES:
+            manifest = manifest.replace(VALIDATOR_PINS[name], pins[name])
+        self.manifest.write_text(manifest)
+        self.findings_dir("daily-v2-run-171")
+        self.assert_daily_appended(
+            (
+                *self.DAILY_ARGS[:5],
+                "--run",
+                "171",
+                *self.DAILY_ARGS[7:9],
+                "--findings",
+                "sweeps/daily-v2-run-171/findings.json",
+                *self.DAILY_ARGS[11:],
+            ),
+            A,
+            self.DAILY_VERIFIER.replace("run-170", "run-171"),
+            "sweeps/daily-v2-run-171/findings.json; 0 findings; validate-findings.cjs PASS;"
+            f" validate-coverage-ledger.cjs PASS; validators sha256 {pins['validate-findings.cjs'][:8]}"
+            f" {pins['validate-coverage-ledger.cjs'][:8]}",
+        )
+        # the writer spells the one manifest and the digests field
+        text = WRITER.read_text()
+        self.assertNotIn('"--manifest"', text, "the option is gone (round 9)")
+        self.assertIn('MANIFEST_PARTS = (".agents", "agent-config.yaml")', text)
+        self.assertNotIn("../../home/dot_agents/agent-config.yaml", text, "no fall-through to the checkout's copy")
+        self.assertIn('digests = " ".join(pins[validator][:8] for validator, _ in VALIDATORS)', text)
+        self.assertIn('f"validators sha256 {digests}", f"recorded {now()}"', text)
+
+    def test_a_daily_row_s_task_is_the_daily_id_of_the_swept_at_day_or_the_day_before(self):
+        """U597 round 8 (verdict U597-a28e4793 P2 at ledger-row.py:468) and round 9 (verdict U597-c37800e3 P2 at :543):
+        the daily writer accepted an ordinary unit's task, so a unit's scoped sweep could be read back as the active
+        daily exemption of main's head; round 8 then held the task to the UTC day of `--swept-at` alone, while the id
+        is fixed at dispatch, so a full sweep that crossed midnight was refused under its own id. The task is
+        `daily-<YYYY-MM-DD>` alone: a unit id (`U9`, `U9b`), a word, an unpadded date and a capitalised id are each
+        refused naming the grammar; the UTC day of `--swept-at` and the day before it both pass (the reader holds the
+        row to the same rule and reads both back); two days before, the day after and a year before are refused
+        naming both days; each refusal one stderr line, no file and no validator run."""
         daily = self.store / "daily-sweeps.tsv"
         refused = self.refused_daily
 
-        def arguments(task, swept_at=SWEPT_AT):
-            return (*self.DAILY_ARGS[:7], "--task", task, *self.DAILY_ARGS[9:11], "--swept-at", swept_at)
+        def arguments(task, swept_at=SWEPT_AT, run="170", findings="sweeps/U9-bbbbbbbb/findings.json"):
+            return (*self.DAILY_ARGS[:5], "--run", run, "--task", task, "--findings", findings, "--swept-at", swept_at)
 
         grammar = (
             "is not daily-<YYYY-MM-DD>, the coordinator's daily dispatch id; a daily row records the day's full sweep"
@@ -1059,46 +1296,41 @@ class LedgerRowTest(unittest.TestCase):
         for task in ("U9", "U9b", "main", "daily-2026-1-19", "Daily-2026-11-19", f"{DAILY_TASK_ID} "):
             with self.subTest(task=task):
                 self.assertEqual(refused(arguments(task), f"the task {task!r} {grammar}"), [])
-        other_day = (datetime.strptime(DAILY_DAY, "%Y-%m-%d") - timedelta(days=1)).strftime("%Y-%m-%d")
-        self.assertEqual(
-            refused(
-                arguments(f"daily-{other_day}"),
-                f"the task daily-{other_day} names another day than --swept-at {SWEPT_AT} ({DAILY_DAY} UTC); the daily"
-                f" id is daily-{DAILY_DAY}, the day the sweep's RESULT falls on",
-            ),
-            [],
-        )
+        day = datetime.strptime(DAILY_DAY, "%Y-%m-%d")
+        before = (day - timedelta(days=1)).strftime("%Y-%m-%d")
+        for name, offset in (("two days before", -2), ("the day after", 1), ("a year before", -365)):
+            with self.subTest(name):
+                other = (day + timedelta(days=offset)).strftime("%Y-%m-%d")
+                self.assertEqual(
+                    refused(
+                        arguments(f"daily-{other}"),
+                        f"the task daily-{other} names neither the UTC day of --swept-at {SWEPT_AT} ({DAILY_DAY}) nor the"
+                        f" day before it ({before}); the daily id is fixed at dispatch and a sweep that crosses midnight"
+                        f" keeps it, so daily-{DAILY_DAY} or daily-{before} alone records this RESULT",
+                    ),
+                    [],
+                )
         self.assertFalse(daily.exists())
-        # the matching day passes; 23 hours ago passes under its own day's id, and under today's id only when the
-        # days agree
+        # the day itself passes; the day before passes under another run and findings file (the sweep dispatched
+        # yesterday that finished after midnight keeps yesterday's id)
         self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
-        swept = ts_ago(23 * 3600)
-        task = f"daily-{swept[:10]}"
-        self.findings_dir("daily-earlier-run-171")
-        earlier = (
-            *self.DAILY_ARGS[:5],
-            "--run",
-            "171",
-            "--task",
-            task,
-            "--findings",
-            "sweeps/daily-earlier-run-171/findings.json",
-            "--swept-at",
-            swept,
-        )
-        if swept[:10] != DAILY_DAY:
-            run = self.run_writer(*earlier[:7], "--task", DAILY_TASK_ID, *earlier[9:])
-            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
-            self.assertIn(f"names another day than --swept-at {swept}", run.stderr)
-        self.assert_daily_appended(
-            earlier,
+        self.findings_dir("daily-crossing-run-171")
+        task = f"daily-{before}"
+        cells = self.assert_daily_appended(
+            arguments(task, run="171", findings="sweeps/daily-crossing-run-171/findings.json"),
             A,
             self.DAILY_VERIFIER.replace("run-170", "run-171").replace(DAILY_TASK_ID, task),
-            "sweeps/daily-earlier-run-171/findings.json; 0 findings; validators pass",
+            f"sweeps/daily-crossing-run-171/findings.json; 0 findings; {DAILY_TAIL}",
         )
-        # the writer spells the grammar once
+        # the reader reads both rows back under the same rule, the later line at the equal ts the newest
+        run = self.read("daily", "86400")
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout)
+        self.assertEqual(run.stdout, "\t".join(cells) + "\n")
+        # the writer spells the grammar and the two days once
         text = WRITER.read_text()
         self.assertIn('DAILY_TASK = re.compile(r"^daily-([0-9]{4}-[0-9]{2}-[0-9]{2})$")', text)
+        self.assertIn("days = (day, (swept_at - timedelta(days=1)).strftime(ledger.DAY_FORMAT))", text)
+        self.assertIn("if match.group(1) not in days:", text)
         self.assertNotIn("not UNIT.match(args.task) and not DAILY_TASK.match(args.task)", text, "no unit task")
 
     def test_a_failed_findings_read_is_refused_and_leaves_no_daily_file(self):
@@ -1195,7 +1427,7 @@ class LedgerRowTest(unittest.TestCase):
         stated both validators' PASS after checking that the findings file existed, so invalid or truncated JSON
         backed a daily exemption. The writer opens the findings file it names, parses it as JSON and requires a list
         whose every element is an object: the list's length is the count (three objects are `3 findings`), the
-        validators' words are the coordinator's one statement `validators pass`, and a file that is not UTF-8, not
+        validators' words are the writer's own (round 7; round 9 adds the digests they were held to), and a file that is not UTF-8, not
         JSON, truncated, an object, a string, a number, null, or a list holding a number, null, a string, a list or a
         boolean is refused with one line naming the file, no daily file made; `--count` is no argument of the daily
         kind (argparse's exit 2), while the `sweep` kind keeps it."""
@@ -1239,7 +1471,7 @@ class LedgerRowTest(unittest.TestCase):
         # (round 7), and the fake passes them here
         findings.write_text('[{"id": "F1"}, {"id": "F2", "severity": "P3"}, {}]\n')
         self.assert_daily_appended(
-            self.DAILY_ARGS, A, self.DAILY_VERIFIER, "sweeps/U9-bbbbbbbb/findings.json; 3 findings; validators pass"
+            self.DAILY_ARGS, A, self.DAILY_VERIFIER, f"sweeps/U9-bbbbbbbb/findings.json; 3 findings; {DAILY_TAIL}"
         )
         # the sweep kind keeps its count argument and its evidence form
         self.assert_appended(
@@ -1334,7 +1566,7 @@ class LedgerRowTest(unittest.TestCase):
             other,
             A,
             self.DAILY_VERIFIER.replace("run-170", "run-171"),
-            "sweeps/daily-2026-11-20/findings.json; 0 findings; validators pass",
+            f"sweeps/daily-2026-11-20/findings.json; 0 findings; {DAILY_TAIL}",
         )
         # a malformed header is refused naming line 1 and never repaired
         for text, message in (
@@ -2056,9 +2288,10 @@ class LedgerRowTest(unittest.TestCase):
             self.sweep_args("sweeps/U9;note/findings.json"), "sweeps/<dir>/findings.json", "[A-Za-z0-9._-]"
         )
 
-    def test_r2d_an_unreadable_manifest_directory_refuses_and_an_absent_one_falls_through_to_the_checkout(self):
-        """(d) a failed open of `~/.agents/agent-config.yaml` other than ENOENT is a refusal naming it (standing order
-        21); ENOENT alone falls through to the checkout's manifest."""
+    def test_r2d_an_unreadable_manifest_directory_refuses_and_so_does_an_absent_manifest(self):
+        """(d) a failed open of `~/.agents/agent-config.yaml` is a refusal naming it (standing order 21), a missing one
+        included: U597 round 9 removed the fall-through to the checkout's manifest with `--manifest`, so the deployed
+        manifest is the one the writer reads, for the sweep kind as for the daily one."""
         if os.geteuid() == 0:
             self.skipTest("root reads a mode-000 directory")
         agents = self.home / ".agents"
@@ -2067,17 +2300,8 @@ class LedgerRowTest(unittest.TestCase):
         self.assert_refused(self.sweep_args(), str(self.manifest), "cannot read the manifest")
         agents.chmod(0o700)
         self.manifest.unlink()
-        text = (ROOT / "home/dot_agents/agent-config.yaml").read_text()
-        pin = re.search(r"^  security-audit-skill:\n(?:    .*\n)*?    pin: ([0-9a-f]{40})$", text, re.M).group(1)
-        self.assert_appended(
-            self.sweep_args(),
-            "U7",
-            "-",
-            B,
-            "sweep",
-            f"security-audit-skill {pin[:8]} (full audit mode on the srt worker seat s, run-1; TASK U9)",
-            "sweeps/U9-bbbbbbbb/findings.json; pr none; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
-        )
+        self.assert_refused(self.sweep_args(), f"cannot read the manifest {self.manifest}: No such file or directory")
+        self.assertFalse((ROOT / "home/dot_agents/agent-config.yaml").read_text() == "", "the checkout's copy exists")
 
     def test_r2e_a_non_breaking_space_before_carried_or_after_the_digest_refuses(self):
         """(e) the gate's `[[:space:]]` in the C locale is ASCII; a U+00A0 is no separator."""

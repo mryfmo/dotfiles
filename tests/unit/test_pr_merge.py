@@ -36,6 +36,8 @@ from test_pr_levers import (  # noqa: E402
     compare_response,
     ledger_row,
     ref_answer,
+    ruleset_answer,
+    rulesets_answer,
     sweep_row,
 )
 
@@ -125,6 +127,10 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": head, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            # the main ruleset's up-to-date policy (round 9), true so the existing cases keep their shape: these are
+            # required heads, whose row the policy never decides
+            rulesets_answer(),
+            ruleset_answer(strict=True),
             ref_answer(),
             {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
@@ -485,6 +491,10 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "json": {"state": "OPEN", "baseRefName": "main", "headRefOid": SHA_A, "isDraft": False},
             },
             {"match": r"^pr view 7 --json body$", "json": {"body": self.body}},
+            # the main ruleset's up-to-date policy (round 9), true so the existing cases keep their shape: these are
+            # required heads, whose row the policy never decides
+            rulesets_answer(),
+            ruleset_answer(strict=True),
             ref_answer(),
             {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,

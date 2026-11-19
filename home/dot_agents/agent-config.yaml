@@ -991,12 +991,12 @@ claude:
       pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: c7e32bfdff7f50a6b9caa62aad7e5fafa607a63ebe8ea6b1bc112729744fbd24
-      pr-merge.sh: 8f80f84e7ebfc4a084be41205f62e105d0af80955e8771dc7bacf9aab160704c
+      pr-merge.sh: ad24e691d60ba09636d01f879abe352bae4bac22e934167b89a8b33366f2b1db
       omp-run.sh: ee8d2391e6a0f0c86e46a38124e51d1dd51b684bd812ae97fa5b4bbad89a2975
       pr-audit.sh: 1eba892d08bfc45a996a5d0d9e70fae6759bdd2079b82f4e4e1b597046be58f1
       brief-check.py: 2e7381a738a59ff1075754221189704f48a39e3af5ded6d697acc895d6224948
-      ledger-row.py: ae258f78514ab3e1d2114d10ed324b63c5868d219029cdff97f8c97bebbae048
-      ledger.py: 447d5d78ab0055a34b9197b69ab24ad2168a6b2a0d167b0cb80dc15a52c790b0
+      ledger-row.py: 7b6ea0adbef381e2ff8a33e3fe5ccbf922f21c08ff44c87d2de65f34df3ba9c6
+      ledger.py: ae502dc19a36a3743b984a6ac4c40c4c9826c7cc32e12dc076f5ffc6d931f027
       sweep-scope.py: 8c74ade57c6dfe1f977fa77735a30a2933deff449eeafbb5a4ed6044401839be
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
@@ -1463,14 +1463,17 @@ assets:
     pin: c1c8a8c1471069fb0e188eeaff69b8e8db6564a8
     verify: sha256
     sha256: 53e708ebf770dfe35b57df0586a5058707081a870cd149ce30a2d57c51ed29b6
-    # The two validators the daily sweep writer runs (`ledger-row.py daily`, U597 round 8): the sha256 of each
-    # installed file under install_path, as the pinned commit holds it; the writer hashes the installed file against
-    # its digest before `node` runs it, and refuses a differing digest, a missing pin or a missing file with nothing
-    # written. Bump them with pin and sha256 after reviewing the upstream diff; scripts/validate-agent-assets.py
-    # requires both keys as 64 hex.
+    # The two validators the daily sweep writer runs (`ledger-row.py daily`, U597 round 8) and the report-schema.json
+    # that validate-findings.cjs loads from its own directory (round 9): the sha256 of each installed file under
+    # install_path, as the pinned commit holds it; the writer copies each into a private directory, hashes the copy
+    # against its digest and runs `node` on the copies, refusing a differing digest, a missing pin or a missing file
+    # with nothing written; pr-merge.sh compares a daily row's `validators sha256 <8 hex> <8 hex>` field with the two
+    # validator pins. Bump them with pin and sha256 after reviewing the upstream diff; scripts/validate-agent-assets.py
+    # requires the three keys as 64 hex.
     validators_sha256:
       validate-findings.cjs: e85f232e36bfac0f866f244da50376692d6b45c690beadcb00608b0e6c8b5283
       validate-coverage-ledger.cjs: 2eb280bd2e33c002916f86db9b29f9edfedb6454e5db973c766290465b868ac8
+      report-schema.json: 6575c9de4a62255699ea052ebf9a49ebfb373a32891bcd89af6f55cc84b35519
     note: >-
       sha256 is GitHub's source archive of the commit
       (https://codeload.github.com/cloudflare/security-audit-skill/tar.gz/<pin>), downloaded twice on

@@ -101,6 +101,26 @@ DAILY_GATE = (
     "skips the row for every other head only while `ledger.py daily 86400` finds a daily sweep of main's head within "
     "24 hours, so a day without its sweep keeps the per-head rule for every head"
 )
+# U597 round 9 (verdict U597-c37800e3 P1; the mechanism-change decisions row of 2026-11-19T11:56:54Z): the exemption
+# exists only while the server guarantees the basis, the main ruleset's up-to-date policy, which U613 asks the operator
+# to set; step 4 names it as what turns the exemption on, and step 6 names the moved-main exit and its recovery.
+RULESET_POLICY = (
+    "and only while the main ruleset's `strict_required_status_checks_policy` (require branches to be up to date before "
+    "merging) is true, which U613 asks the operator to set: the lever reads the rulesets through `gh api "
+    "repos/{owner}/{repo}/rulesets` once before it lists the head's files, and while the policy is false it grants no "
+    "exemption and every head gets its per-head sweep as before U597, so U613 is what turns the exemption on"
+)
+MOVED_MAIN = (
+    "Exit 1 after `MERGED` whose line names the merge commit, its first parent and the tip of `main` read before the "
+    "listing (`main moved between the tip read and the merge`, or `the first parent of that commit could not be read`; "
+    "U597 round 8) means the merge happened on a `main` that moved, so the classified listing may not be the diff that "
+    "landed: before the `MERGED` line, the ledger row and `state=landed`, dispatch a sweep of the merge commit to the "
+    "sweep seat (a TASK naming the `security-audit` skill at that commit with an output directory under the seat's "
+    "scratch root, as step 4's sweep is) and record its validated findings with `~/.local/bin/common/ledger-row.py "
+    "<store> sweep --head <merge sha> --unit U<n> --seat <seat> --run <n> --task U<n> --findings "
+    "sweeps/<dir>/findings.json --count <n>` as a `sweep` row of the unit at the merge commit; the merge is not undone "
+    "and the lever is never run again for it."
+)
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
@@ -260,6 +280,32 @@ class HcomSeatSkillsTest(unittest.TestCase):
         # the sweep is one sentence of step 4, after the audit route it never replaces
         self.assertLess(verify.index(AUDIT_ROUTE), verify.index(SWEEP_TASK))
         self.assertEqual(verify.count("security-audit-skill c1c8a8c1"), 1)
+
+    def test_step_four_names_the_ruleset_policy_that_turns_the_exemption_on(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at SKILL.md:29): the exemption of rule C exists only while the main
+        ruleset requires branches to be up to date before merging, the one pre-merge control that holds main still
+        between the lever's tip read and GitHub's squash; step 4 names the policy, the unit that asks the operator for
+        it (U613) and the lever's read of it, inside the daily-sweep parenthesis, after the daily gate."""
+        verify = step(ORCHESTRATION.read_text(), "The loop", 4)
+        self.assertIn(DAILY_GATE + ", " + RULESET_POLICY, verify)
+        self.assertEqual(verify.count("U613"), 2)
+        self.assertEqual(verify.count("`strict_required_status_checks_policy`"), 1)
+        self.assertLess(verify.index(DAILY_GATE), verify.index(RULESET_POLICY))
+
+    def test_step_six_names_the_moved_main_exit_and_the_sweep_of_the_merge_commit(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at SKILL.md:29, the round-8 P2 of the skill): round 8's lever exits 1
+        after `MERGED` when the merge commit's first parent is not the main tip read before the listing, and the skill
+        treated `MERGED` at the expected head as authority to record landed. Step 6 names that exit (and the unread
+        parent) and its recovery: a sweep of the merge commit dispatched to the sweep seat and recorded as a `sweep`
+        row of the unit at the merge commit before the `MERGED` line, the ledger row and `state=landed`; the merge is
+        never undone and the lever never run twice. The sentence comes after the merge-error sentence and before the
+        `MERGED` line."""
+        merge = step(ORCHESTRATION.read_text(), "The loop", 6)
+        self.assertIn(MOVED_MAIN, merge)
+        self.assertLess(merge.index(MERGE_ERROR), merge.index(MOVED_MAIN))
+        self.assertLess(merge.index(MOVED_MAIN), merge.index("Then `MERGED v1"))
+        self.assertEqual(merge.count("sweep of the merge commit"), 1)
+        self.assertIn("`~/.local/bin/common/ledger-row.py <store> sweep --head <merge sha> --unit U<n>", merge)
 
     def test_step_one_creates_the_worker_worktree_with_the_lever_whose_worktree_cannot_push(self):
         brief = step(ORCHESTRATION.read_text(), "The loop", 1)

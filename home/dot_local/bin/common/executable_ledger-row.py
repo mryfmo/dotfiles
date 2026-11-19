@@ -25,10 +25,10 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
 - `sweep --head --unit --seat <seat> --run <n> --task <U<n>> --findings sweeps/<dir>/findings.json --count <n>
   [--pr <pr>]`: pr cell `-`, verdict `sweep`, verifier `security-audit-skill <pin8> (full audit mode on the srt worker
   seat <seat>, run-<n>; TASK <U<n>>)` with `<pin8>` the first 8 characters of the manifest's
-  `assets.security-audit-skill.pin` (`~/.agents/agent-config.yaml` when it exists, else the checkout's
-  `home/dot_agents/agent-config.yaml` two levels above this file, read as text by `pr-merge.sh`'s `sweep_pin_probe`
-  reads it: no PyYAML under `-S`), evidence `<findings>; pr <pr or none>; <count> findings; validate-findings.cjs PASS;
-  validate-coverage-ledger.cjs PASS`; the findings path must be a regular file under the store.
+  `assets.security-audit-skill.pin` (`~/.agents/agent-config.yaml`, the deployed manifest alone since U597 round 9,
+  read as text by `pr-merge.sh`'s `sweep_pin_probe` reads it: no PyYAML under `-S`), evidence `<findings>; pr <pr or
+  none>; <count> findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS`; the findings path must be a
+  regular file under the store.
 - `audit --pr --head --unit --verdict-file verdicts/<unit>-<sha8>.md --verifier <text> [--class <word>]`: the verdict
   word is the file's last line (`Verdict: correct` or `Verdict: incorrect`), never an argument; the file is named by
   the row's unit and the head's first 8, is a regular file under the store and is scored (one `Filed: <n>` line,
@@ -40,34 +40,48 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   the lever name alone, one of `pr-update-branch.sh`, `pr-close.sh`, `records-sync.sh`; evidence the receipt then `;
   <note>`.
 - `daily --head <40 hex> --seat <seat> --run <n> --task daily-<YYYY-MM-DD> --findings
-  sweeps/<dir>/findings.json --swept-at <YYYY-MM-DDTHH:MM:SSZ> [--manifest <path>]` (regime-cutover U597 round 4): not
-  a ledger row but the one row of the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file
-  `ledger.py daily` reads and `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its
-  own sweep row), ts the sweep's own time (round 6, verdicts/U597-10d46fe0.md: `--swept-at`, the RESULT message's bus
-  timestamp the coordinator passes, under the reader's strict form, refused when later than the clock at the write
-  (round 7: no future slack in the writer; the reader's 60-second allowance is for rows written by another host's
-  clock) or more than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so
-  a delayed recording granted a fresh window), head main's head the sweep ran at, verifier as the `sweep` kind
-  composes it (`security-audit-skill <pin8> (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`),
-  evidence `<findings>; <count> findings; validators pass; recorded <ts>` with the findings path a regular file of this
-  user under the store that the writer opens itself (round 6: `O_NOFOLLOW`, `fstat` a regular file of this uid, strict
-  UTF-8, JSON, a list whose every element is an object, else a refusal naming the file; `<count>` is that list's length
-  and `--count` is gone from this kind; `validators pass` is earned, round 7: after that shape check the writer runs the
-  installed skill's two validators itself, `node <skill>/validate-findings.cjs <findings>` and `node
-  <skill>/validate-coverage-ledger.cjs <coverage-ledger.json beside it>`, `<skill>` the manifest's
+  sweeps/<dir>/findings.json --swept-at <YYYY-MM-DDTHH:MM:SSZ>` (regime-cutover U597 round 4): not a ledger row but
+  the one row of the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file `ledger.py daily`
+  reads and `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its own sweep row),
+  ts the sweep's own time (round 6, verdicts/U597-10d46fe0.md: `--swept-at`, the RESULT message's bus timestamp the
+  coordinator passes, under the reader's strict form, refused when later than the clock at the write (round 7: no
+  future slack in the writer; the reader's 60-second allowance is for rows written by another host's clock) or more
+  than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so a delayed
+  recording granted a fresh window), head main's head the sweep ran at, verifier as the `sweep` kind composes it
+  (`security-audit-skill <pin8> (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`), evidence the
+  daily row's own six fields in this order (round 9, the grammar `ledger.parse_daily` requires field by field, so a
+  row of a unit's sweep shape is a malformed store, never a daily row): `<findings>; <count> findings;
+  validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex>; recorded <ts>`,
+  with the findings path a regular file of this user under the store that the writer opens itself (round 6:
+  `O_NOFOLLOW`, `fstat` a regular file of this uid, strict UTF-8, JSON, a list whose every element is an object, else
+  a refusal naming the file; `<count>` is that list's length and `--count` is gone from this kind), the two PASS words
+  earned (round 7) by running the installed skill's two validators itself, `validate-findings.cjs` over the findings
+  file and `validate-coverage-ledger.cjs` over the `coverage-ledger.json` beside it: since round 9 each validator and
+  the `report-schema.json` that `validate-findings.cjs` loads from its own directory is read from the manifest's
   `assets.security-audit-skill` install `~/.agents/skills/security-audit` alone (round 8: `--skill-dir` is gone; each
-  validator is reached from `HOME` through real directories, no component a symlink, opened with no link followed,
-  a regular file of this user, and its bytes hashed against the manifest's
-  `assets.security-audit-skill.validators_sha256.<validator>` pin before `node` runs it: a differing digest, a missing
-  or doubled pin or a missing file is a refusal naming the file and both digests with nothing written), each from `/`
-  with the environment reduced to PATH, stdin closed and a timeout, its status read, and a missing validator, no
+  file is reached from `HOME` through real directories, no component a symlink, opened with no link followed, a
+  regular file of this user), copied into a private directory the writer makes under TMPDIR (`tempfile.mkdtemp`,
+  mode 0700, removed on every exit), the copy hashed against the manifest's
+  `assets.security-audit-skill.validators_sha256.<file>` pin (three pins: the two validators and the schema), the
+  validator copies scanned for a sibling they load (`require("./…")`, `path.join(__dirname, "…")`) that has no pin,
+  and `node` run on the copies, so what is hashed is what runs and a concurrent skill update changes nothing the
+  row records (round 8 ran node on the installed path after the hash, and loaded the schema from the installation
+  directory unhashed); a differing digest, a missing or doubled pin, a missing file, an unpinned sibling, a copy that
+  cannot be made or hashed is a refusal naming the file and, for a digest, both digests, with nothing written; each
+  validator runs from `/` with the environment reduced to PATH, stdin closed and a timeout, its status read, and no
   `node` on PATH, a missing coverage ledger or a validator exiting non-zero is a refusal naming the validator's first
-  stderr line with nothing written; `recorded <ts>` the clock at the write). The task is the coordinator's daily
-  dispatch id alone, `daily-<YYYY-MM-DD>` with the UTC day `--swept-at` falls on (round 8, verdict U597-a28e4793 P2
-  at :468: a unit id was accepted, so an ordinary unit's sweep could stand as the day's full sweep of main's head; a
-  unit's sweep is a `sweep` row of the ledger, never a daily row, and another day's id is refused naming both). The
-  manifest is `--manifest <path>` when given (the tests), else the deployed `~/.agents/agent-config.yaml`, ENOENT alone
-  falling through to the checkout's (`manifest_lines`). Round 5 (verdicts/U597-1b3c4b1d.md): the
+  stderr line with nothing written; `validators sha256 <8 hex> <8 hex>` the first 8 hex of the two validator pins
+  the copies were held to, in the order validate-findings.cjs, validate-coverage-ledger.cjs (round 9: `pr-merge.sh`
+  compares them with the manifest's pins, so a row whose validators were checked against other digests admits no
+  exemption); `recorded <ts>` the clock at the write). The task is the coordinator's daily dispatch id alone,
+  `daily-<YYYY-MM-DD>` (round 8, verdict U597-a28e4793 P2 at :468: a unit id was accepted, so an ordinary unit's sweep
+  could stand as the day's full sweep of main's head; a unit's sweep is a `sweep` row of the ledger, never a daily
+  row), whose day is the UTC day `--swept-at` falls on or the day before it (round 9, verdict U597-c37800e3 P2 at
+  :543: the id is fixed at dispatch, and a full sweep that crosses midnight finishes under the id it was dispatched
+  with; any other day is refused naming both days). The manifest is `~/.agents/agent-config.yaml` alone (round 9:
+  `--manifest <path>` is gone from the interface, since a caller-selected manifest let the row carry the expected
+  skill pin while its validators were checked against other digests; the tests set `HOME` to a scratch home holding
+  a manifest). Round 5 (verdicts/U597-1b3c4b1d.md): the
   day's first file, the header and the first row, is written whole through a temporary file of the store directory
   and `os.replace` under the ledger's lock (so two first writers serialise and the second appends), and appears whole
   or not at all, where round 4's `O_CREAT | O_EXCL` header write left a malformed file after a short write that no
@@ -87,8 +101,9 @@ the line. Exit 0 prints one line, `appended <ts> line <n>`; every refusal is exi
 fails is exit 1 naming the file. Round 2 (U222b, verdicts/U222-9187830e.md): every file read under the store
 (`ledger.tsv`, the verdict file, the findings file) follows one path rule, its `os.path.realpath` under the realpath of
 the store, each component `os.lstat`ed and no link, a regular file at the end; the findings directory name is
-`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the deployed manifest is opened, ENOENT alone
-falling through to the checkout's and any other failure a refusal naming the file; the carried separator class is the
+`[A-Za-z0-9._-]` alone (the sweep reader splits the evidence on `;`); the deployed manifest is opened, and any failure
+to open or read it is a refusal naming the file (round 9: a missing one too, with no fall-through to the checkout's
+copy and no `--manifest`); the carried separator class is the
 gate's literal set under `re.ASCII`; and the import of `ledger.py` writes no bytecode (`sys.dont_write_bytecode`).
 Round 3 (U222c, verdicts/U222-0fc41a81.md): the read, the check and the write run under one exclusive lock, so two
 levers writing at once never lose each other's row, and every argument round-trips through strict UTF-8 before
@@ -209,28 +224,37 @@ CLASS_WORD = re.compile(r"^[A-Za-z0-9_-]+$")
 SWEEP_FINDINGS = re.compile(r"^sweeps/([A-Za-z0-9._-]+)/findings\.json$")
 SWEEP_SEAT = re.compile(r"^\S+$")
 # The task id of the coordinator's daily dispatch (U597 round 4), the kit's `daily-sweep-brief.md` template: one per
-# UTC day, the day `--swept-at` falls on, and the only task a daily row records (round 8: a unit id, which round 4
-# accepted beside it, is a `sweep` row's task, never a daily row's).
+# UTC day, and the only task a daily row records (round 8: a unit id, which round 4 accepted beside it, is a `sweep`
+# row's task, never a daily row's); its day is the UTC day `--swept-at` falls on or the day before it (round 9: the id
+# is fixed at dispatch, and a full sweep that crosses midnight finishes under it).
 DAILY_TASK = re.compile(r"^daily-([0-9]{4}-[0-9]{2}-[0-9]{2})$")
 DAILY_TASK_FORM = "daily-<YYYY-MM-DD>"
-# The seat and the run of a daily row's verifier, as sweep_verifier composes them (round 6: the repeat guard keys on
-# them beside the findings path, since a run's findings copied to another path are still that run's).
-SWEEP_SEAT_RUN = re.compile(r"\(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); TASK ")
 # The oldest `--swept-at` the daily kind records (round 6): the window pr-merge.sh reads with (its DAILY_SWEEP_MAX_AGE,
 # 86400 seconds); a row dated earlier would be born stale and stand for no head.
 SWEPT_AT_MAX_AGE = 86400
 # The installed `security-audit` skill (round 7): the manifest's `assets.security-audit-skill` install path, written
 # by scripts/update-agent-assets.sh's update_security_audit_skill as `${HOME}/.agents/skills/security-audit`, the one
 # place the validators are read from (round 8: `--skill-dir` named any directory, so a passing exit proved nothing of
-# the pinned validators; now each validator's bytes are hashed against its manifest pin,
-# `assets.security-audit-skill.validators_sha256.<validator>`, before it runs). Its two validators run over the
-# findings file the row names and the coverage ledger beside it, each as `node <skill>/<validator> <file>`, before
-# `validators pass` is written.
+# the pinned validators). Round 9 (verdict U597-c37800e3 P2 at :654: node reopened each validator by pathname after
+# the hash and loaded the schema from the installation directory, so a concurrent skill update could make the writer
+# record a pass for bytes outside the checked installation): the two validators and `report-schema.json`, the one
+# file `validate-findings.cjs` loads from its own directory (`path.join(__dirname, "report-schema.json")`; both
+# validators `require` node's builtins alone besides), are each copied into a private directory of this writer,
+# hashed as the copy against the manifest pin `assets.security-audit-skill.validators_sha256.<file>`, and node runs
+# the copies, so what is hashed is what runs. VALIDATOR_FILES names the pinned set; VALIDATORS pairs each validator
+# with the file it runs over, the findings file the row names and the coverage ledger beside it.
 SKILL_DIR = "~/.agents/skills/security-audit"
 SKILL_PARTS = (".agents", "skills", "security-audit")
 VALIDATORS_KEY = "validators_sha256"
 COVERAGE_LEDGER = "coverage-ledger.json"
+SCHEMA = "report-schema.json"
 VALIDATORS = (("validate-findings.cjs", "findings.json"), ("validate-coverage-ledger.cjs", COVERAGE_LEDGER))
+VALIDATOR_FILES = ("validate-findings.cjs", "validate-coverage-ledger.cjs", SCHEMA)
+# A sibling a validator loads from its own directory (round 9): a relative `require("./x")` or a `path.join(__dirname,
+# "x")`; every such file must be one of VALIDATOR_FILES, pinned and copied beside the validator, else the copy would
+# load a file no pin holds (or find none) and the writer refuses by name.
+SIBLING_REFERENCE = re.compile(rb"""(?:require\(\s*["']\.{1,2}/([^"']+)["']\s*\)|__dirname\s*,\s*["']([^"']+)["'])""")
+PRIVATE_PREFIX = "ledger-row.validators."
 # Seconds one validator may run; the skill's own tests finish in well under one.
 VALIDATOR_TIMEOUT = 120
 # The one directory the validators run from, and the one variable they get: neither the store nor the checkout, and
@@ -239,39 +263,32 @@ VALIDATOR_CWD = "/"
 # The manifest, read as text by one indentation rule (pr-merge.sh `sweep_pin_probe`, brief-check.py `manifest_levers`):
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
+MANIFEST_PARTS = (".agents", "agent-config.yaml")
 MAPPING_KEY = re.compile(r"^(\S+):$")
 PIN_LINE = re.compile(r"^pin: ([0-9a-f]{40})$")
-# One line of the asset's `validators_sha256:` mapping (round 8): `<validator>: <64 hex>`, the validator's name as
-# the installed file is named.
+# One line of the asset's `validators_sha256:` mapping (round 8): `<file>: <64 hex>`, the file's name as the installed
+# file is named.
 DIGEST_LINE = re.compile(r"^([A-Za-z0-9][A-Za-z0-9._-]*): ([0-9a-f]{64})$")
 ASSET_KEYS = ["assets", "security-audit-skill"]
 
 
-def manifest_lines(given=None):
-    """The manifest as (path, lines): `given` alone when `--manifest <path>` named one (round 8, for the tests; any
-    failure to open or read it is a refusal naming it), else the deployed `~/.agents/agent-config.yaml`, else the
-    checkout's `home/dot_agents/agent-config.yaml` two levels above this file. Each is opened, never stat-ed first:
-    ENOENT on the deployed one alone falls through to the checkout's; any other failure to open or read is a refusal
-    naming the file (standing order 21; round 2 finding 4)."""
+def manifest_lines():
+    """The deployed manifest `~/.agents/agent-config.yaml` as (path, lines), the one manifest this writer reads
+    (round 9: `--manifest <path>` is gone, since a caller-selected manifest let a row carry the expected skill pin
+    while its validators were checked against other digests, and round 8's fall-through to the checkout's copy is
+    gone with it, since the deployed writer has no checkout beside it): HOME must be an absolute path, and any
+    failure to open or read the file, a missing one included, is a refusal naming it (standing order 21)."""
     home = os.environ.get("HOME", "")
-    checkout = os.path.normpath(os.path.join(HERE, "../../home/dot_agents/agent-config.yaml"))
-    if given is not None:
-        manifests = [given]
-        checkout = given
-    else:
-        manifests = [os.path.join(home, ".agents/agent-config.yaml"), checkout] if home else [checkout]
-    for manifest in manifests:
-        try:
-            with open(manifest, encoding="utf-8") as handle:
-                return manifest, handle.read().splitlines()
-        except FileNotFoundError as error:
-            if manifest != checkout:
-                continue
-            refuse(f"cannot read the manifest {manifest}: {error.strerror}")
-        except OSError as error:
-            refuse(f"cannot read the manifest {manifest}: {error.strerror}")
-        except UnicodeDecodeError as error:
-            refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
+    if not home or not os.path.isabs(home):
+        refuse(f"HOME {home!r} is not an absolute path; the manifest ~/{'/'.join(MANIFEST_PARTS)} is read under it")
+    manifest = os.path.join(home, *MANIFEST_PARTS)
+    try:
+        with open(manifest, encoding="utf-8") as handle:
+            return manifest, handle.read().splitlines()
+    except OSError as error:
+        refuse(f"cannot read the manifest {manifest}: {error.strerror}")
+    except UnicodeDecodeError as error:
+        refuse(f"cannot read the manifest {manifest}: not UTF-8: {error.reason}")
 
 
 def manifest_asset(lines):
@@ -335,20 +352,21 @@ def manifest_pin(manifest, lines):
 
 
 def manifest_validator_pins(manifest, lines):
-    """The sha256 pin of each validator of VALIDATORS, `assets.security-audit-skill.validators_sha256.<validator>`
-    of the manifest's lines, exactly one 64-hex line each, as `{validator: digest}`, or a refusal naming the file and
-    the key (round 8: the installed validator's bytes are held to it before `node` runs it)."""
+    """The sha256 pin of each file of VALIDATOR_FILES, `assets.security-audit-skill.validators_sha256.<file>` of the
+    manifest's lines, exactly one 64-hex line each, as `{file: digest}`, or a refusal naming the file and the key
+    (round 8: the installed validator's bytes are held to it before `node` runs it; round 9: the schema too, and the
+    copies are what is hashed and run)."""
     _, digests = manifest_asset(lines)
     pins = {}
-    for validator, _ in VALIDATORS:
-        found = digests.get(validator, [])
+    for name in VALIDATOR_FILES:
+        found = digests.get(name, [])
         if len(found) != 1:
             refuse(
-                f"{manifest} holds {len(found)} assets.security-audit-skill.{VALIDATORS_KEY}.{validator} lines of 64 hex, "
-                "not one; the installed validator's bytes are compared with it before it runs, so a manifest without "
-                "it earns no 'validators pass'"
+                f"{manifest} holds {len(found)} assets.security-audit-skill.{VALIDATORS_KEY}.{name} lines of 64 hex, "
+                "not one; the installed file's copy is compared with it before the validators run, so a manifest "
+                "without it earns no PASS"
             )
-        pins[validator] = found[0]
+        pins[name] = found[0]
     return pins
 
 
@@ -517,7 +535,7 @@ def sweep_verifier(args):
             f"the findings path {args.findings!r} is not sweeps/<dir>/findings.json under the store with <dir> of "
             "[A-Za-z0-9._-] alone (the sweep reader splits the evidence on ';')"
         )
-    pin = manifest_pin(*manifest_lines(args.manifest))[:8]
+    pin = manifest_pin(*manifest_lines())[:8]
     return (
         f"security-audit-skill {pin} (full audit mode on the srt worker seat {args.seat}, run-{args.run}; "
         f"TASK {args.task})"
@@ -526,11 +544,14 @@ def sweep_verifier(args):
 
 def daily_row(args, store):
     """`daily` (U597 round 4): the one row of `daily-sweeps.tsv`, main's head the sweep ran at, the verifier of the
-    `sweep` kind, the evidence the findings file (a regular file under the store, read for the count; round 6),
-    `validators pass` earned by running the installed skill's two validators, each held to its manifest pin (round 8),
-    over the findings file and the coverage ledger beside it (round 7), and the recording time; the ts the sweep's
-    own, `--swept-at` (round 6); the task the coordinator's daily id `daily-<YYYY-MM-DD>` alone, the UTC day the
-    `--swept-at` falls on (round 8: a unit id or another day's id is refused naming the grammar)."""
+    `sweep` kind, the evidence the daily row's own six fields (round 9; `ledger.parse_daily` requires each): the
+    findings file (a regular file under the store, read for the count; round 6), the count, the two validators' PASS
+    words earned by running the installed skill's two validators from private copies held to their manifest pins
+    (round 7, round 8, round 9) over the findings file and the coverage ledger beside it, the first 8 hex of the two
+    validator pins the copies were held to, and the recording time; the ts the sweep's own, `--swept-at` (round 6);
+    the task the coordinator's daily id `daily-<YYYY-MM-DD>` alone, its day the UTC day `--swept-at` falls on or the
+    day before it (round 8: a unit id is refused naming the grammar; round 9: the id is fixed at dispatch and a sweep
+    that crosses midnight keeps it, so another day is refused naming both days)."""
     check_head(args.head)
     match = DAILY_TASK.match(args.task)
     if match is None:
@@ -539,62 +560,67 @@ def daily_row(args, store):
             "the day's full sweep of main's head alone, and a unit's sweep is a sweep row of the ledger (the sweep kind)"
         )
     swept_at = check_swept_at(args.swept_at)
-    day = swept_at.strftime("%Y-%m-%d")
-    if match.group(1) != day:  # lint-comparisons: allow named-text: the day the sweep's RESULT falls on names the task
+    day = swept_at.strftime(ledger.DAY_FORMAT)
+    days = (day, (swept_at - timedelta(days=1)).strftime(ledger.DAY_FORMAT))
+    if match.group(1) not in days:  # lint-comparisons: allow named-text: the two days the RESULT may fall under
         refuse(
-            f"the task {args.task} names another day than --swept-at {args.swept_at} ({day} UTC); the daily id is "
-            f"daily-{day}, the day the sweep's RESULT falls on"
+            f"the task {args.task} names neither the UTC day of --swept-at {args.swept_at} ({days[0]}) nor the day "
+            f"before it ({days[1]}); the daily id is fixed at dispatch and a sweep that crosses midnight keeps it, so "
+            f"daily-{days[0]} or daily-{days[1]} alone records this RESULT"
         )
     verifier = sweep_verifier(args)
     findings_path = store_file(store, args.findings, "findings path")
     count = findings_count(findings_path, args.findings)
-    run_validators(args, store, findings_path)
-    evidence = f"{args.findings}; {count} findings; validators pass; recorded {now()}"
+    pins = run_validators(args, store, findings_path)
+    digests = " ".join(pins[validator][:8] for validator, _ in VALIDATORS)
+    evidence = ledger.DAILY_SEPARATOR.join(
+        (args.findings, f"{count} findings", *ledger.DAILY_PASSES, f"validators sha256 {digests}", f"recorded {now()}")
+    )
     return ledger.DailyRow(swept_at, args.head, verifier, evidence, 0, args.swept_at)
 
 
-def skill_validator(home, validator):
-    """The installed validator `~/.agents/skills/security-audit/<validator>` as (path, bytes) (round 8): `HOME` must be
+def skill_file(home, name):
+    """The installed skill file `~/.agents/skills/security-audit/<name>` as (path, bytes) (round 8): `HOME` must be
     an absolute path; every component below it (`.agents`, `skills`, `security-audit`, the file) is `os.lstat`ed and
     none is a symbolic link; the file is opened `O_RDONLY | O_NOFOLLOW`, its descriptor `fstat`ed a regular file of
-    this user, and read whole. Any other outcome is a refusal naming the file: the validator that earns
-    `validators pass` is the installed one, read through real directories alone and never from another place."""
-    path = os.path.join(home, *SKILL_PARTS, validator)
+    this user, and read whole. Any other outcome is a refusal naming the file: the validator that earns its PASS is
+    the installed one, read through real directories alone and never from another place."""
+    path = os.path.join(home, *SKILL_PARTS, name)
     if not home or not os.path.isabs(home):
         refuse(f"HOME {home!r} is not an absolute path; the installed skill's validator {path} is read under it")
     current = home
-    for part in (*SKILL_PARTS, validator):
+    for part in (*SKILL_PARTS, name):
         current = os.path.join(current, part)
         try:
             status = os.lstat(current)
         except OSError as error:
             refuse(
-                f"the validator {path} is not a regular file of this user under the installed skill "
-                f"({current}: {error.strerror}); the daily row states 'validators pass' only after the pinned validator ran"
+                f"the validator file {path} is not a regular file of this user under the installed skill "
+                f"({current}: {error.strerror}); the daily row states a validator's PASS only after the pinned validator ran"
             )
         if stat.S_ISLNK(status.st_mode):
             refuse(
-                f"{current}, a component of the validator path {path}, is a symbolic link; the installed skill is read "
+                f"{current}, a component of the validator file path {path}, is a symbolic link; the installed skill is read "
                 "through real directories alone"
             )
     try:
         descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     except OSError as error:
-        refuse(f"cannot open the validator {path}: {error.strerror}")
+        refuse(f"cannot open the validator file {path}: {error.strerror}")
     chunks = []
     try:
         status = os.fstat(descriptor)
         if not stat.S_ISREG(status.st_mode):
-            refuse(f"the validator {path} is not a regular file")
+            refuse(f"the validator file {path} is not a regular file")
         if status.st_uid != os.geteuid():
-            refuse(f"the validator {path} is not this user's (owned by uid {status.st_uid}); it is not run")
+            refuse(f"the validator file {path} is not this user's (owned by uid {status.st_uid}); it is not run")
         while True:
             chunk = os.read(descriptor, 1 << 16)
             if not chunk:
                 break
             chunks.append(chunk)
     except OSError as error:
-        refuse(f"cannot read the validator {path}: {error.strerror}")
+        refuse(f"cannot read the validator file {path}: {error.strerror}")
     finally:
         try:
             os.close(descriptor)
@@ -603,41 +629,96 @@ def skill_validator(home, validator):
     return path, b"".join(chunks)
 
 
+def private_directory():
+    """A private directory for the validators' copies (round 9): `tempfile.mkdtemp` under `TMPDIR` (`/tmp` when
+    unset or empty, as pr-merge.sh's reader_copies_make chooses it; the directory is named, so tempfile probes no
+    candidate of its own), mode 0700 (mkdtemp's own, set again), a directory of this user; a failure is a refusal
+    naming the place, and the caller removes the directory on every exit."""
+    base = os.environ.get("TMPDIR") or "/tmp"
+    try:
+        directory = tempfile.mkdtemp(prefix=PRIVATE_PREFIX, dir=base)
+        os.chmod(directory, 0o700)
+    except OSError as error:
+        refuse(
+            f"cannot make the private directory for the validators' copies under {base}: {error.strerror}; the "
+            "validators run from copies held to their pins alone, so nothing is written"
+        )
+    return directory
+
+
+def pinned_copy(home, name, pins, manifest, directory):
+    """The installed skill file `name` (skill_file) copied into the private `directory` as a new file of mode 0600,
+    the copy read back and hashed, and its sha256 held to the manifest pin `validators_sha256.<name>` (round 9): what
+    is hashed is what node runs. A copy that cannot be made, written whole or hashed is a refusal naming the file;
+    a differing digest is a refusal naming the file and both digests. Returns (copy, bytes)."""
+    path, data = skill_file(home, name)
+    copy = os.path.join(directory, name)
+    try:
+        descriptor = os.open(copy, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        try:
+            # `os.write` may land fewer bytes than given; the copy is written whole or the write is a failure.
+            view = memoryview(data)
+            while view:
+                written = os.write(descriptor, view)
+                if written <= 0:
+                    raise OSError(errno.EIO, f"a write of {written} bytes with {len(view)} to go")
+                view = view[written:]
+        finally:
+            os.close(descriptor)
+        with open(copy, "rb") as handle:
+            copied = handle.read()
+    except OSError as error:
+        refuse(
+            f"cannot copy the validator file {path} into {directory}: {error.strerror or error}; the validators run "
+            "from copies held to their pins alone, so nothing is written"
+        )
+    digest = hashlib.sha256(copied).hexdigest()
+    if digest != pins[name]:
+        refuse(
+            f"sha256 {digest} of the validator file {path} (hashed as its copy {copy}) differs from the pin "
+            f"{pins[name]} of assets.security-audit-skill.{VALIDATORS_KEY}.{name} in {manifest}; the installed skill is "
+            "not the pinned one, so nothing is written"
+        )
+    return copy, copied
+
+
+def sibling_check(path, data):
+    """Every file the validator at `path` loads from its own directory (SIBLING_REFERENCE over its bytes) is one of
+    VALIDATOR_FILES, pinned and copied beside it (round 9); another is a refusal naming it."""
+    for match in SIBLING_REFERENCE.finditer(data):
+        sibling = (match.group(1) or match.group(2)).decode("utf-8", "replace")
+        if sibling not in VALIDATOR_FILES:  # lint-comparisons: allow named-text: the sibling as the validator spells it
+            refuse(
+                f"{path} loads {sibling!r} from its own directory, a file with no assets.security-audit-skill."
+                f"{VALIDATORS_KEY} pin; every file a validator loads beside itself is pinned and copied with it, so "
+                "nothing is written"
+            )
+
+
 def run_validators(args, store, findings_path):
-    """The installed skill's two validators, run by this writer before it states `validators pass` (round 7; the
-    round-6 P2 at daily_row: the statement was the coordinator's word after a JSON-shape check, so a findings set
-    without the skill's required fields backed a daily exemption), each held to its pin first (round 8; the round-7
-    P2 at :489: `--skill-dir` took the validators from any directory, so a passing exit established nothing of the
-    pinned validators, and a relative directory could pass the file checks here and fail node's resolution from `/`).
-    Each validator is read from the installed skill alone (skill_validator: `~/.agents/skills/security-audit/`, HOME
-    expanded, no symlink in the path, a regular file of this user), its sha256 compared with the manifest's
-    `assets.security-audit-skill.validators_sha256.<validator>` pin (manifest_validator_pins; `--manifest <path>` for
-    the tests), and a differing digest, a missing pin or a missing file is a refusal naming the file and both digests
-    with nothing written and no node run. `node` is the first on PATH (`shutil.which`); the coverage ledger is
-    `coverage-ledger.json` beside the findings file, under the store's path rule. Each validator then runs as `node
-    <skill>/<validator> <file>` from VALIDATOR_CWD with the environment reduced to PATH, stdin closed and a
-    VALIDATOR_TIMEOUT, its status read: a node that cannot run, a run that expires, or an exit other than 0 is a
-    refusal naming the validator, the file and the validator's first stderr line, and nothing is written. The file
-    node runs is the installed path the bytes were hashed from (`validate-findings.cjs` loads `report-schema.json`
-    from its own directory, so a private copy cannot run); the hash and the run are two reads of the file."""
-    manifest, lines = manifest_lines(args.manifest)
+    """The installed skill's two validators, run by this writer before it states their PASS (round 7; the round-6 P2
+    at daily_row: the statement was the coordinator's word after a JSON-shape check, so a findings set without the
+    skill's required fields backed a daily exemption), each held to its pin first (round 8; the round-7 P2 at :489:
+    `--skill-dir` took the validators from any directory, so a passing exit established nothing of the pinned
+    validators), and since round 9 run from private copies (the round-8 P2 at :654: node reopened the installed path
+    after the hash and loaded `report-schema.json` from the installation directory unhashed, so a concurrent skill
+    update could make the writer record a pass for bytes outside the checked installation). The manifest's three
+    `assets.security-audit-skill.validators_sha256` pins are read (manifest_validator_pins); `node` is the first on
+    PATH (`shutil.which`); the coverage ledger is `coverage-ledger.json` beside the findings file, under the store's
+    path rule; then, in a private directory of this writer (private_directory, removed on every exit), each file of
+    VALIDATOR_FILES is read from the installed skill alone (skill_file), copied, and the copy hashed against its pin
+    (pinned_copy), each validator copy is scanned for a sibling it loads that has no pin (sibling_check), and each
+    validator then runs as `node <copy> <file>` from VALIDATOR_CWD with the environment reduced to PATH, stdin closed
+    and a VALIDATOR_TIMEOUT, its status read: a node that cannot run, a run that expires, or an exit other than 0 is a
+    refusal naming the validator, the file and the validator's first stderr line, and nothing is written. Returns
+    the pins the copies were held to, `{validator: digest}`, which the row records as `validators sha256 <8> <8>`."""
+    manifest, lines = manifest_lines()
     pins = manifest_validator_pins(manifest, lines)
     home = os.environ.get("HOME", "")
-    scripts = {}
-    for validator, _ in VALIDATORS:
-        path, data = skill_validator(home, validator)
-        digest = hashlib.sha256(data).hexdigest()
-        if digest != pins[validator]:
-            refuse(
-                f"sha256 {digest} of the validator {path} differs from the pin {pins[validator]} of "
-                f"assets.security-audit-skill.{VALIDATORS_KEY}.{validator} in {manifest}; the installed skill is not the "
-                "pinned one, so nothing is written"
-            )
-        scripts[validator] = path
     node = shutil.which("node", path=os.environ.get("PATH", ""))
     if node is None:
         refuse(
-            "no node on PATH; the skill's validators run under it, and the daily row states 'validators pass' only after they ran"
+            "no node on PATH; the skill's validators run under it, and the daily row states a validator's PASS only after it ran"
         )
     directory = args.findings.rsplit("/", 1)[0]
     targets = {
@@ -647,26 +728,34 @@ def run_validators(args, store, findings_path):
             f"{directory}/{COVERAGE_LEDGER}",
         ),
     }
-    for validator, target in VALIDATORS:
-        path, relative = targets[target]
-        try:
-            run = subprocess.run(
-                [node, scripts[validator], path],
-                cwd=VALIDATOR_CWD,
-                env={"PATH": os.environ.get("PATH", "")},
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                timeout=VALIDATOR_TIMEOUT,
-                check=False,
-            )
-        except OSError as error:
-            refuse(f"cannot run {node} {scripts[validator]} {relative}: {error.strerror}; nothing is written")
-        except subprocess.TimeoutExpired:
-            refuse(f"{validator} did not finish within {VALIDATOR_TIMEOUT} seconds on {relative}; nothing is written")
-        if run.returncode != 0:
-            first = run.stderr.decode("utf-8", "replace").splitlines()
-            reason = first[0] if first else "no stderr"
-            refuse(f"{validator} exited {run.returncode} on {relative}: {reason}; nothing is written")
+    private = private_directory()
+    try:
+        copies = {name: pinned_copy(home, name, pins, manifest, private) for name in VALIDATOR_FILES}
+        for validator, _ in VALIDATORS:
+            sibling_check(os.path.join(home, *SKILL_PARTS, validator), copies[validator][1])
+        for validator, target in VALIDATORS:
+            path, relative = targets[target]
+            try:
+                run = subprocess.run(
+                    [node, copies[validator][0], path],
+                    cwd=VALIDATOR_CWD,
+                    env={"PATH": os.environ.get("PATH", "")},
+                    stdin=subprocess.DEVNULL,
+                    capture_output=True,
+                    timeout=VALIDATOR_TIMEOUT,
+                    check=False,
+                )
+            except OSError as error:
+                refuse(f"cannot run {node} {copies[validator][0]} {relative}: {error.strerror}; nothing is written")
+            except subprocess.TimeoutExpired:
+                refuse(f"{validator} did not finish within {VALIDATOR_TIMEOUT} seconds on {relative}; nothing written")
+            if run.returncode != 0:
+                first = run.stderr.decode("utf-8", "replace").splitlines()
+                reason = first[0] if first else "no stderr"
+                refuse(f"{validator} exited {run.returncode} on {relative}: {reason}; nothing is written")
+    finally:
+        shutil.rmtree(private, ignore_errors=True)
+    return {validator: pins[validator] for validator, _ in VALIDATORS}
 
 
 def check_swept_at(text):
@@ -696,13 +785,6 @@ def check_swept_at(text):
             "row would be born stale, outside the window pr-merge.sh reads with, and stand for no head"
         )
     return at
-
-
-def seat_run_of(verifier):
-    """The `(seat, run)` a daily row's verifier carries in the form sweep_verifier composes, or None for a verifier
-    of another form (a hand-written row keys on its findings path alone)."""
-    match = SWEEP_SEAT_RUN.search(verifier)
-    return None if match is None else (match.group(1), match.group(2))
 
 
 def json_kind(value):
@@ -817,14 +899,6 @@ def parser():
         sub.add_argument("--run", required=True, help="the run number")
         sub.add_argument("--task", required=True, help=task_help)
         sub.add_argument("--findings", required=True, help="sweeps/<dir>/findings.json, a regular file under the store")
-        sub.add_argument(
-            "--manifest",
-            metavar="PATH",
-            help=(
-                "the manifest holding assets.security-audit-skill (its pin, and for the daily kind the validators' "
-                "sha256 pins); default ~/.agents/agent-config.yaml, else the checkout's home/dot_agents/agent-config.yaml"
-            ),
-        )
 
     merged = kind("merged", "the merge receipt: verdict -, verifier pr-merge.sh")
     merged.add_argument("--receipt", required=True, help="the line pr-merge.sh printed")
@@ -840,14 +914,16 @@ def parser():
     daily = kind(
         "daily",
         "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger; its ts is --swept-at, its "
-        "count is read from the findings file, and the installed skill's validators (~/.agents/skills/security-audit, "
-        "each hashed against its assets.security-audit-skill.validators_sha256 pin) must pass over the file and the "
-        "coverage ledger beside it",
+        "count is read from the findings file, and the installed skill's validators and report-schema.json "
+        "(~/.agents/skills/security-audit, each copied into a private directory and the copy hashed against its "
+        "assets.security-audit-skill.validators_sha256 pin of ~/.agents/agent-config.yaml) must pass over the file "
+        "and the coverage ledger beside it; the row records the two validator digests",
         pr=False,
         unit=False,
     )
     sweep_arguments(
-        daily, "the daily dispatch's task id alone, daily-<YYYY-MM-DD> with the UTC day --swept-at falls on"
+        daily,
+        "the daily dispatch's task id alone, daily-<YYYY-MM-DD> with the UTC day --swept-at falls on or the day before it",
     )
     daily.add_argument(
         "--swept-at",
@@ -1173,7 +1249,7 @@ def write_row(args, store, ledger_path, descriptor, composed=None):
                     f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded to"
                     " refresh the window"
                 )
-            if seat_run_of(existing.verifier) == (args.seat, args.run):
+            if (existing.seat, existing.run) == (args.seat, args.run):
                 refuse(
                     f"run-{args.run} of the seat {args.seat} is already recorded by the daily sweep row of"
                     f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded under"

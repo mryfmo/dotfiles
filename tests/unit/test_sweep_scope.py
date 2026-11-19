@@ -724,6 +724,17 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("task id `daily-<YYYY-MM-DD>` alone naming the UTC day", line)
         self.assertIn("from private copies hashed against their `claude.levers.sha256` pins", line)
         self.assertIn("the merge commit's first parent", line)
+        # round 9: the exemption exists only while the server guarantees the basis (U613), the daily row's own
+        # grammar, the task's day or the day before, the validators from private copies, the recheck before the write
+        self.assertIn("reads the main ruleset's `strict_required_status_checks_policy`", line)
+        self.assertIn("grants no exemption while it is false", line)
+        self.assertIn("U613", line)
+        self.assertIn("or the day before it", line)
+        self.assertIn(
+            "`validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex> <8 hex>`", line
+        )
+        self.assertIn("reads the daily row again right before the merge write", line)
+        self.assertNotIn("`validators pass`", line, "the round-6 word is gone from the rule (round 9)")
 
     def test_the_skill_s_step_four_names_the_four_classes_and_the_module(self):
         text = SKILL.read_text()
@@ -741,6 +752,9 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("once per UTC day", step)
         self.assertIn("`~/.agents/regime/daily-sweep-brief.md`", step)
         self.assert_describes_the_daily_sweep(step, "the skill's step 4")
+        # round 9: the policy that turns the exemption on, named with its unit
+        self.assertIn("`strict_required_status_checks_policy`", step)
+        self.assertIn("U613", step)
 
     def test_the_readme_s_pr_merge_row_names_the_four_classes_and_the_module(self):
         rows = [
@@ -757,6 +771,11 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`claude.levers.sha256`", row)
         self.assertIn("first parent", row)
         self.assertIn("`strict_required_status_checks_policy`", row)
+        # round 9: the policy read before the listing, no exemption while it is false, the daily row's grammar
+        self.assertIn("grants no exemption while it is false", row)
+        self.assertIn("U613", row)
+        self.assertIn("`validators sha256 <8 hex> <8 hex>`", row)
+        self.assertIn("read again right before the merge write", row)
 
     def test_the_lever_s_comments_describe_the_listing_as_it_is(self):
         """The lever's header and the three functions' descriptions name the jq form, the reader's form, the one
@@ -786,7 +805,15 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("reader_copy", text)
         self.assertIn("`~/.local/bin/common/sweep-scope.py`", text)
         self.assertIn("--jq '.parents[0].sha'`", text)
-        self.assertIn("`strict_required_status_checks_policy: false`", text)
+        # round 9: the policy read before the listing and the exemption dormant while it is false; no fixed value
+        self.assertIn("`strict_required_status_checks_policy`", text)
+        self.assertNotIn("`strict_required_status_checks_policy: false`", text, "the header states no fixed value")
+        self.assertIn("require_ruleset_policy", text)
+        self.assertIn('`gh api "repos/{owner}/{repo}/rulesets"`', text)
+        self.assertIn("U613", text)
+        self.assertIn("recheck_daily_sweep", text)
+        self.assertIn("daily_row_fields", text)
+        self.assertIn("validators_pin_probe", text)
         self.assertIn("`required cap`", text)
         self.assertIn("`daily-sweeps.tsv`", text)
         self.assertIn("`ledger-row.py daily`", text)

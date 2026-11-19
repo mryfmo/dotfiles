@@ -1343,13 +1343,15 @@ ASSET_VERIFY_BY_SOURCE = {
 }
 # `release: latest` resolves at install time; only these sources can do that.
 ROLLING_ASSET_SOURCES = {"github-release", "https-download", "crates"}
-# The `security-audit-skill` asset (regime-cutover U597 round 8) pins the two validators `ledger-row.py daily` runs:
-# `validators_sha256` maps exactly these file names to the sha256 of each installed file, and the writer hashes the
-# installed file against its digest before `node` runs it, so a manifest without both keys as 64 hex earns no
-# `validators pass`.
+# The `security-audit-skill` asset (regime-cutover U597 round 8) pins the two validators `ledger-row.py daily` runs
+# and, since round 9, the `report-schema.json` that `validate-findings.cjs` loads from its own directory:
+# `validators_sha256` maps exactly these file names to the sha256 of each installed file, and the writer copies each
+# into a private directory and hashes the copy against its digest before `node` runs the copies, so a manifest without
+# all three keys as 64 hex earns no PASS. The digest is held by `re.fullmatch` (round 9, verdict U597-c37800e3 P3 at
+# :1445: `$` matched before a trailing newline, so a digest the writer's line reader never matches passed here).
 SECURITY_AUDIT_SKILL_ASSET = "security-audit-skill"
-SECURITY_AUDIT_VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs")
-SHA256_HEX = re.compile(r"^[0-9a-f]{64}$")
+SECURITY_AUDIT_VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs", "report-schema.json")
+SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 # A rolling asset carries no version or checksum of its own.
 ROLLING_ASSET_FORBIDDEN_FIELDS = ("pin", "ref", "ref_commit", "sha256")
 # A rolling asset needs a check independent of the release page it comes from: a release attestation,
@@ -1432,17 +1434,19 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
 
 
 def validate_security_audit_validators(asset: dict[str, Any]) -> None:
-    """`assets.security-audit-skill.validators_sha256` holds exactly the two validators' sha256 digests, each 64
-    lowercase hex (U597 round 8): `ledger-row.py daily` reads them as text and refuses a validator whose installed
-    bytes hash to anything else, so a missing, extra or malformed key is refused here, before any row depends on it."""
+    """`assets.security-audit-skill.validators_sha256` holds exactly the two validators' and the schema's sha256
+    digests, each 64 lowercase hex and nothing more (U597 round 8; round 9: `report-schema.json` beside them, and the
+    digest held whole by `re.fullmatch`, so a trailing newline is refused): `ledger-row.py daily` reads them as text,
+    one `<file>: <64 hex>` line each, and refuses a file whose copy hashes to anything else, so a missing, extra or
+    malformed key is refused here, before any row depends on it."""
     digests = asset.get("validators_sha256")
     if not isinstance(digests, dict) or sorted(digests) != sorted(SECURITY_AUDIT_VALIDATORS):
         fail(
             f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256 must map exactly {list(SECURITY_AUDIT_VALIDATORS)} "
-            f"to sha256 digests (ledger-row.py daily holds the installed validators to them), not {digests!r}"
+            f"to sha256 digests (ledger-row.py daily holds the installed files' copies to them), not {digests!r}"
         )
     for validator, digest in digests.items():
-        if not isinstance(digest, str) or not SHA256_HEX.match(digest):
+        if not isinstance(digest, str) or SHA256_HEX.fullmatch(digest) is None:
             fail(
                 f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256.{validator} must be 64 lowercase hex, "
                 f"not {digest!r}"

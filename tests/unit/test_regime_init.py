@@ -123,16 +123,27 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         step_one = text[text.index("\n1. `mkdir -p") : text.index("\n2. Read")]
         self.assertIn(head_read, step_one)
         self.assertIn("status=partial", step_one)
-        # the recording step names the validators' pins and the task's day (round 8)
+        # the recording step names the validators' pins and the task's day (round 8; round 9: the copies, the one
+        # manifest, the day before, the row's own fields)
         self.assertIn(
-            "hashed against its `assets.security-audit-skill.validators_sha256` pin in the manifest before it runs",
+            "copied into a private directory of the writer and the copy hashed against its"
+            " `assets.security-audit-skill.validators_sha256` pin in `~/.agents/agent-config.yaml`, the one manifest the"
+            " writer reads, before `node` runs the copies",
             text,
         )
-        self.assertIn("whose UTC day the task id `daily-<YYYY-MM-DD>` must name", text)
+        self.assertIn("with the `report-schema.json` the first loads", text)
+        self.assertIn("whose UTC day, or the day before it, the task id `daily-<YYYY-MM-DD>` must name", text)
+        self.assertIn("the id is fixed at dispatch and a sweep that crosses midnight keeps it", text)
+        self.assertNotIn("--manifest", text, "the writer reads the deployed manifest alone (round 9)")
         acceptance = text[text.index("\nACCEPTANCE\n") : text.index("\nVERIFY\n")]
         self.assertIn(porcelain, acceptance)
         self.assertIn("then runs the installed skill's two validators itself over the two copies", text)
-        self.assertIn("`validators pass` in the row is the writer's own result", text)
+        self.assertIn(
+            "so the row's `validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS; validators sha256 <8 hex>"
+            " <8 hex>` fields are the writer's own result, not this RESULT's word",
+            text,
+        )
+        self.assertNotIn("`validators pass`", text, "the round-6 word is gone from the template (round 9)")
         self.assertIn(
             "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
             "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json --swept-at <ts>`",
@@ -170,6 +181,42 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
                 timeout=60,
             )
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "", ""))
+
+    def test_the_template_s_partial_result_sentence_names_the_head_read_failure(self):
+        """U597 round 9 (verdict U597-c37800e3 P3 at daily-sweep-brief.md:14): the template is prose the seat follows,
+        so its failure path is tested by its text. Step 1's sentence makes a head read that exits non-zero, or prints
+        anything but `<head>`, a refusal to start whose RESULT is `status=partial` with a note naming the exit status
+        or the printed sha, and the same for the status read, with nothing of steps 2 to 5 run; the REPORT paragraph
+        writes no daily row and copies nothing for a `status=partial` RESULT and writes the row for
+        `status=ready_for_review` alone; the TIMEBOX path sends `status=partial` too; and the GOAL names the ruleset
+        policy the exemption rests on, with the unit that asks the operator for it (U613)."""
+        text = (TEMPLATES / "daily-sweep-brief.md").read_text()
+        step_one = text[text.index("\n1. `mkdir -p") : text.index("\n2. Read")]
+        self.assertIn(
+            "A head read that exits non-zero, or prints anything but `<head>`, is a refusal to start, and so is a status"
+            " read that exits non-zero, or prints anything: nothing of steps 2 to 5 runs, and the RESULT is `RESULT v1"
+            " task_id=daily-<YYYY-MM-DD> status=partial pr=none head=<head> note=preflight refused: git log exited <n>`",
+            step_one,
+        )
+        self.assertIn("note=preflight refused: git log printed <sha>, not <head>", step_one)
+        self.assertIn("status=partial pr=none head=<head> note=preflight refused: git status exited <n>", step_one)
+        self.assertIn("A failed head read is never read as the checkout at `<head>`.", step_one)
+        self.assertNotIn("status=ready_for_review", step_one, "a refused preflight never sends the full sweep's RESULT")
+        self.assertEqual(step_one.count("status=partial"), 3, "the head read's two failures and the status read's")
+        report = text[text.index("\nREPORT\n") : text.index("\nSTANDING\n")]
+        self.assertIn("A `status=partial` RESULT (the TIMEBOX path) gets no daily row and no copy", report)
+        self.assertIn("The coordinator writes the day's row only for a RESULT with `status=ready_for_review`", report)
+        timebox = text[text.index("\nTIMEBOX\n") : text.index("\nFORBIDDEN\n")]
+        self.assertIn("RESULT v1 task_id=daily-<YYYY-MM-DD> status=partial pr=none head=<head>", timebox)
+        self.assertIn(
+            "A partial sweep is no daily sweep of main's head: the coordinator writes no daily row for it", timebox
+        )
+        goal = text[text.index("\nGOAL\n") : text.index("\nSCOPE\n")]
+        self.assertIn(
+            "which it does only while the main ruleset requires branches to be up to date before merging,"
+            " `strict_required_status_checks_policy`, the setting U613 asks the operator for",
+            goal,
+        )
 
 
 class RegimeInitTest(unittest.TestCase):

@@ -1,5 +1,5 @@
-"""The CI critical path (U39): the sharded unit-test runner, its matrix rows and aggregators (regime-cutover U622), and
-the render-only subtrees the bootstrap may skip."""
+"""The CI critical path (U39): the sharded unit-test runner, its matrix rows and aggregators (regime-cutover U622), the
+per-pull-request selection of its modules (regime-cutover U623), and the render-only subtrees the bootstrap may skip."""
 
 from __future__ import annotations
 
@@ -16,6 +16,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
 SHARDS = ROOT / "scripts/ci/unittest-shards.py"
+SELECTOR = ROOT / "scripts/ci/affected-tests.py"
+# The step of test.yaml that decides a pull request's scope (regime-cutover U623), after the decision step.
+SELECT_STEP = "Select the test modules the diff reaches"
 REMOTE = ROOT / ".github/workflows/remote.yaml"
 TEST = ROOT / ".github/workflows/test.yaml"
 # The three required status contexts of the main ruleset (read 2026-11-19 through the rulesets API; the constant
@@ -57,6 +60,7 @@ BOOTSTRAP_READERS = (
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
 from agent_home_isolation import isolate_agent_homes, restore_agent_homes
+from scratch_git import git_clone, git_init
 from workflow_lock import load_yaml
 
 
@@ -138,6 +142,54 @@ def matrix_rows(matrix: dict) -> list[dict[str, str]]:
         if not any(all(row.get(k) == v for k, v in extra.items() if k in row) for row in rows):
             rows.append(extra)
     return rows
+
+
+def selection_env() -> dict[str, str]:
+    return {**os.environ, "GIT_CONFIG_GLOBAL": os.devnull, "GIT_CONFIG_NOSYSTEM": "1"}
+
+
+def selection_repository(temp: Path):
+    """A clone whose origin/main holds the selector, a lever, a test module naming it, a Makefile and home/dot_zshrc,
+    for the select step's script (which runs the selector from the checkout against origin/<base>); returns (clone, git)."""
+    origin, clone = temp / "origin.git", temp / "clone"
+
+    def git(*args: str) -> str:
+        return subprocess.run(
+            ["git", "-C", str(clone), "-c", "user.name=t", "-c", "user.email=t@example.invalid", *args],
+            env=selection_env(),
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    git_init(origin, "--bare", "-b", "main", env=selection_env())
+    git_clone(origin, clone, env=selection_env())
+    files = {
+        "scripts/orchestrator/lever.sh": "echo lever\n",
+        "home/dot_zshrc": "# zsh\n",
+        "Makefile": "unit-test:\n\ttrue\n",
+        "tests/unit/test_a.py": 'import unittest\n\nLEVER = "scripts/orchestrator/lever.sh"\n',
+    }
+    for name, text in files.items():
+        (clone / name).parent.mkdir(parents=True, exist_ok=True)
+        (clone / name).write_text(text)
+    (clone / "scripts/ci").mkdir(parents=True)
+    shutil.copy(SELECTOR, clone / "scripts/ci/affected-tests.py")
+    git("add", "-A")
+    git("commit", "-q", "-m", "base")
+    git("push", "-q", "origin", "HEAD:main")
+    return clone, git
+
+
+def pull_request_head(clone: Path, git, branch: str, writes: dict[str, str]) -> str:
+    """A commit on `branch` from origin/main writing the given files; the working tree is that head."""
+    git("checkout", "-q", "-B", branch, "origin/main")
+    for name, text in writes.items():
+        (clone / name).parent.mkdir(parents=True, exist_ok=True)
+        (clone / name).write_text(text)
+    git("add", "-A")
+    git("commit", "-q", "-m", branch)
+    return git("rev-parse", "HEAD")
 
 
 PASSING = """
@@ -420,6 +472,95 @@ class UnittestShardsTest(unittest.TestCase):
                 self.assertEqual(sorted(plan), sorted(listed))
                 self.assertEqual(len(plan), len(listed))
 
+    def test_modules_restricts_the_plan_and_the_parts_still_partition_it(self) -> None:
+        # --modules (regime-cutover U623): the listed modules alone, by file name or by path under the start directory,
+        # biggest first; --shard K/N then partitions the restricted plan, and a part with no shard is nothing to run.
+        with tempfile.TemporaryDirectory() as temp:
+            one = "class {0}(unittest.TestCase):\n    def test_{1}(self):\n        pass\n"
+            start = suite(
+                temp, {"test_a.py": PASSING, "test_b.py": one.format("B", "b"), "test_c.py": one.format("C", "c")}
+            )
+            listing = Path(temp) / "modules"
+            listing.write_text(f"{start}/test_b.py\n\ntest_a.py\n")  # a path, a blank line, a file name
+            result = shards(start, "--jobs", "2", "--modules", str(listing))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn(
+                f"4 tests in 2 modules, 2 shards under {start}, 2 of 3 modules listed in {listing}, 2 at a time",
+                result.stdout,
+            )
+            self.assertIn("===== test_a.py: 3 tests", result.stdout)
+            self.assertIn("===== test_b.py: 1 tests", result.stdout)
+            self.assertNotIn("test_c.py", result.stdout)
+            self.assertRegex(
+                result.stdout, r"\nRan 4 tests in [0-9.]+s \(2 modules, 2 shards, 2 jobs\)\nOK \(skipped=1\)\n\Z"
+            )
+            # The parts of the restricted plan: 1/2 is test_a (3 tests), 2/2 is test_b; test_c is in neither.
+            first = dry_run_plan(shards(start, "--dry-run", "--modules", str(listing), "--shard", "1/2").stdout)
+            second = dry_run_plan(shards(start, "--dry-run", "--modules", str(listing), "--shard", "2/2").stdout)
+            self.assertEqual(([("test_a.py", 3)], [("test_b.py", 1)]), (first, second))
+            # A part beyond the restricted plan's shards is nothing to run, said so, exit 0: the row's other steps run.
+            empty = shards(start, "--modules", str(listing), "--shard", "3/4")
+            self.assertEqual((0, ""), (empty.returncode, empty.stderr), empty.stdout)
+            self.assertEqual(
+                f"unittest-shards: nothing to run: shard 3/4 of 2, 2 of 3 modules listed in {listing} is empty\n",
+                empty.stdout,
+            )
+            # Without --modules the same empty part is still a failure (U622).
+            self.assertEqual(1, shards(start, "--shard", "4/4").returncode)
+
+    def test_a_listed_module_absent_from_the_tree_is_a_refusal_and_an_empty_listing_is_nothing_to_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            start = suite(temp, {"test_a.py": PASSING})
+            (start / "helper.py").write_text("VALUE = 1\n")
+            listing = Path(temp) / "modules"
+            for case, lines, named in (
+                ("a module not in the tree", "test_a.py\ntest_missing.py\n", "test_missing.py"),
+                ("a path outside the start directory", f"{temp}/test_a.py\n", f"{temp}/test_a.py"),
+                ("a helper that is no test module", f"{start}/helper.py\n", f"{start}/helper.py"),
+            ):
+                with self.subTest(case=case):
+                    listing.write_text(lines)
+                    result = shards(start, "--modules", str(listing))
+                    self.assertEqual(result.returncode, 1, result.stdout)
+                    self.assertEqual(
+                        f"unittest-shards: {listing} names {named}, which is no test module under {start}\n",
+                        result.stderr,
+                    )
+                    self.assertEqual("", result.stdout)
+            listing.unlink()
+            result = shards(start, "--modules", str(listing))
+            self.assertEqual(1, result.returncode)
+            self.assertEqual(f"unittest-shards: cannot read {listing}: No such file or directory\n", result.stderr)
+            # An empty listing (a diff that reaches no module) is nothing to run, said so, exit 0.
+            listing.write_text("\n")
+            result = shards(start, "--modules", str(listing))
+            self.assertEqual(
+                (0, f"unittest-shards: nothing to run: {listing} lists no module of the 1 under {start}\n"),
+                (result.returncode, result.stdout),
+                result.stderr,
+            )
+
+    def test_a_restricted_real_plan_is_partitioned_by_the_quarters_too(self) -> None:
+        # Two real modules by their paths, as scripts/ci/affected-tests.py prints them: the quarters of the restricted
+        # plan together list each of its shards once, and a quarter without one is nothing to run.
+        with tempfile.TemporaryDirectory() as temp:
+            listing = Path(temp) / "modules"
+            listing.write_text("tests/unit/test_ci_workflows.py\ntests/unit/test_scratch_git.py\n")
+            whole = shards(Path("tests/unit"), "--dry-run", "--modules", str(listing), cwd=ROOT)
+            self.assertEqual(whole.returncode, 0, whole.stdout + whole.stderr)
+            plan = dry_run_plan(whole.stdout)
+            self.assertEqual({"test_ci_workflows.py", "test_scratch_git.py"}, {name.split("[")[0] for name, _ in plan})
+            self.assertRegex(whole.stdout, rf", 2 of [0-9]+ modules listed in {re.escape(str(listing))}, ")
+            listed: list[tuple[str, int]] = []
+            for k in range(1, 5):
+                part = shards(Path("tests/unit"), "--dry-run", "--modules", str(listing), "--shard", f"{k}/4", cwd=ROOT)
+                self.assertEqual(part.returncode, 0, part.stdout + part.stderr)
+                quarter = dry_run_plan(part.stdout)
+                if not quarter:
+                    self.assertIn(f"nothing to run: shard {k}/4 of {len(plan)}", part.stdout)
+                listed += quarter
+            self.assertEqual(sorted(plan), sorted(listed))
+
 
 class MakeUnitTestTest(unittest.TestCase):
     def make(self, *args: str) -> str:
@@ -427,7 +568,7 @@ class MakeUnitTestTest(unittest.TestCase):
         env = {
             key: value
             for key, value in os.environ.items()
-            if key not in {"UNIT_TEST_JOBS", "UNIT_TEST_SHARD", "MAKEFLAGS", "MAKELEVEL"}
+            if key not in {"UNIT_TEST_JOBS", "UNIT_TEST_SHARD", "UNIT_TEST_MODULES", "MAKEFLAGS", "MAKELEVEL"}
         }
         return subprocess.run(
             ["make", "--no-print-directory", "-n", "unit-test", *args],
@@ -465,6 +606,19 @@ class MakeUnitTestTest(unittest.TestCase):
         self.assertTrue(self.make("UNIT_TEST_JOBS=6", "UNIT_TEST_SHARD=1/2").endswith("--jobs 6 --shard 1/2\n"))
         self.assertEqual(self.make("UNIT_TEST_JOBS=1", "UNIT_TEST_SHARD=1/2"), self.make("UNIT_TEST_JOBS=1"))
 
+    def test_unit_test_modules_restricts_the_run_to_the_listed_modules(self) -> None:
+        # The Python step's env sets UNIT_TEST_MODULES to the selected list's path (regime-cutover U623); make passes
+        # it as --modules after the shard, an empty value (scope all) passes nothing, and the serial form takes neither.
+        warm, run = self.make("UNIT_TEST_MODULES=/tmp/modules").splitlines()
+        self.assertRegex(warm, r"^uv run (--offline )?--with pyyaml python -c 'import yaml'$")
+        self.assertEqual(
+            run, "uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs 0 --modules /tmp/modules"
+        )
+        both = self.make("UNIT_TEST_JOBS=6", "UNIT_TEST_SHARD=1/2", "UNIT_TEST_MODULES=/tmp/modules")
+        self.assertTrue(both.endswith("--jobs 6 --shard 1/2 --modules /tmp/modules\n"), both)
+        self.assertEqual(self.make(), self.make("UNIT_TEST_MODULES="))
+        self.assertEqual(self.make("UNIT_TEST_JOBS=1"), self.make("UNIT_TEST_JOBS=1", "UNIT_TEST_MODULES=/tmp/modules"))
+
 
 class ShardMatrixTest(unittest.TestCase):
     """Regime-cutover U622: the test job runs as matrix shard rows and three aggregators keep the ruleset's names."""
@@ -491,7 +645,14 @@ class ShardMatrixTest(unittest.TestCase):
     def test_the_row_runs_its_part_through_the_steps_env(self) -> None:
         steps = {step.get("name"): step for step in self.jobs["test"]["steps"]}
         step = steps["Run Python unit tests"]
-        self.assertEqual({"UNIT_TEST_SHARD": "${{ matrix.shard }}"}, step["env"])
+        self.assertEqual(
+            {
+                "UNIT_TEST_SHARD": "${{ matrix.shard }}",
+                "TEST_SCOPE": "${{ steps.select.outputs.test_scope }}",
+                "UNIT_TEST_MODULES": "${{ steps.select.outputs.unit_test_modules }}",
+            },
+            step["env"],
+        )
         self.assertEqual(25, step["timeout-minutes"])
         self.assertIn('UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test\n', step["run"])
         # No other step and no job-level env names the shard: tests/unit/test_apt_mirror.py pins the names in scope of
@@ -505,6 +666,177 @@ class ShardMatrixTest(unittest.TestCase):
         upload = steps["Upload coverage to Codecov"]
         self.assertIn("startsWith(matrix.shard, '1/')", upload["if"])
         self.assertIn("matrix.os == 'ubuntu-24.04'", upload["if"])
+
+    def test_the_select_step_follows_the_decision_and_the_python_step_reads_its_scope(self) -> None:
+        # Regime-cutover U623: the selection runs in its own step after the decision (the decision's script is run by
+        # tests/unit/test_workflow_orchestration_skip.py in a clone without scripts/), gated as every heavy step, and
+        # the Python step reads its two outputs through env; no other step reads them.
+        steps = self.jobs["test"]["steps"]
+        names = [step.get("name") for step in steps]
+        select = names.index(SELECT_STEP)
+        self.assertLess(names.index("Decide whether the diff needs the unit tests"), select)
+        self.assertLess(select, names.index("Run Python unit tests"))
+        step = steps[select]
+        self.assertEqual("select", step["id"])
+        self.assertEqual("${{ steps.decide.outputs.should_test == 'true' }}", step["if"])
+        self.assertEqual(
+            {
+                "EVENT_NAME": "${{ github.event_name }}",
+                "BASE_REF": "${{ github.base_ref }}",
+                "HEAD_SHA": "${{ github.sha }}",
+            },
+            step["env"],
+        )
+        self.assertNotIn("continue-on-error", step)
+        self.assertEqual("set -euo pipefail", step["run"].splitlines()[0])
+        self.assertIn(
+            'python3 -I scripts/ci/affected-tests.py --base "origin/${BASE_REF}" --head "${HEAD_SHA}" --explain '
+            '> "${modules}"\n',
+            step["run"],
+        )
+        for weakening in ("|| true", "set +e", "|| scope=", "2> /dev/null", "continue-on-error"):
+            with self.subTest(weakening=weakening):
+                self.assertNotIn(weakening, str(step))
+        python = steps[names.index("Run Python unit tests")]
+        self.assertEqual("${{ steps.select.outputs.test_scope }}", python["env"]["TEST_SCOPE"])
+        self.assertEqual("${{ steps.select.outputs.unit_test_modules }}", python["env"]["UNIT_TEST_MODULES"])
+        for name, other in zip(names, steps):
+            if name != "Run Python unit tests":
+                with self.subTest(step=name):
+                    self.assertNotIn("steps.select.", str(other))
+
+    def run_select(
+        self, script: str, env: dict[str, str], cwd: Path, python3: str | None = None
+    ) -> tuple[subprocess.CompletedProcess[str], str, Path]:
+        """Run the select step's script as the runner does; returns (result, the GITHUB_OUTPUT text, RUNNER_TEMP).
+
+        `python3` on PATH is this interpreter, or the given stub script."""
+        runner_temp = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, runner_temp, ignore_errors=True)
+        output = runner_temp / "github-output"
+        output.touch()
+        shim = runner_temp / "shim"
+        shim.mkdir()
+        (shim / "python3").write_text(python3 or f'#!/bin/sh\nexec "{sys.executable}" "$@"\n')
+        (shim / "python3").chmod(0o755)
+        result = subprocess.run(
+            ["bash", "-c", script],
+            cwd=cwd,
+            env={
+                **os.environ,
+                "GIT_CONFIG_GLOBAL": os.devnull,
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "PATH": f"{shim}{os.pathsep}{os.environ['PATH']}",
+                "GITHUB_OUTPUT": str(output),
+                "RUNNER_TEMP": str(runner_temp),
+                **env,
+            },
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        return result, output.read_text(), runner_temp
+
+    def test_the_select_step_emits_the_scope_and_writes_the_list_a_pull_request_runs(self) -> None:
+        script = next(step for step in self.jobs["test"]["steps"] if step.get("name") == SELECT_STEP)["run"]
+        with tempfile.TemporaryDirectory() as temp:
+            clone, git = selection_repository(Path(temp))
+            heads = {
+                "lever": pull_request_head(clone, git, "lever", {"scripts/orchestrator/lever.sh": "changed\n"}),
+                "makefile": pull_request_head(clone, git, "makefile", {"Makefile": "x:\n\ttrue\n"}),
+                "unreached": pull_request_head(clone, git, "unreached", {"home/dot_zshrc": "x\n"}),
+            }
+            pull_request = {"EVENT_NAME": "pull_request", "BASE_REF": "main"}
+            # A lever change: selected, the list in RUNNER_TEMP, the selector's --explain in the log.
+            result, output, runner_temp = self.run_select(script, {**pull_request, "HEAD_SHA": heads["lever"]}, clone)
+            self.assertEqual(0, result.returncode, result.stderr)
+            listing = runner_temp / "unit-test-modules"
+            self.assertEqual(f"test_scope=selected\nunit_test_modules={listing}\n", output)
+            self.assertEqual("tests/unit/test_a.py\n", listing.read_text())
+            self.assertEqual(
+                f"test scope: selected, the modules listed in {listing}:\ntests/unit/test_a.py\n", result.stdout
+            )
+            self.assertIn("affected-tests: 1 of 1 modules selected\n", result.stderr)
+            # The Makefile: all, the scope alone.
+            result, output, _ = self.run_select(script, {**pull_request, "HEAD_SHA": heads["makefile"]}, clone)
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(("test_scope=all\n", "test scope: all\n"), (output, result.stdout))
+            # A change nothing reaches: selected, an empty list (the runner then has nothing to run).
+            result, output, runner_temp = self.run_select(
+                script, {**pull_request, "HEAD_SHA": heads["unreached"]}, clone
+            )
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(f"test_scope=selected\nunit_test_modules={runner_temp}/unit-test-modules\n", output)
+            self.assertEqual("", (runner_temp / "unit-test-modules").read_text())
+            # Every other event runs the whole plan without reading a diff.
+            for event in ("push", "schedule", "workflow_dispatch"):
+                with self.subTest(event=event):
+                    env = {"EVENT_NAME": event, "BASE_REF": "", "HEAD_SHA": heads["lever"]}
+                    result, output, _ = self.run_select(script, env, clone)
+                    self.assertEqual(
+                        (0, "test_scope=all\n", "test scope: all\n"), (result.returncode, output, result.stdout)
+                    )
+            # A selector that fails ends the step with its status and emits no scope (standing order 21).
+            broken = "#!/bin/sh\necho 'affected-tests: cannot parse tests/unit/test_a.py' >&2\nexit 2\n"
+            result, output, _ = self.run_select(script, {**pull_request, "HEAD_SHA": heads["lever"]}, clone, broken)
+            self.assertEqual((2, ""), (result.returncode, output), result.stderr)
+            self.assertIn("cannot parse", result.stderr)
+
+    def test_the_python_step_names_the_scope_and_the_module_count_before_it_runs_make(self) -> None:
+        step = next(step for step in self.jobs["test"]["steps"] if step.get("name") == "Run Python unit tests")
+        with tempfile.TemporaryDirectory() as temp:
+            stubs = Path(temp) / "stubs"
+            stubs.mkdir()
+            log = Path(temp) / "make.log"
+            (stubs / "make").write_text(
+                f'#!/bin/sh\nprintf \'%s|%s|%s\\n\' "$*" "${{UNIT_TEST_JOBS-}}" "${{UNIT_TEST_MODULES-}}" >> "{log}"\n'
+            )
+            (stubs / "getconf").write_text("#!/bin/sh\necho 4\n")
+            for stub in stubs.iterdir():
+                stub.chmod(0o755)
+            listing = Path(temp) / "modules"
+            listing.write_text("tests/unit/test_a.py\ntests/unit/test_b.py\n")
+            empty = Path(temp) / "empty"
+            empty.write_text("")
+
+            def run(scope: str, modules: str) -> subprocess.CompletedProcess[str]:
+                log.write_text("")
+                env = {
+                    **os.environ,
+                    "PATH": f"{stubs}{os.pathsep}{os.environ['PATH']}",
+                    "OS": "ubuntu-24.04",
+                    "SYSTEM": "client",
+                    "TEST_SCOPE": scope,
+                    "UNIT_TEST_MODULES": modules,
+                }
+                # The runner runs a step that names no `shell:` as `bash -e {0}`.
+                return subprocess.run(
+                    ["bash", "-e", "-c", step["run"]], cwd=ROOT, env=env, capture_output=True, text=True, check=False
+                )
+
+            result = run("selected", str(listing))
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(
+                f"unit tests: scope selected, 2 modules listed in {listing}", result.stdout.splitlines()[0]
+            )
+            self.assertEqual(f"unit-test|8|{listing}\n", log.read_text())
+            result = run("all", "")
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual("unit tests: scope all, every module under tests/unit", result.stdout.splitlines()[0])
+            self.assertEqual("unit-test|8|\n", log.read_text())
+            # Zero modules: said so, and make runs (the runner then says nothing to run).
+            result = run("selected", str(empty))
+            self.assertEqual(0, result.returncode, result.stderr)
+            self.assertEqual(f"unit tests: scope selected, 0 modules listed in {empty}", result.stdout.splitlines()[0])
+            self.assertEqual(f"unit-test|8|{empty}\n", log.read_text())
+            # No scope (the select step emitted none): the step fails before make, never runs the suite by default.
+            for scope in ("", "maybe"):
+                with self.subTest(scope=scope):
+                    result = run(scope, "")
+                    self.assertEqual(1, result.returncode, result.stdout)
+                    self.assertIn(f"unit tests: scope '{scope}' is neither all nor selected", result.stderr)
+                    self.assertEqual("", log.read_text())
+                    self.assertEqual("", result.stdout)
 
     def test_the_required_check_names_are_aggregators_over_the_shard_rows(self) -> None:
         # The ruleset requires the three names (only the admin changes it); each is a job that needs the shard job,

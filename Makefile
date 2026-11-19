@@ -247,8 +247,12 @@ format:
 # `uv run --offline --with pyyaml` against the real uv cache found PyYAML there only because an
 # earlier module of the serial order had fetched it; the shards keep no such order, so the cache gets it first.
 # UNIT_TEST_SHARD=K/N runs part K of N of the shard plan (CI's matrix rows, regime-cutover U622); empty runs it whole.
+# UNIT_TEST_MODULES=<file> restricts the run to the test modules the file lists, one per line (what
+# scripts/ci/affected-tests.py prints for a pull request's diff, regime-cutover U623); empty runs every module. The
+# serial form takes neither.
 UNIT_TEST_JOBS ?= 0
 UNIT_TEST_SHARD ?=
+UNIT_TEST_MODULES ?=
 
 .PHONY: unit-test
 unit-test:
@@ -256,7 +260,7 @@ ifeq ($(UNIT_TEST_JOBS),1)
 	uv run python -m unittest discover -s tests/unit -v
 else
 	$(UV_PYYAML) python -c 'import yaml'
-	uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs $(UNIT_TEST_JOBS)$(if $(UNIT_TEST_SHARD), --shard $(UNIT_TEST_SHARD))
+	uv run python scripts/ci/unittest-shards.py --start tests/unit --jobs $(UNIT_TEST_JOBS)$(if $(UNIT_TEST_SHARD), --shard $(UNIT_TEST_SHARD))$(if $(UNIT_TEST_MODULES), --modules $(UNIT_TEST_MODULES))
 endif
 
 # The index form fails inside the Claude sandbox even while the uv cache holds PyYAML, so a probe picks the cache first.

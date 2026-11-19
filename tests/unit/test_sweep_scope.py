@@ -391,10 +391,12 @@ class SweepScopePredicateTest(unittest.TestCase):
         )
         self.assertIn('    classify_diff "${tip_parent}" "${base_tip}" "${what}" fail \\\n', text, "the tip (round 11)")
         self.assertIn(
-            '    classify_diff "${parent}" "${commit}" "the merge commit ${commit} of pull request ${pr}" fail \\\n',
+            '    classify_diff "${base_tip}" "${test_merge}" "the test merge ${test_merge} of pull request ${pr} (the diff'
+            ' the squash lands)" refuse \\\n',
             text,
-            "the landed diff (round 11)",
+            "the diff the squash lands, GitHub's test merge against the tip (round 12)",
         )
+        self.assertNotIn('classify_diff "${parent}"', text, "no classification after the merge (round 12)")
         self.assertIn(
             "base_tip=$(gh_bounded api \"repos/{owner}/{repo}/git/ref/heads/${base}\" --jq '.object.sha') ||", text
         )
@@ -417,6 +419,9 @@ class SweepScopePredicateTest(unittest.TestCase):
         self.assertIn("sweep: not required (no lever, policy, credential or deployed-executable path changed)", text)
         self.assertEqual(text.count("require_sweep_scope\n"), 1, "called once")
         self.assertEqual(text.count("        require_daily_sweep\n"), 1, "the daily sweep asked once, on not-required")
+        self.assertEqual(
+            text.count("    require_test_merge\n"), 1, "the test merge read once, after the head's listing"
+        )
         self.assertIn('"${ledger_copy}" "${store}" daily "${DAILY_SWEEP_MAX_AGE}"', text)
         self.assertIn("DAILY_SWEEP_MAX_AGE=86400\n", text)
         self.assertIn("[[ -z ${sweep_reason} ]] || require_sweep_row\n", text)
@@ -650,6 +655,16 @@ class SweepScopeCliTest(unittest.TestCase):
                 self.assert_refused(self.run_reader(*args, stdin=docs), "usage: sweep-scope.py")
 
 
+# The program-milestone sweep sentence (U597 round 12, verdict U597-097d1615 P2 at AGENTS.md:71): the base's rule gave
+# every unit and every program milestone one sweep; the per-head rule replaced the unit half, and the milestone half
+# stands beside it in AGENTS.md's line and its byte-for-byte template.
+MILESTONE_SENTENCE = (
+    "Every program milestone keeps the sweep it had before this unit: a milestone's head gets one sweep of the"
+    " `security-audit` skill on a srt worker seat before its pull request merges, whatever its changed paths, and the"
+    " milestone sweep is the per-head sweep of that head (recorded as its `sweep` row)."
+)
+
+
 class SweepRuleDocumentsTest(unittest.TestCase):
     """U597 round 2 (verdict finding 5): the module is the one definition of the classes, and the documents that state
     the rule follow it: AGENTS.md's Audit sweep rule line names every prefix of CLASSES and the four classes, the
@@ -737,7 +752,7 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`assets.security-audit-skill.validators_sha256`", line)
         self.assertIn("task id `daily-<YYYY-MM-DD>` alone naming the UTC day", line)
         self.assertIn("from private copies hashed against their `claude.levers.sha256` pins", line)
-        self.assertIn("the merge commit's first parent", line)
+        self.assertNotIn("the merge commit's first parent", line, "the parent read is gone (round 12)")
         # round 9: the daily row's own grammar, the task's day or the day before, the validators from private copies,
         # the recheck before the merge request
         self.assertIn("or the day before it", line)
@@ -753,8 +768,34 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`ledger.py sweep-any <tip>`", line)
         self.assertIn("`ledger.py merge-of <tip>`", line)
         self.assertIn("`.tree.sha`", line)
-        self.assertIn("is classified again at the merge commit", line)
+        self.assertNotIn(
+            "is classified again at the merge commit", line, "nothing is classified after the merge (round 12)"
+        )
         self.assertIn("swept and recorded as a `sweep` row of the unit before the next merge", line)
+        # round 12 (verdict U597-097d1615 P1 at :1764 and :1136, P2 at :1770, P2 at AGENTS.md:71): the diff the squash
+        # lands is classified from GitHub's test merge before the merge, the landed tree is held to the test merge's
+        # tree, an empty landed diff of the tip needs no sweep, and the program-milestone sweep sentence stands beside
+        # the per-head rule
+        self.assertIn(
+            "The diff the lever classifies before the merge is the one the squash will land (U597 round 12)", line
+        )
+        self.assertIn("`gh pr view <n> --json mergeable,mergeStateStatus`", line)
+        self.assertIn("`gh api 'repos/{owner}/{repo}/pulls/<n>' --jq .merge_commit_sha`", line)
+        self.assertIn("`gh api 'repos/{owner}/{repo}/compare/<main tip>...<merge_commit_sha>'`", line)
+        self.assertIn("the two answers must agree", line)
+        self.assertIn("the stricter stands and one line names both", line)
+        self.assertIn(
+            "holds it to the test merge's tree: equal trees mean the classified diff is the landed diff exactly", line
+        )
+        self.assertIn("the one window the lever cannot close", line)
+        self.assertIn("a tip whose listing names no file, an empty squash, landed nothing and needs no sweep", line)
+        self.assertIn(MILESTONE_SENTENCE, line)
+        self.assertLess(
+            line.index("every unit's head that touches a class gets its sweep before the merge"),
+            line.index(MILESTONE_SENTENCE),
+            "the milestone sentence stands beside the per-head rule",
+        )
+        self.assertLess(line.index(MILESTONE_SENTENCE), line.index("A head outside every class merges on its audit"))
         self.assertIn("the mechanism-change decisions row of 2026-11-19T15:21:36Z", line)
         self.assertIn("brought up to date with `pr-update-branch.sh`", line)
         self.assertIn("the lever never opens the findings file", line)
@@ -794,7 +835,15 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("the lever reads no server policy to decide it", step)
         self.assertIn("requires main's tip to be swept or exempt", step)
         self.assertIn("`ledger.py sweep-any`, `ledger.py merge-of`", step)
-        self.assertIn("classified again at the merge commit and swept before the next merge", step)
+        self.assertNotIn(
+            "classified again at the merge commit", step, "nothing is classified after the merge (round 12)"
+        )
+        self.assertIn(
+            "classifies the diff the squash will land, GitHub's test merge of the head against that tip (`merge_commit_sha`)",
+            step,
+        )
+        self.assertIn("holds the merge commit's tree to the test merge's tree", step)
+        self.assertIn("the merge commit is swept before the next merge, step 6; U597 round 12", step)
         for word in ("ruleset", "strict_required_status_checks_policy", "U613"):
             self.assertNotIn(word, step, f"step 4 names no {word} (round 11)")
 
@@ -818,10 +867,27 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`ledger.py sweep-any <tip>`", row)
         self.assertIn("`ledger.py merge-of <tip>`", row)
         self.assertIn("--jq .tree.sha`", row)
-        self.assertIn("classified again at the merge commit", row)
+        self.assertNotIn(
+            "classified again at the merge commit", row, "nothing is classified after the merge (round 12)"
+        )
         self.assertIn("the `pr-update-branch.sh` route", row)
-        self.assertNotIn("U613", row)
         self.assertNotIn("strict_required_status_checks_policy", row)
+        # round 12: the test merge, the tree hold, the guarantee and the one window, U613 named once as what closes it
+        self.assertIn("`require_test_merge`", row)
+        self.assertIn("--jq .merge_commit_sha`", row)
+        self.assertIn("is held to the test merge's tree", row)
+        self.assertIn("What the lever guarantees: before the merge, that the diff the squash will land", row)
+        # prettier drops the spaces around inline code in the table, so the words are asserted apart
+        self.assertIn("The one window it cannot close is", row)
+        self.assertIn(
+            "moving between the lever's last tip read and GitHub's write, closed by the main ruleset's up-to-date"
+            " requirement when the operator enables it (U613;",
+            row,
+        )
+        self.assertEqual(
+            row.count("U613"), 1, "U613 named once, as what closes the window when the operator enables it"
+        )
+        self.assertIn("(U613; the lever reads no setting to learn whether it is on)", row)
         # round 10: the three digests and the artifacts, the window at the lever's last read (prettier drops the
         # spaces around inline code in the table, so the words are asserted apart)
         self.assertIn("`validators sha256 <8 hex> <8 hex> <8 hex>`", row)
@@ -857,7 +923,7 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`claude.levers.sha256.sweep-scope.py`", text)
         self.assertIn("reader_copy", text)
         self.assertIn("`~/.local/bin/common/sweep-scope.py`", text)
-        self.assertIn("--jq '.parents[0].sha'`", text)
+        self.assertNotIn(".parents[0].sha", text, "the merge commit's parent read is gone (round 12)")
         # round 9: the daily row's grammar, the recheck and the probe
         self.assertIn("recheck_daily_sweep", text)
         self.assertIn("daily_row_fields", text)
@@ -868,11 +934,22 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         self.assertIn("`ledger.py <store> sweep-any <tip>`", text)
         self.assertIn("`ledger.py <store> merge-of <tip>`", text)
         self.assertIn("--jq .tree.sha`", text)
-        self.assertIn("`compare/<parent>...<merge commit>`", text)
+        self.assertNotIn("`compare/<parent>...<merge commit>`", text, "no compare after the merge (round 12)")
         self.assertIn("the lever never opens the findings file", text)
         self.assertIn("the mechanism-change decisions row of 2026-11-19T15:21:36Z", text)
-        for word in ("ruleset", "strict_required_status_checks_policy", "U613", "ref_pattern_matches"):
+        for word in ("strict_required_status_checks_policy", "ref_pattern_matches", "bypass"):
             self.assertNotIn(word, text, f"the lever names no {word} (round 11)")
+        # round 12: the test merge named with its reads, the tree hold, and the one window with U613 and the ruleset
+        # named once each, in the header's guarantee sentence alone
+        prose = re.sub(r"\n#   ", " ", text)  # the shdoc paragraphs de-wrapped
+        self.assertIn("`gh pr view <pr> --json mergeable,mergeStateStatus`", prose)
+        self.assertIn("`gh api repos/{owner}/{repo}/pulls/<pr> --jq .merge_commit_sha`", prose)
+        self.assertIn("require_test_merge", text)
+        self.assertIn("`compare/<tip>...<merge_commit_sha>`", prose)
+        self.assertIn("What the lever guarantees: before the merge, that the diff the squash will land", prose)
+        self.assertEqual(text.count("ruleset"), 1, "the word names what closes the window, once (round 12)")
+        self.assertEqual(text.count("U613"), 1, "U613 is named once, in the header (round 12)")
+        self.assertIn("U613", text[: text.index("set -euo pipefail")])
         # round 10: the seven fields, the window at the last read
         self.assertIn("within 24 hours at the lever's last read before the merge request", text)
         self.assertIn(

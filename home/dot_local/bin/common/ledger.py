@@ -62,10 +62,12 @@ any unit, is Malformed naming the line and the field); `merge_of(commit)` is the
 from, the `head_sha` of the newest merge row whose receipt names `commit=<commit>`, a merge row being the row
 `ledger-row.py merged` writes (verifier exactly `pr-merge.sh`, `MERGE_VERIFIER`, the word rounds-check.py reads a merge
 row by since U222; evidence starting with the lever's receipt `merged pr=<n> head=<sha> commit=<40 hex>`,
-`MERGE_RECEIPT`), whose `head_sha` must be 40 hex and whose receipt's head must be that sha or its first 8 (else
-Malformed naming the line); a `pr-merge.sh` row of another evidence shape (the rows written by hand before U222,
-`merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this question, so the installed
-ledgers that hold them keep reading. `ledger.py <store> sweep-any <head>` prints the sweep row's four columns or
+`MERGE_RECEIPT`), whose verdict cell must be `-`, whose `head_sha` must be 40 hex, whose receipt's `pr=` must be the
+row's pr cell and whose receipt's `head=` must be the row's head cell or its first 8 (round 12, the round-11 P2 at
+:362: an audit verdict with a `pr-merge.sh` verifier and a receipt naming another pull request supplied the tip
+gate's provenance; each inconsistency is Malformed naming the line and the field); a `pr-merge.sh` row of another
+evidence shape (the rows written by hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a
+row) is no merge row to this question, so the installed ledgers that hold them keep reading. `ledger.py <store> sweep-any <head>` prints the sweep row's four columns or
 `none`; `ledger.py <store> merge-of <commit>` prints `<head>` or `none`.
 
 The daily sweep (regime-cutover U597 round 4; the operator's sweep rule C of 2026-11-18): main's head gets one full
@@ -143,8 +145,10 @@ SWEEP_EVIDENCE_SUFFIX = ".json"
 # commit=<40 hex>` (the writer's MERGE_RECEIPT, whose head word is the row's head_sha or its first 8). `merge_of`
 # answers the head the squash at a commit came from. A `pr-merge.sh` row of another evidence shape (the rows written by
 # hand before U222, `merged as <sha> (squash) ...`, and a refusal recorded as a row) is no merge row to this question,
-# so the installed ledgers that hold them keep reading; a receipt row whose head_sha is not 40 hex or whose receipt
-# names another head than its head_sha is Malformed naming the line (standing order 21).
+# so the installed ledgers that hold them keep reading; a receipt row whose verdict is not `-`, whose head_sha is not
+# 40 hex, whose receipt names another pull request than its pr cell or another head than its head_sha is Malformed
+# naming the line and the field (standing order 21; round 12, the round-11 P2 at :362).
+MERGE_VERDICT = "-"
 MERGE_VERIFIER = "pr-merge.sh"
 MERGE_RECEIPT = re.compile(r"^merged pr=(\S+) head=(\S+) commit=([0-9a-f]{40})(?:$|[\s;,.)])")
 SHA = re.compile(r"^[0-9a-f]{40}$")
@@ -355,11 +359,17 @@ class Row:
         return None if match is None else match.group(3)
 
     def merge_fault(self):
-        """Why this merge row is not the row `ledger-row.py merged` composes, naming the field, or None: a 40-hex
-        head_sha, and a receipt whose head word is that sha or its first 8 (the writer's own two refusals)."""
+        """Why this merge row is not the row `ledger-row.py merged` composes, naming the field, or None: the verdict
+        cell `-`, a 40-hex head_sha, a receipt whose pr word is the row's pr cell and whose head word is that sha or
+        its first 8 (the writer's own refusals; round 12 added the verdict and the pr, the round-11 P2 at :362, where
+        an audit verdict carrying a receipt of another pull request answered `merge_of`)."""
+        if self.verdict != MERGE_VERDICT:
+            return f"the verdict of a merge row is not {MERGE_VERDICT!r}: {self.verdict!r}"
         if not SHA.match(self.head_sha):
             return f"the head_sha of a merge row is not 40 hex: {self.head_sha!r}"
         match = MERGE_RECEIPT.match(self.evidence)
+        if match.group(1) != self.pr:
+            return f"the receipt of a merge row names pr={match.group(1)}, not its pr cell {self.pr!r}"
         if match.group(2) not in (self.head_sha, self.head_sha[:8]):
             return (
                 f"the receipt of a merge row names head={match.group(2)}, neither its head_sha {self.head_sha} nor "
@@ -438,7 +448,8 @@ class Ledger:
     def merge_of(self, commit):
         """The head the squash at `commit` came from, the `head_sha` of the newest merge row (`Row.merge_commit`: the
         row `ledger-row.py merged` writes) whose receipt names `commit=<commit>`, or None (U597 round 11); a merge row
-        whose head_sha is not 40 hex or whose receipt names another head is Malformed naming the line."""
+        whose verdict is not `-`, whose head_sha is not 40 hex or whose receipt names another pull request or another
+        head than its cells is Malformed naming the line and the field (round 12)."""
         found = []
         for row in self.rows:
             if row.merge_commit is None:

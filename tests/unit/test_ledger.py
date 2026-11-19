@@ -289,6 +289,78 @@ class LedgerSweepTest(unittest.TestCase):
         self.assertIn("sweep", run.stdout)
         self.assertIn("{verdict,carry-source,sweep,sweep-any,merge-of,daily}", run.stdout)
 
+    def test_merge_of_admits_only_a_consistent_pr_merge_row(self):
+        """U597 round 12 (verdict U597-097d1615 P2 at ledger.py:362): `merge_of` admitted an audit verdict with a
+        `pr-merge.sh` verifier and a receipt whose pull request disagreed with the row, so an inconsistent record could
+        supply the tip gate's provenance. A merge row is the row `ledger-row.py merged` composes and nothing else: the
+        verdict cell `-`, the verifier exactly `pr-merge.sh`, the receipt's `pr=` the row's pr cell and its `head=`
+        the row's head cell (or its first 8, the writer's own form); a `correct` verdict, a `merged` verdict, a receipt
+        naming another pull request and a receipt naming another head are each Malformed naming the field, to the
+        reader and to the `merge-of` CLI (exit 2 naming the line), whatever commit is asked; the writer's own row
+        answers."""
+        merged = "e" * 40
+
+        def merge_row(ts, unit, pr, head, commit, verdict="-", receipt_pr=None, receipt_head=None):
+            return row(
+                ts,
+                unit,
+                pr,
+                head,
+                verdict,
+                "pr-merge.sh",
+                f"merged pr={receipt_pr or pr} head={receipt_head or head} commit={commit} verdict=2026-10-30T01:00:00Z",
+            )
+
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged))
+        self.assertEqual(read.merge_of(merged), A, "the writer's own row answers")
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, receipt_head=A[:8]))
+        self.assertEqual(read.merge_of(merged), A, "the receipt's head may be the first 8 of the head cell")
+        for name, kwargs, fault in (
+            (
+                "a correct verdict carrying a receipt",
+                {"verdict": "correct (findings=0)"},
+                "the verdict of a merge row is not '-': 'correct (findings=0)'",
+            ),
+            ("a merged verdict", {"verdict": "merged"}, "the verdict of a merge row is not '-': 'merged'"),
+            (
+                "a receipt naming another pull request",
+                {"receipt_pr": "9"},
+                "the receipt of a merge row names pr=9, not its pr cell '7'",
+            ),
+            (
+                "a receipt naming another head",
+                {"receipt_head": B},
+                f"the receipt of a merge row names head={B}, neither its head_sha {A} nor its first 8",
+            ),
+            (
+                "a receipt naming a short other head",
+                {"receipt_head": B[:8]},
+                f"the receipt of a merge row names head={B[:8]}, neither its head_sha {A} nor its first 8",
+            ),
+        ):
+            with self.subTest(name):
+                read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, **kwargs))  # line 2
+                for commit in (merged, "f" * 40):
+                    with self.assertRaises(self.reader.Malformed) as caught:
+                        read.merge_of(commit)
+                    self.assertEqual(str(caught.exception), f"{self.ledger_file}:2: {fault}")
+                run = self.cli("merge-of", merged)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr, f"ledger: {self.ledger_file}:2: {fault}\n")
+        # the verdict is read whole: a `-` with a note is not the writer's cell
+        read = self.ledger(merge_row("2026-10-30T07:00:00Z", "U7", "7", A, merged, verdict="- (note)"))
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertIn("the verdict of a merge row is not '-': '- (note)'", str(caught.exception))
+        # the order of the faults: the verdict first, then the head cell, then the receipt's pr, then its head
+        read = self.ledger(
+            merge_row("2026-10-30T07:00:00Z", "U7", "7", A[:8], merged, verdict="correct", receipt_pr="9")
+        )
+        with self.assertRaises(self.reader.Malformed) as caught:
+            read.merge_of(merged)
+        self.assertIn("the verdict of a merge row is not '-'", str(caught.exception))
+        self.assertEqual(self.reader.MERGE_VERDICT, "-")
+
     def test_sweep_any_and_merge_of_answer_the_merge_gate_s_questions_about_main_s_tip(self):
         """U597 round 11 (gate one of pr-merge.sh: main's tip swept or exempt before the next merge lands on it):
         `newest_sweep_any(head)` is the newest sweep row of any unit at the head by `(ts, line)`, a fix unit's and

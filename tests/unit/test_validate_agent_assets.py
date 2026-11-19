@@ -945,7 +945,9 @@ class ValidateAgentAssetsTest(unittest.TestCase):
         declaration passes, and a missing block, a missing key, an extra key, a short digest, an upper-case digest, a
         non-string digest and a digest with a trailing newline (round 9, verdict U597-c37800e3 P3 at :1445: `$`
         matched before the newline, so a digest the writer's line reader never matches passed) each fail naming the
-        key, while another asset without the block passes; the committed manifest declares the three pins whole."""
+        key, a non-string key beside the names fails naming the key instead of raising TypeError from `sorted` over
+        mixed types (round 12, verdict U597-097d1615 P3 at :1443), while another asset without the block passes; the
+        committed manifest declares the three pins whole."""
         self.write_text_file("install/common/mise.sh", 'readonly MISE_VERSION="v1"\n')
         manifest = self.asset_manifest()
         manifest["assets"]["security-audit-skill"] = self.security_audit_asset()
@@ -987,6 +989,20 @@ class ValidateAgentAssetsTest(unittest.TestCase):
             "a leading newline": (
                 lambda a: a["validators_sha256"].update({"validate-coverage-ledger.cjs": "\n" + "2" * 64}),
                 "validators_sha256.validate-coverage-ledger.cjs must be 64 lowercase hex",
+            ),
+            # round 12 (verdict U597-097d1615 P3 at :1443): a non-string key beside the string ones (YAML reads a bare
+            # `1:` as an integer) is refused naming the key, where `sorted` over mixed types raised TypeError
+            "an integer key beside the names": (
+                lambda a: a["validators_sha256"].update({1: "a" * 64}),
+                "validators_sha256 holds the key 1, which is not a file name string",
+            ),
+            "a null key": (
+                lambda a: a["validators_sha256"].update({None: "a" * 64}),
+                "validators_sha256 holds the key None, which is not a file name string",
+            ),
+            "a boolean key in place of a name": (
+                lambda a: a["validators_sha256"].update({True: a["validators_sha256"].pop("report-schema.json")}),
+                "validators_sha256 holds the key True, which is not a file name string",
             ),
         }
         for name, (breaks, message) in cases.items():

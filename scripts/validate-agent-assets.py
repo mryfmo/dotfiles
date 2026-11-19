@@ -1436,10 +1436,20 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
 def validate_security_audit_validators(asset: dict[str, Any]) -> None:
     """`assets.security-audit-skill.validators_sha256` holds exactly the two validators' and the schema's sha256
     digests, each 64 lowercase hex and nothing more (U597 round 8; round 9: `report-schema.json` beside them, and the
-    digest held whole by `re.fullmatch`, so a trailing newline is refused): `ledger-row.py daily` reads them as text,
+    digest held whole by `re.fullmatch`, so a trailing newline is refused; round 12: a key that is no string is refused
+    naming it before the keys are compared, since `sorted` over mixed types raised TypeError): `ledger-row.py daily` reads them as text,
     one `<file>: <64 hex>` line each, and refuses a file whose copy hashes to anything else, so a missing, extra or
     malformed key is refused here, before any row depends on it."""
     digests = asset.get("validators_sha256")
+    if isinstance(digests, dict):
+        # A key that is no string (YAML reads a bare `1:` as an integer) is its own refusal naming the key (U597
+        # round 12, verdict U597-097d1615 P3 at :1443: `sorted` over mixed types raised TypeError instead).
+        for key in digests:
+            if not isinstance(key, str):
+                fail(
+                    f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256 holds the key {key!r}, which is not a file"
+                    f" name string; the keys are exactly {list(SECURITY_AUDIT_VALIDATORS)}"
+                )
     if not isinstance(digests, dict) or sorted(digests) != sorted(SECURITY_AUDIT_VALIDATORS):
         fail(
             f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256 must map exactly {list(SECURITY_AUDIT_VALIDATORS)} "

@@ -531,7 +531,7 @@
       "target": ".local/bin/common/pr-merge.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "e154bf19fe23a4c391d8b66fcd304caf791dc30df2ae047e3e124f44fd6bb12b"
+      "sha256": "c87244c733ee209a32694540aad9f1a79d430f1b13ed0cf0fff7c2df4e4d881b"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-thread-reply.sh",
@@ -713,7 +713,7 @@
       "target": ".local/bin/common/ledger.py",
       "kind": "file",
       "executable": false,
-      "sha256": "2ea7256bb9aea9d5f92815cb2e98bffee068e7001da65d084d0d3734c4f1c47e"
+      "sha256": "063e56bb3d2f614b0072c67758127d0add307fd380cf7c2278fd7c97c8327324"
     },
     {
       "source": "home/dot_local/bin/common/sweep-scope.py",

@@ -8,6 +8,7 @@ templates come from the checkout's home/dot_agents/regime (the directory beside 
 """
 
 import os
+import re
 import shutil
 import stat
 import subprocess
@@ -100,13 +101,17 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
             text,
         )
         self.assertNotIn("&& cp <output-dir>", text, "no plain cp: it follows a planted link (round 11)")
-        self.assertIn("in this order: validation first, then the copy, then the row", text)
         self.assertIn(
-            "It runs both validators itself over the files in the seat's output directory, `node"
+            "in this order: the output directory held to the seat's scratch root first, then the validation, then the"
+            " copy, then the row",
+            text,
+        )
+        self.assertIn(
+            "It runs both validators itself over the files at that physical path, `node"
             " ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json && node"
-            " ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`, and"
-            " copies nothing unless both exit 0 (validation before the copy, so a refused run leaves nothing in the"
-            " store)",
+            " ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`"
+            " (`<output-dir>` the physical path from here on), and copies nothing unless both exit 0 (validation before"
+            " the copy, so a refused run leaves nothing in the store)",
             text,
         )
         self.assertIn(
@@ -263,6 +268,71 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         )
         for word in ("ruleset", "strict_required_status_checks_policy", "U613"):
             self.assertNotIn(word, goal, f"the GOAL names no {word} (round 11)")
+
+    def test_the_recording_step_resolves_the_output_directory_under_the_seat_s_scratch_root_first(self):
+        """U597 round 12 (verdict U597-097d1615 P1 at daily-sweep-brief.md:44): the validators and the `cp -R -P` of the
+        recording step followed a symlinked ancestor in the worker-controlled output directory, so coordinator-readable
+        files outside the seat could be validated and copied into the store before the writer checked them. The REPORT
+        now resolves the directory physically first (`cd <dir> && pwd -P`, its exit read), requires the physical path
+        under the seat's scratch root (itself resolved the same way), refuses any symlinked component below the root
+        with a per-component `test -L`, and validates and copies from the physical path; the order sentence names the
+        hold before the validation. Finding 9 (P3): the bus timestamp (`+00:00`, as bus-history.sh prints hcom's rows)
+        is converted to the writer's `YYYY-MM-DDTHH:MM:SSZ` with the one-line python form the kit's readers use, which
+        the test runs over the fixtures' bus form."""
+        text = (TEMPLATES / "daily-sweep-brief.md").read_text()
+        report = text[text.index("\nREPORT\n") : text.index("\nSTANDING\n")]
+        self.assertIn(
+            "in this order: the output directory held to the seat's scratch root first, then the validation, then the"
+            " copy, then the row.",
+            report,
+        )
+        self.assertIn(
+            "It first resolves the worker's output directory physically, `cd <output-dir> && pwd -P` (its exit status"
+            " read: a directory that cannot be entered is a refusal of the run), and requires the physical path to lie"
+            " under the seat's scratch root `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/`, itself"
+            " resolved with `cd ~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit && pwd -P` (the"
+            " physical output directory must start with that root and a slash, else the run is refused and nothing is"
+            " validated or copied), and refuses when any component of `<output-dir>` below that root is a symbolic link:"
+            " `test -L` on each component in turn,"
+            " `~/.local/state/omp-seats/<repository>/.state/<seat>/security-audit/<run>` first and each deeper component"
+            " after it, every test false",
+            report,
+        )
+        self.assertIn("the physical path is what the validators and the copy below read", report)
+        self.assertIn(
+            "It runs both validators itself over the files at that physical path, `node"
+            " ~/.agents/skills/security-audit/validate-findings.cjs <output-dir>/findings.json && node"
+            " ~/.agents/skills/security-audit/validate-coverage-ledger.cjs <output-dir>/coverage-ledger.json`"
+            " (`<output-dir>` the physical path from here on), and copies nothing unless both exit 0",
+            report,
+        )
+        self.assertLess(report.index("cd <output-dir> && pwd -P"), report.index("It runs both validators itself"))
+        self.assertLess(report.index("`test -L` on each component"), report.index("`test ! -e <store>/sweeps/"))
+        # the bus timestamp conversion, the one-line form, run over the bus fixtures' form
+        self.assertIn(
+            "with `<ts>` the RESULT message's bus timestamp converted to the writer's form `YYYY-MM-DDTHH:MM:SSZ`"
+            " (`bus-history.sh` prints hcom's `+00:00` form, `2026-11-19T01:05:00.123456+00:00`, which the writer"
+            " refuses; one line converts it: `python3 -I -c 'import datetime, sys;"
+            " print(datetime.datetime.fromisoformat(sys.argv[1]).astimezone(datetime.timezone.utc)"
+            ".strftime(\"%Y-%m-%dT%H:%M:%SZ\"))' '<bus ts>'`",
+            report,
+        )
+        command = re.search(r"one line converts it: `(python3 -I -c '[^`]*' )'<bus ts>'`", report).group(1)
+        program = re.search(r"python3 -I -c '(.*)' $", command).group(1)
+        for bus_ts, expected in (
+            ("2026-11-19T01:05:00.123456+00:00", "2026-11-19T01:05:00Z"),
+            ("2026-10-23T05:00:00+00:00", "2026-10-23T05:00:00Z"),
+            ("2026-11-19T10:05:00+09:00", "2026-11-19T01:05:00Z"),
+        ):
+            with self.subTest(bus_ts):
+                run = subprocess.run(
+                    [sys.executable, "-I", "-c", program, bus_ts],
+                    capture_output=True,
+                    text=True,
+                    check=False,
+                    timeout=60,
+                )
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, expected + "\n", ""))
 
 
 class RegimeInitTest(unittest.TestCase):

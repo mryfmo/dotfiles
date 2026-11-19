@@ -112,16 +112,30 @@ TIP_GATE = (
     "; the lever reads no server policy to decide it (U597 round 11 removed the up-to-date policy read of rounds 9 and "
     "10): before the listing it requires main's tip to be swept or exempt, the tip's landed diff classified against "
     "its first parent and, for a class or the cap, a sweep row at the tip or at the head it was squashed from when the "
-    "two trees are one (`ledger.py sweep-any`, `ledger.py merge-of`), and after the merge it reads the merge commit's "
-    "first parent and the trees, so a landed diff that differs from the classified one is classified again at the "
-    "merge commit and swept before the next merge, step 6"
+    "two trees are one (`ledger.py sweep-any`, `ledger.py merge-of`; an empty landed diff needs none), classifies the "
+    "diff the squash will land, GitHub's test merge of the head against that tip (`merge_commit_sha`), beside the "
+    "head's own listing with the stricter answer standing, and after the merge holds the merge commit's tree to the "
+    "test merge's tree, so a landed tree that differs (main moved between the lever's last tip read and GitHub's "
+    "write) exits 1 after the receipt and the merge commit is swept before the next merge, step 6; U597 round 12)"
+)
+# U597 round 12 (verdict U597-097d1615 P2 at SKILL.md:29): the daily workflow ended at recording or declining the row,
+# leaving the stop gate's open item for the daily RESULT; step 4 replies to every daily RESULT, `ready_for_review` and
+# `partial` alike, with the HOLD line (a sweep is no audit and no merge, so no VERDICT), citing the hook's rule.
+DAILY_REPLY = (
+    "Reply to every daily RESULT on the bus, `status=ready_for_review` and `status=partial` alike, once the row is "
+    'written or declined: the stop gate (`~/.agents/omp/hooks/stop-gate.ts`, "Stop gate" below) holds a RESULT from a '
+    "seat you tasked as an open item that owes a VERDICT, MERGED or HOLD line under the RESULT's own `task_id`, as it "
+    "does for every worker RESULT, and a sweep is no audit and no merge, so the reply is "
+    '`~/.local/bin/common/hcom-dispatch <team> "$(hcom list self name)" <seat> "HOLD v1 task_id=daily-<YYYY-MM-DD> '
+    "note=<recorded run-<n> as the day's row | partial, no daily row>\"`, the auditable line that closes the item (the "
+    "daily task never gets a VERDICT)"
 )
 MOVED_MAIN = (
-    "Exit 1 after `MERGED` whose stdout is the receipt line and whose stderr line names the merge commit, its first "
-    "parent and the tip of `main` read before the checks (`main moved between the tip read and the merge` with a "
-    "landed diff that touches a sweep class, `the first parent of that commit could not be read`, or the merge "
-    "commit's tree differing from the head's on an unmoved tip; U597 round 8, round 11) means the merge happened and "
-    "the landed diff is not known to be the classified one: record the merge from that receipt line with "
+    "Exit 1 after `MERGED` whose stdout is the receipt line and whose stderr line names the merge commit's tree and the "
+    "test merge's tree classified before the merge (`is not the test merge's tree`: `main` moved between the lever's "
+    "last tip read and GitHub's write, the one window the lever cannot close) or an unreadable tree of the merge commit "
+    "(U597 round 8, round 11, round 12) means the merge happened and the landed diff is not known to be the classified "
+    "one: record the merge from that receipt line with "
     '`~/.local/bin/common/ledger-row.py <store> merged --pr <n> --head <head sha> --unit U<n> --receipt "<receipt '
     'line>"` as for every merge (the lever prints the receipt before its error line so the merge is recorded), then '
     "dispatch a sweep of the merge commit to the sweep seat (a TASK naming the `security-audit` skill at that commit "
@@ -130,8 +144,8 @@ MOVED_MAIN = (
     "--task U<n> --findings sweeps/<dir>/findings.json --count <n>` as a `sweep` row of the unit at the merge commit, "
     "before the `MERGED` line and `state=landed`: the next merge is refused until that row stands, since `pr-merge.sh` "
     "requires main's tip to be swept or exempt before it merges onto it; the merge is not undone and the lever is "
-    "never run again for it. An exit 0 whose stderr says `main` moved and the landed diff touches no sweep class needs "
-    "no such sweep: record and land as usual."
+    "never run again for it. An exit 0 whose stderr says the merge commit's tree is the test merge's tree classified "
+    "before the merge needs no such sweep: the landed diff is the classified one; record and land as usual."
 )
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
@@ -305,6 +319,22 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertEqual(verify.count("`ledger.py sweep-any`"), 1)
         for word in ("U613", "strict_required_status_checks_policy", "ruleset"):
             self.assertNotIn(word, verify, f"step 4 names no {word} (round 11)")
+        self.assertNotIn(
+            "classified again at the merge commit", verify, "nothing is classified after the merge (round 12)"
+        )
+
+    def test_step_four_replies_to_every_daily_result_so_the_stop_gate_s_item_closes(self):
+        """U597 round 12 (verdict U597-097d1615 P2 at SKILL.md:29): the stop gate (`home/dot_agents/omp/hooks/stop-gate.ts`,
+        MOVES: a RESULT from a seat this seat tasked `owes a VERDICT, MERGED or HOLD line`) held the daily RESULT open
+        after the row was written or declined. Step 4 replies to every daily RESULT, `ready_for_review` and `partial`
+        alike, with the HOLD line under the daily task id, citing the hook, right after the tip-gate parenthesis and
+        before the threat-table clause; the hook's own rule text is the one the sentence cites."""
+        verify = step(ORCHESTRATION.read_text(), "The loop", 4)
+        self.assertIn(TIP_GATE + ". " + DAILY_REPLY + ", the rule beside the threat-table rule", verify)
+        self.assertEqual(verify.count("HOLD v1 task_id=daily-<YYYY-MM-DD>"), 1)
+        hook = (ROOT / "home/dot_agents/omp/hooks/stop-gate.ts").read_text()
+        self.assertIn('RESULT: [undefined, "owes a VERDICT, MERGED or HOLD line"],', hook, "the rule the step cites")
+        self.assertIn("owes a VERDICT, MERGED or HOLD line under the RESULT's own `task_id`", verify)
 
     def test_step_six_names_the_moved_main_exit_and_the_sweep_of_the_merge_commit(self):
         """U597 round 9 (verdict U597-c37800e3 P2 at SKILL.md:29, the round-8 P2 of the skill): round 8's lever exits 1

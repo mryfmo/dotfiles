@@ -32,15 +32,18 @@ from test_pr_levers import (  # noqa: E402
     RULESET_REQUIRED_CHECKS,
     SHA_A,
     SHA_B,
+    TEST_MERGE,
+    TEST_MERGE_COMPARE_MATCH,
     TIP_COMPARE_MATCH,
     TIP_PARENT,
     TREE_HEAD,
     TREE_TIP,
     PrLeverTestCase,
-    commit_answer,
     compare_response,
     git_commit_answer,
     ledger_row,
+    mergeable_answer,
+    pull_answer,
     ref_answer,
     sweep_row,
 )
@@ -139,6 +142,12 @@ class PrMergeSweepGateTest(PrLeverTestCase):
             git_commit_answer(BASE_TIP, TREE_TIP, [TIP_PARENT]),
             {"match": TIP_COMPARE_MATCH, "json": compare_response(DOCS_FILES, TIP_PARENT)},
             {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
+            # GitHub's test merge of the head against the tip (round 12): mergeable, its sha, its tree and parents, and
+            # its listing, the head's own (the squash of an up-to-date head)
+            mergeable_answer(),
+            pull_answer(),
+            git_commit_answer(TEST_MERGE, TREE_HEAD, [BASE_TIP, head]),
+            {"match": TEST_MERGE_COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": GREEN_CHECKS},
             {
@@ -150,10 +159,9 @@ class PrMergeSweepGateTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": head},
             },
-            commit_answer(),
-            # the trees (round 11, gate three): the merge commit carries the head's tree, a squash onto an unmoved tip
+            # the landed tree (round 11, gate three; round 12 holds it to the test merge's tree): the merge commit
+            # carries the head's tree, a squash onto an unmoved tip
             git_commit_answer(SHA_B, TREE_HEAD, [BASE_TIP]),
-            git_commit_answer(SHA_A, TREE_HEAD, [TIP_PARENT]),
         )
 
     def merge(self):
@@ -505,6 +513,11 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
             git_commit_answer(BASE_TIP, TREE_TIP, [TIP_PARENT]),
             {"match": TIP_COMPARE_MATCH, "json": compare_response(DOCS_FILES, TIP_PARENT)},
             {"match": COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
+            # GitHub's test merge of the head against the tip (round 12), its listing the head's own
+            mergeable_answer(),
+            pull_answer(),
+            git_commit_answer(TEST_MERGE, TREE_HEAD, [BASE_TIP, SHA_A]),
+            {"match": TEST_MERGE_COMPARE_MATCH, "json": compare_response(LEVER_FILES)},
             COMPARE_OTHER,
             {"match": r"^pr checks 7 --json bucket,name$", "json": checks},
             {
@@ -516,10 +529,9 @@ class PrMergeRequiredChecksTest(PrLeverTestCase):
                 "match": r"^pr view 7 --json state,mergeCommit,baseRefName,headRefOid$",
                 "json": {"state": "MERGED", "mergeCommit": {"oid": SHA_B}, "baseRefName": "main", "headRefOid": SHA_A},
             },
-            commit_answer(),
-            # the trees (round 11, gate three): the merge commit carries the head's tree, a squash onto an unmoved tip
+            # the landed tree (round 11, gate three; round 12 holds it to the test merge's tree): the merge commit
+            # carries the head's tree, a squash onto an unmoved tip
             git_commit_answer(SHA_B, TREE_HEAD, [BASE_TIP]),
-            git_commit_answer(SHA_A, TREE_HEAD, [TIP_PARENT]),
         )
         return self.run_lever("pr-merge.sh", "7", "--records", str(self.records))
 

@@ -674,6 +674,13 @@
       "sha256": "35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d"
     },
     {
+      "source": "home/dot_local/bin/common/executable_stall-watch.sh",
+      "target": ".local/bin/common/stall-watch.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "5385935fdf27fe5b75c8ae445b86be0e0f638063de4bbde82d7cd037be5b6c5c"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_ticket-unit.py",
       "target": ".local/bin/common/ticket-unit.py",
       "kind": "file",
@@ -1038,6 +1045,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "stall-check.py"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "stall-watch.sh"
     },
     {
       "source": "home/dot_local/bin/common",

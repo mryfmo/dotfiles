@@ -155,11 +155,13 @@ REDEFINITION = "no workflow line gives `timeout` another meaning"
 APT_EXEMPT: dict[tuple[str, str], str] = {}
 # Measured, in seconds, outside the apt calls (passing `test` jobs, every matrix row, runs 40314863147 to
 # 40610790312): "Install tools" at most 73 s (ubuntu-24.04 server, run 40338292845), 14 to 46 s elsewhere. "Run
-# Python unit tests" runs no apt since round 12, so its rest is the whole step: 33 min 40 s (2020 s) on macos-15 client
-# at PR 788's head eab19212 (run 43547786562, unittest-shards 1872.6 s for 2816 tests; the Ubuntu test jobs take 12 to
-# 15 min whole); the earlier 2280 s (twice a 19.0 min measurement of 2026-11-07) ran out at PR 780's 606f8caf (run 43548813296,
-# every module OK up to the cut) after the suite grew by this week's units, so the row is 3540 s, the step 60 minutes
-# (U496 round 9). "Install tools" keeps twice its maximum, so a step bound ends a stall, never a slow passing run.
+# Python unit tests" runs no apt since round 12, so its rest is the whole step: the whole plan took 33 min 40 s (2020 s)
+# on macos-15 client at PR 788's head eab19212 (run 43547786562, unittest-shards 1872.6 s for 2816 tests, the
+# test_hcom_seat.py and test_hcom_seat_dsh.py shards 850 to 1050 s each; the Ubuntu test jobs took 12 to 15 min whole).
+# Since regime-cutover U622 each matrix row runs one part of the plan (a quarter on macOS, a half on Ubuntu), so the
+# row is the longest shard measured, 1050 s, plus a third: 1440 s, the step 25 minutes; the coordinator re-measures
+# the rows at U622's head. "Install tools" keeps twice its maximum, so a step bound ends a stall, never a slow passing
+# run.
 # Round 12: every apt call runs in a step of its own that holds nothing else (the tree rule below), so an apt step's
 # rest is 0 and its bound is its calls alone; the two steps that held the calls keep the formula over their measured
 # rest (REST_ONLY_BUDGET, BoundOrderTest).
@@ -168,7 +170,7 @@ STEP_REST_BUDGET = {
     "Install apt packages for the unit tests": 0,
     "Install apt packages for Codecov": 0,
 }
-REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 3540}
+REST_ONLY_BUDGET = {"Install tools": 150, "Run Python unit tests": 1440}
 # U109 round 3 (audit of 0a9fa727): the step check attaches names and timeout-minutes through the hand-written
 # reader `jobs()` (CI's interpreter has no YAML parser), which returns a `run: |` body and a one-line plain scalar
 # and silently returned no body for `run: |-` and `run: >`. A failed read is never an absence (standing order 21):
@@ -1239,6 +1241,7 @@ JOB_KEYS = (
     "continue-on-error",
     "env",
     "if",
+    "name",
     "needs",
     "outputs",
     "runs-on",
@@ -3445,9 +3448,11 @@ class TreeRuleTest(unittest.TestCase):
                 tree_problems("x.yaml", in_job(text, "services:\n  redis:\n    image: redis\n")),
             )
         with self.subTest(case="keys the schema allows a job that no workflow holds, and one it does not allow"):
-            for block in ("name: x\n", "environment: production\n", "permissions: {}\n", "foo: bar\n"):
+            for block in ("environment: production\n", "permissions: {}\n", "foo: bar\n"):
                 key = block.split(":")[0]
                 self.assertEqual([job_key.format(key)], tree_problems("x.yaml", in_job(text, block)), key)
+            # A job's `name:` is held since regime-cutover U622 (test.yaml's shard rows and aggregators), so it passes.
+            self.assertEqual([], tree_problems("x.yaml", in_job(text, "name: x\n")))
             self.assertEqual([6], [line for line, _ in census(in_job(text, "foo: bar\n")).refused])
         with self.subTest(case="keys at the margin: run-name:, env: with a pinned name, defaults:, foo:"):
             self.assertEqual(
@@ -4150,9 +4155,9 @@ class ReaderCensusTest(unittest.TestCase):
                     if command != "sleep 7200":
                         expected.append(f"test.yaml:{at}: added: step 0 {label} runs apt with no STEP_REST_BUDGET row")
                     self.assertEqual(expected, workflow_problems([path]))
-        # The real file with a comment after its own steps: key reads the same, step for step.
+        # The real file with a comment after each job's own steps: key reads the same, step for step.
         text = (WORKFLOWS / "test.yaml").read_text()
-        self.assertEqual(1, text.count("\n    steps:\n"))
+        self.assertEqual(len(text_steps(text)), text.count("\n    steps:\n"))
         commented = text.replace("\n    steps:\n", "\n    steps: # the steps\n")
         self.assertEqual(text_steps(text), text_steps(commented))
         self.assertEqual([], workflow_problems([self.written(commented, "test.yaml")]))
@@ -4200,14 +4205,36 @@ class ReaderCensusTest(unittest.TestCase):
         # written.
         name_refused = f'name: "Unit test (name: holds a quoted scalar that does not close on its line; {READ_VALUES})'
         quoted_key = f'"jobs": (not {KEY_FORM})'
-        # Round 8: the parser gate alone sees the real jobs and one step fewer in `test` (the copy inside the name
-        # ends on the added `echo hi"` step), parting at the first step whose escaped body differs from the real one.
+        # Round 8: the parser gate alone sees the real jobs and, in the copy, one step more in the text's last job (the
+        # copy inside the name ends on the added `echo hi"` step), parting at the first step whose escaped body differs
+        # from the real one. Since U622 test.yaml holds four jobs (the shard rows and three aggregators), all inside
+        # the copy: in the jobs before the last the step counts agree, so the gate names every step whose escaped body
+        # (a quote or a backslash) differs from PyYAML's reading, in order, then the last job's parting.
         real = text_steps((WORKFLOWS / "test.yaml").read_text())
-        jobs_differ = f"test.yaml: the text holds jobs ['test'], PyYAML reads {[*real, 'added']}; {PARSER_GATE}"
+        last = list(real)[-1]
+        jobs_differ = f"test.yaml: the text holds jobs {list(real)}, PyYAML reads {[*real, 'added']}; {PARSER_GATE}"
+        escaped = [
+            re.compile(
+                rf"test\.yaml:[0-9]+: {re.escape(job)}: step {index} runs .* in the text, .* to PyYAML; "
+                rf"{re.escape(PARSER_GATE)}"
+            )
+            for job in list(real)[:-1]
+            for index, step in enumerate(real[job])
+            if any('"' in text or "\\" in text for run in step["runs"] for text in (run["header"], *run["body"]))
+        ]
+        self.assertGreater(len(escaped), 10)  # the real file's quoted step bodies, in the copy with their escapes
         parting = re.compile(
-            rf"test\.yaml: test: {len(real['test']) + 1} steps in the text, {len(real['test'])} to PyYAML, parting at "
-            rf"test\.yaml:[0-9]+: test: step [0-9]+; {re.escape(PARSER_GATE)}"
+            rf"test\.yaml: {re.escape(last)}: {len(real[last]) + 1} steps in the text, {len(real[last])} to PyYAML, "
+            rf"parting at test\.yaml:[0-9]+: {re.escape(last)}: step [0-9]+; {re.escape(PARSER_GATE)}"
         )
+
+        def gate_matches(problems: list[str]) -> list[bool]:
+            """Each problem after the first three against its expected pattern: the escaped steps, then the parting."""
+            patterns = [*escaped, parting]
+            return [len(problems) == len(patterns)] + [
+                pattern.match(problem) is not None for pattern, problem in zip(patterns, problems)
+            ]
+
         for command in ("sudo apt-get update", self.FORM, "sleep 7200"):
             short = short_name(command)
             unbounded = (
@@ -4218,30 +4245,30 @@ class ReaderCensusTest(unittest.TestCase):
                 text = path.read_text()
                 found = census(text)
                 self.assertEqual([(1, name_refused), (jobs_line, quoted_key)], found.refused)
-                self.assertEqual(["test"], list(found.steps))  # the copy inside the name, closed by its last step
-                self.assertEqual(['echo hi"'], [run["header"] for run in found.steps["test"][-1]["runs"]])
+                self.assertEqual(list(real), list(found.steps))  # the copy inside the name, closed by its last step
+                self.assertEqual(['echo hi"'], [run["header"] for run in found.steps[last][-1]["runs"]])
                 read = jobs(path)  # the reader reads the same copy: the hole on 56e41f9b
-                self.assertEqual(["test"], list(read))
-                self.assertEqual({"run": 'echo hi"'}, read["test"]["steps"][-1])
+                self.assertEqual(list(real), list(read))
+                self.assertEqual({"run": 'echo hi"'}, read[last]["steps"][-1])
                 problems = workflow_problems([path])
                 self.assertEqual(
                     [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: {quoted_key}", jobs_differ], problems[:3]
                 )
-                self.assertEqual([True], [parting.match(problem) is not None for problem in problems[3:]])
+                self.assertEqual([True] * (len(escaped) + 2), gate_matches(problems[3:]), problems[3:])
                 self.assertEqual([line.format(at + 2) for line in unbounded], apt_violations("test.yaml", text))
                 self.yaml_reads_the_added_job(text, command, quoted_name=True)
             with self.subTest(command=short, written="the quoted name alone"):
                 path, jobs_line, at = self.auditors_document(command, quoted_jobs=False)
                 found = census(path.read_text())
                 self.assertEqual([(1, name_refused), (jobs_line, "jobs: (a second jobs: key)")], found.refused)
-                self.assertEqual(["test"], list(found.steps))
-                self.assertEqual(["test"], list(jobs(path)))
+                self.assertEqual(list(real), list(found.steps))
+                self.assertEqual(list(real), list(jobs(path)))
                 problems = workflow_problems([path])
                 self.assertEqual(
                     [f"test.yaml:1: {name_refused}", f"test.yaml:{jobs_line}: jobs: (a second jobs: key)", jobs_differ],
                     problems[:3],
                 )
-                self.assertEqual([True], [parting.match(problem) is not None for problem in problems[3:]])
+                self.assertEqual([True] * (len(escaped) + 2), gate_matches(problems[3:]), problems[3:])
                 self.yaml_reads_the_added_job(path.read_text(), command, quoted_name=True)
             with self.subTest(command=short, written="the quoted jobs key alone"):
                 path, jobs_line, at = self.auditors_document(command, quoted_name=False)
@@ -4338,7 +4365,8 @@ class ReaderCensusTest(unittest.TestCase):
                     expected = [(line, f"{why} at column {column}; {CHARACTER_SET}") for column in columns]
                     found = census(text)
                     self.assertEqual((expected, {}), (found.refused, found.steps))
-                    self.assertEqual(["test"], list(jobs(path)))  # the hole: the reader reads the line as a comment
+                    # The hole: the reader reads the line as a comment and sees the real jobs alone.
+                    self.assertEqual(list(text_steps((WORKFLOWS / "test.yaml").read_text())), list(jobs(path)))
                     self.assertEqual(
                         [f"test.yaml:{line}: {message}" for _, message in expected], workflow_problems([path])
                     )

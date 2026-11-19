@@ -10,6 +10,15 @@ on:
     branches: [main]
   pull_request:
     branches: [main]
+  # A dispatched run measures the suite (regime-cutover U622): `macos_runner` puts the macOS rows on another image
+  # (`macos-15-intel`, 4 vCPU) against the default `macos-15`; the matrix label, the job names and the OS variable
+  # stay macos-15, so two dispatched runs compare step by step. Every row runs its tests whatever the head's diff.
+  workflow_dispatch:
+    inputs:
+      macos_runner:
+        description: The runner label of the macOS rows (macos-15 or macos-15-intel)
+        type: string
+        default: macos-15
 
 # A pull request's newer head cancels its older run. A main push, schedule or
 # dispatch run is grouped by its commit, never with a pull request, and is never
@@ -23,30 +32,57 @@ permissions:
 
 jobs:
   test:
-    # Run the same test suite on each target OS/system pair.
-    # We intentionally keep macOS as `client` only because this repository
-    # does not define a macOS `server` test target.
-    # A failing matrix job never cancels its siblings: each required context reports its own conclusion, and
+    # The suite on each target OS/system pair, as matrix shards (regime-cutover U622): the macOS leg ran the whole plan
+    # (164 shards at PR 806, 129 at this head) 6 at a time on a 3-core runner for 36 minutes, so the plan is split into
+    # 4 parts there (the Free plan runs 5 macOS jobs at once) and 2 on Ubuntu, each row running
+    # `scripts/ci/unittest-shards.py --shard K/N`. Every other step
+    # (the tools, mise, chezmoi, the Bats suite, the lints) runs in every row, so a row is the old job over a part of
+    # the plan. The rows are named `test-shard (<os>, <system>, <shard>)`; the main ruleset requires the old names
+    # `test (<os>, <system>)`, which the three aggregator jobs at the end of this file report (only the repository
+    # admin changes the ruleset). macOS is `client` only because this repository defines no macOS `server` target.
+    # A failing matrix job never cancels its siblings: each row reports its own conclusion, and
     # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
+    name: test-shard (${{ matrix.os }}, ${{ matrix.system }}, ${{ matrix.shard }})
     strategy:
       fail-fast: false
       matrix:
         os: [ubuntu-24.04, macos-15]
         system: [client, server]
+        # Every part of both plans; the excludes leave each os its own count (4 on macOS, 2 on Ubuntu).
+        shard: [1/4, 2/4, 3/4, 4/4, 1/2, 2/2]
         exclude:
           - os: macos-15
             system: server
+          - os: macos-15
+            shard: 1/2
+          - os: macos-15
+            shard: 2/2
+          - os: ubuntu-24.04
+            shard: 1/4
+          - os: ubuntu-24.04
+            shard: 2/4
+          - os: ubuntu-24.04
+            shard: 3/4
+          - os: ubuntu-24.04
+            shard: 4/4
         # Non-required canary for the next Ubuntu image: it shows how the suite
         # fares there without blocking merges. Adopt it by changing the
         # explicit label above once it is green.
         include:
           - os: ubuntu-26.04
             system: client
+            shard: 1/2
+          - os: ubuntu-26.04
+            system: client
+            shard: 2/2
 
-    runs-on: ${{ matrix.os }}
+    # The matrix label, except that a dispatched run may put the macOS rows on the image `macos_runner` names (the
+    # measurement of U622); on a push or pull request the input is empty and the label stands.
+    runs-on: ${{ matrix.os == 'macos-15' && inputs.macos_runner || matrix.os }}
     # Up to 409 s before `Run unit test` and 10 s after it in passing Ubuntu client jobs (October 2026), around the
-    # 60 minutes of `Run Python unit tests` (the longest step since U496 round 9) and the 35 of `Run unit test`
-    # (tests/unit/test_apt_mirror.py BoundOrderTest checks the sum: 480 + 3600 + 60 s under the job's bound).
+    # 25 minutes of `Run Python unit tests` (a part of the plan since U622) and the 35 of `Run unit test`
+    # (tests/unit/test_apt_mirror.py BoundOrderTest checks the sum: 480 + 1500 + 2100 + 60 s under the job's bound).
+    # The bound names a stall, not a row's expected time; the coordinator measures the rows (U622).
     timeout-minutes: 70
     continue-on-error: ${{ matrix.os == 'ubuntu-26.04' }}
     env:
@@ -55,7 +91,8 @@ jobs:
       OS: ${{ matrix.os }}
       SYSTEM: ${{ matrix.system }}
       # Keep Codecov naming deterministic per job. This makes it easy to trace
-      # upload sessions in Codecov API/UI and avoids accidental session overlap.
+      # upload sessions in Codecov API/UI and avoids accidental session overlap. The Bats coverage is the same in
+      # every shard row of a pair, so the first row alone uploads it (the step's `if`) under the pair's name.
       CODECOV_FLAGS: ${{ matrix.os }}-${{ matrix.system }}
       CODECOV_NAME: codecov-dotfiles-${{ matrix.os }}-${{ matrix.system }}
 
@@ -140,7 +177,8 @@ jobs:
             all_skippable=false
             os_independent "${path}" || all_os_independent=false
           done < "${changed}"
-          if [ "${paths}" -eq 0 ]; then
+          # A dispatched run measures the suite: every row tests whatever the head's diff (U622).
+          if [ "${EVENT_NAME}" = workflow_dispatch ] || [ "${paths}" -eq 0 ]; then
             echo "should_test=true" >> "${GITHUB_OUTPUT}"
           elif [ "${all_skippable}" = true ]; then
             echo "should_test=false" >> "${GITHUB_OUTPUT}"
@@ -507,15 +545,16 @@ jobs:
 
       - name: Run Python unit tests
         if: ${{ steps.decide.outputs.should_test == 'true' }}
-        # The measured step with margin: the macos-15 client step took 33 min 40 s at PR 788's head eab19212 (run
-        # 43547786562: unittest-shards 1872.6 s for 2816 tests, the test_hcom_seat.py and test_hcom_seat_dsh.py shards
-        # 850 to 1050 s each) and timed out at the earlier 39 min at PR 780's 606f8caf (run 43548813296, every module OK
-        # up to the cut); that 39 was twice a 19.0 min measurement of 2026-11-07 (main 49f3c33c, run 42347799380), before
-        # the suite grew by test_regime_start, test_worker_worktree, test_ticket_unit, test_units_row, test_program_status,
-        # test_stall_check (and test_claude_keyed, retired by U551); the Ubuntu test jobs take 12 to 15 min whole. 59 min of rest, rounded up plus
-        # one minute (tests/unit/test_apt_mirror.py BoundOrderTest, REST_ONLY_BUDGET 3540 s); the apt calls run in the
-        # step above under their own bound.
-        timeout-minutes: 60
+        # One part of the plan per row (regime-cutover U622; UNIT_TEST_SHARD below): the whole plan took 33 min 40 s on
+        # the macos-15 client row at PR 788's head eab19212 (run 43547786562: unittest-shards 1872.6 s for 2816 tests,
+        # the test_hcom_seat.py and test_hcom_seat_dsh.py shards 850 to 1050 s each) and 12 to 15 min whole on Ubuntu.
+        # A quarter holds a share of those long shards, so its bound is the longest shard measured (1050 s) plus a
+        # third: 24 min of rest, rounded up plus one minute (tests/unit/test_apt_mirror.py BoundOrderTest,
+        # REST_ONLY_BUDGET 1440 s); the apt calls run in the step above under their own bound. The coordinator
+        # re-measures the rows at this head and the bound follows the measurement, never the other way round.
+        timeout-minutes: 25
+        env:
+          UNIT_TEST_SHARD: ${{ matrix.shard }}
         run: |
           if [[ "${OS}" == macos-* ]]; then
             command -v jq > /dev/null 2>&1 || brew install jq
@@ -526,6 +565,7 @@ jobs:
           # (scripts/ci/unittest-shards.py; UNIT_TEST_JOBS=1 is the serial run). Twice as many shards as CPUs:
           # the tests wait on their subprocesses, and on PR #493 that took the step from 215 s to 170 s on
           # macos-14 (3 CPUs, the macOS image of that time) and from 111 s to 92 s on ubuntu-24.04 (4 CPUs) (U39).
+          # UNIT_TEST_SHARD (this row's K/N, from the step's env) narrows the run to this row's part of the plan.
           cpus="$(getconf _NPROCESSORS_ONLN)"
           UNIT_TEST_JOBS="$(( 2 * cpus ))" make unit-test
 
@@ -610,7 +650,8 @@ jobs:
           sudo /usr/bin/timeout --kill-after=10 150 apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y jq curl
 
       - name: Upload coverage to Codecov
-        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && !endsWith(github.actor, '[bot]') }}
+        # The first shard row of a pair alone: the Bats coverage is the same in every row (the suite runs whole there).
+        if: ${{ steps.decide.outputs.should_test == 'true' && matrix.os == 'ubuntu-24.04' && startsWith(matrix.shard, '1/') && !endsWith(github.actor, '[bot]') }}
         uses: codecov/codecov-action@v7.1.1
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -632,3 +673,63 @@ jobs:
           # The CLI pip installs: codecov-cli 11.3.1 (PyPI, 2026-07-09), not the newest at run time.
           version: 11.3.1
           verbose: false
+
+  # The main ruleset requires `test (macos-15, client)`, `test (ubuntu-24.04, client)` and `test (ubuntu-24.04, server)`
+  # (read 2026-11-19 through the rulesets API), the names of the one job per pair before U622 split each pair into
+  # shard rows. A matrix row renames its check, and only the repository admin changes the ruleset, so the three
+  # names are kept by these jobs: each needs the shard rows, runs however they ended (`if: always()`) and fails unless
+  # every row succeeded. With one matrix job, `needs.test.result` is the whole matrix's conclusion (`failure` or
+  # `cancelled` when any row is), so a red row reddens all three names and green means every shard of every row
+  # passed; the row that failed is named by its own check `test-shard (<os>, <system>, <shard>)`. A skipped row (the
+  # decision above) is a success, as the old job's was. tests/unit/test_ci_workflows.py pins the names, the `needs`
+  # and the `if`.
+  test-macos-15-client:
+    name: test (macos-15, client)
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      SHARDS_RESULT: ${{ needs.test.result }}
+    steps:
+      - name: Require every shard row green for test (macos-15, client)
+        run: |
+          if [ "${SHARDS_RESULT}" != success ]; then
+            echo "the test-shard rows ended ${SHARDS_RESULT}; see the test-shard (macos-15, client, K/4) checks" >&2
+            exit 1
+          fi
+          echo "every test-shard row succeeded"
+
+  test-ubuntu-24-04-client:
+    name: test (ubuntu-24.04, client)
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      SHARDS_RESULT: ${{ needs.test.result }}
+    steps:
+      - name: Require every shard row green for test (ubuntu-24.04, client)
+        run: |
+          if [ "${SHARDS_RESULT}" != success ]; then
+            echo "the test-shard rows ended ${SHARDS_RESULT}; see the test-shard (ubuntu-24.04, client, K/2) checks" >&2
+            exit 1
+          fi
+          echo "every test-shard row succeeded"
+
+  test-ubuntu-24-04-server:
+    name: test (ubuntu-24.04, server)
+    needs: test
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 2
+    env:
+      SHARDS_RESULT: ${{ needs.test.result }}
+    steps:
+      - name: Require every shard row green for test (ubuntu-24.04, server)
+        run: |
+          if [ "${SHARDS_RESULT}" != success ]; then
+            echo "the test-shard rows ended ${SHARDS_RESULT}; see the test-shard (ubuntu-24.04, server, K/2) checks" >&2
+            exit 1
+          fi
+          echo "every test-shard row succeeded"

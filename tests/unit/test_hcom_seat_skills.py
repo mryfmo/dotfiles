@@ -85,6 +85,84 @@ SWEEP_TASK = (
     "the swept head, verifier `security-audit-skill c1c8a8c1`, evidence the findings file under the store) before the "
     "unit's merge."
 )
+# U597 round 4: the daily sweep of main's head is the coordinator's dispatch once per UTC day from the kit's template,
+# recorded with ledger-row.py daily as a row of the store's daily-sweeps.tsv, the row pr-merge.sh reads before it
+# skips a head's own sweep row; round 6: the row's ts is the RESULT's timestamp (`--swept-at`), the findings go into a
+# run-keyed directory, and the writer reads the count from the file (no `--count`); round 11 (verdict U597-2bebb5ae
+# P1 at daily-sweep-brief.md:44): the recording follows the validation and a copy that follows no symbolic link.
+DAILY_DISPATCH = (
+    "and main's head one full sweep per UTC day, which you dispatch once per UTC day to the sweep seat at main's head "
+    "from the kit's brief template `~/.agents/regime/daily-sweep-brief.md` (task id `daily-<YYYY-MM-DD>`; the "
+    "`<head>`, `<run>` and `<prev>` placeholders filled) and record, after both validators exit 0 over the seat's "
+    "output files and the files are copied without following symbolic links (the template's REPORT names the "
+    "commands), with `~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
+    "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json --swept-at <ts>` "
+    "(`ledger-row.py daily`; `<ts>` the RESULT's bus timestamp, the row's ts; the count is read from the findings "
+    "file) as a row of the store's `daily-sweeps.tsv`"
+)
+# U597 round 13 (verdict U597-30d381ab P1 at pr-merge.sh:1800): a milestone unit, by its `units.tsv` track, gets its
+# sweep whatever its paths, dispatched beside the class rule.
+MILESTONE_DISPATCH = (
+    "as does a milestone unit (its `units.tsv` track `milestone`), whose sweep you dispatch whatever its paths "
+    "(`pr-merge.sh` requires its `sweep` row at the audited head whatever the classes answer; U597 round 13)"
+)
+DAILY_GATE = (
+    "skips the row for every other head only while `ledger.py daily 86400` finds a daily sweep of main's head within "
+    "24 hours, so a day without its sweep keeps the per-head rule for every head"
+)
+# U597 round 11 (verdict U597-2bebb5ae P1 at pr-merge.sh:907, :981 and :1609; the mechanism-change decisions row of
+# 2026-11-19T15:21:36Z): rounds 9 and 10 bound the exemption to a server policy the lever inferred client-side; the
+# lever now reads shas, trees and store rows alone, so step 4 names the tip gate and the tree check in the policy's
+# place, and step 6 names the moved-main exit, the receipt printed first, and its recovery. Round 13 (verdict
+# U597-30d381ab): the daily row's head on main's line, the carried route of the tip gate, and the landed commit held by
+# its first parent and its tree with the landed diff classified on a mismatch.
+TIP_GATE = (
+    "; the lever reads no server policy to decide it (U597 round 11 removed the up-to-date policy read of rounds 9 and "
+    "10): the daily row's head must be main's tip or an ancestor of it (the compare API's status `identical` or "
+    "`ahead`, read at both reads; round 13), before the listing it requires main's tip to be swept or exempt, the "
+    "tip's landed diff classified against its first parent and, for a class or the cap, a sweep row at the tip, at the "
+    "head it was squashed from when the two trees are one, or at the earlier head that head was carried from "
+    "(`ledger.py sweep-any`, `ledger.py merge-of`, `ledger.py carried-from`; an empty landed diff needs none), "
+    "classifies the diff the squash will land, GitHub's test merge of the head against that tip (`merge_commit_sha`), "
+    "beside the head's own listing with the stricter answer standing, and after the merge holds the merge commit's "
+    "first parent to that tip and its tree to the test merge's tree, so a landed commit that differs in either (main "
+    "moved between the lever's last tip read and GitHub's write) has its landed diff classified through the same "
+    "reader: a diff touching no class exits 0 with a line and the receipt stands, a class or the cap exits 1 after the "
+    "receipt and the merge commit is swept before the next merge, step 6; U597 round 12, round 13)"
+)
+# U597 round 12 (verdict U597-097d1615 P2 at SKILL.md:29): the daily workflow ended at recording or declining the row,
+# leaving the stop gate's open item for the daily RESULT; step 4 replies to every daily RESULT, `ready_for_review` and
+# `partial` alike, with the HOLD line (a sweep is no audit and no merge, so no VERDICT), citing the hook's rule.
+DAILY_REPLY = (
+    "Reply to every daily RESULT on the bus, `status=ready_for_review` and `status=partial` alike, once the row is "
+    'written or declined: the stop gate (`~/.agents/omp/hooks/stop-gate.ts`, "Stop gate" below) holds a RESULT from a '
+    "seat you tasked as an open item that owes a VERDICT, MERGED or HOLD line under the RESULT's own `task_id`, as it "
+    "does for every worker RESULT, and a sweep is no audit and no merge, so the reply is "
+    '`~/.local/bin/common/hcom-dispatch <team> "$(hcom list self name)" <seat> "HOLD v1 task_id=daily-<YYYY-MM-DD> '
+    "note=<recorded run-<n> as the day's row | partial, no daily row>\"`, the auditable line that closes the item (the "
+    "daily task never gets a VERDICT)"
+)
+MOVED_MAIN = (
+    "Exit 1 after `MERGED` whose stdout is the receipt line and whose stderr line names the merge commit, its first "
+    "parent or its tree beside the tip and the test merge's tree classified before the merge, and the class its landed "
+    "diff touches (`the landed diff (compare/<parent>...<merge commit>) touches`: `main` moved between the lever's last "
+    "tip read and GitHub's write, the one window the lever cannot close, and the diff that landed touches a sweep class "
+    "or the cap) or an unreadable parent or tree of the merge commit (U597 round 8, round 11, round 12, round 13) means "
+    "the merge happened and the landed diff is a classed one the lever did not classify before the merge, or is "
+    "unknown: record the merge from that receipt line with "
+    '`~/.local/bin/common/ledger-row.py <store> merged --pr <n> --head <head sha> --unit U<n> --receipt "<receipt '
+    'line>"` as for every merge (the lever prints the receipt before its error line so the merge is recorded), then '
+    "dispatch a sweep of the merge commit to the sweep seat (a TASK naming the `security-audit` skill at that commit "
+    "with an output directory under the seat's scratch root, as step 4's sweep is) and record its validated findings "
+    "with `~/.local/bin/common/ledger-row.py <store> sweep --head <merge sha> --unit U<n> --seat <seat> --run <n> "
+    "--task U<n> --findings sweeps/<dir>/findings.json --count <n>` as a `sweep` row of the unit at the merge commit, "
+    "before the `MERGED` line and `state=landed`: the next merge is refused until that row stands, since `pr-merge.sh` "
+    "requires main's tip to be swept or exempt before it merges onto it; the merge is not undone and the lever is "
+    "never run again for it. An exit 0 whose stderr says the merge commit's first parent is the tip and its tree the "
+    "test merge's tree classified before the merge, or that `main` moved but the landed diff touches no sweep class, "
+    "needs no such sweep: the landed diff is the classified one, or touches nothing the tip gate asks a sweep for "
+    "(round 13); record and land as usual."
+)
 ROUND_CAP_EXIT = (
     "Exit 3 is the round cap refused (the treadmill rule above): its stderr names the refused unit (the body's, or a "
     "`U<n>b` the ledger names for that pull request), its counts and the row to write; write that `decisions.tsv` "
@@ -225,11 +303,82 @@ class HcomSeatSkillsTest(unittest.TestCase):
     def test_step_four_names_the_sweep_as_a_worker_task_whose_findings_are_advisory_rows(self):
         verify = step(ORCHESTRATION.read_text(), "The loop", 4)
         self.assertIn(SWEEP_TASK, verify)
-        self.assertIn("Every unit and every program milestone also gets one security sweep", verify)
+        # U597: the sweep rule by path class; the every-unit sentence is gone, and the daily sweep and the classes
+        # cite the operator's sweep rule C of 2026-11-18, not standing order 44, which governs executed tests (round 3);
+        # round 4: the daily sweep is the coordinator's dispatch from the kit's template, its row written with
+        # ledger-row.py daily, and the lever skips a head's own row only while that row stands; round 13: a milestone
+        # unit's sweep is dispatched whatever its paths
+        self.assertIn(
+            "A unit whose head changes a lever, a policy, credential handling or a deployed executable (the path "
+            "classes of `scripts/orchestrator/sweep-scope.py`, U597) also gets one security sweep before its merge, "
+            + MILESTONE_DISPATCH
+            + ", "
+            + DAILY_DISPATCH
+            + " (the operator's sweep rule C of 2026-11-18; `pr-merge.sh` refuses",
+            verify,
+        )
+        self.assertIn(DAILY_GATE, verify)
+        self.assertEqual(verify.count("daily-sweep-brief.md"), 1)
+        self.assertEqual(verify.count("track `milestone`"), 1)
+        self.assertNotIn("standing order 44", verify)
+        self.assertNotIn("Every unit and every program milestone also gets one security sweep", verify)
         self.assertNotIn("trust-boundary class", verify)
         # the sweep is one sentence of step 4, after the audit route it never replaces
         self.assertLess(verify.index(AUDIT_ROUTE), verify.index(SWEEP_TASK))
         self.assertEqual(verify.count("security-audit-skill c1c8a8c1"), 1)
+
+    def test_step_four_names_the_tip_gate_and_the_tree_check_in_place_of_a_policy_read(self):
+        """U597 round 11 (verdict U597-2bebb5ae P1 at pr-merge.sh:907, :981 and :1609): rounds 9 and 10 had step 4 say
+        the exemption existed only while a server policy was true, a policy the lever inferred client-side; the lever
+        reads shas, trees and store rows alone now, so step 4 names, inside the daily-sweep parenthesis after the daily
+        gate, the tip gate (main's tip swept or exempt, `ledger.py sweep-any` and `merge-of`) and the post-merge tree
+        check with its step-6 recovery, and no ruleset, policy or U613."""
+        verify = step(ORCHESTRATION.read_text(), "The loop", 4)
+        self.assertIn(DAILY_GATE + TIP_GATE, verify)
+        self.assertLess(verify.index(DAILY_GATE), verify.index(TIP_GATE))
+        self.assertEqual(verify.count("`ledger.py sweep-any`"), 1)
+        for word in ("U613", "strict_required_status_checks_policy", "ruleset"):
+            self.assertNotIn(word, verify, f"step 4 names no {word} (round 11)")
+        self.assertNotIn(
+            "classified again at the merge commit", verify, "nothing is classified after the merge (round 12)"
+        )
+
+    def test_step_four_replies_to_every_daily_result_so_the_stop_gate_s_item_closes(self):
+        """U597 round 12 (verdict U597-097d1615 P2 at SKILL.md:29): the stop gate (`home/dot_agents/omp/hooks/stop-gate.ts`,
+        MOVES: a RESULT from a seat this seat tasked `owes a VERDICT, MERGED or HOLD line`) held the daily RESULT open
+        after the row was written or declined. Step 4 replies to every daily RESULT, `ready_for_review` and `partial`
+        alike, with the HOLD line under the daily task id, citing the hook, right after the tip-gate parenthesis and
+        before the threat-table clause; the hook's own rule text is the one the sentence cites."""
+        verify = step(ORCHESTRATION.read_text(), "The loop", 4)
+        self.assertIn(TIP_GATE + ". " + DAILY_REPLY + ", the rule beside the threat-table rule", verify)
+        self.assertEqual(verify.count("HOLD v1 task_id=daily-<YYYY-MM-DD>"), 1)
+        hook = (ROOT / "home/dot_agents/omp/hooks/stop-gate.ts").read_text()
+        self.assertIn('RESULT: [undefined, "owes a VERDICT, MERGED or HOLD line"],', hook, "the rule the step cites")
+        self.assertIn("owes a VERDICT, MERGED or HOLD line under the RESULT's own `task_id`", verify)
+
+    def test_step_six_names_the_moved_main_exit_and_the_sweep_of_the_merge_commit(self):
+        """U597 round 9 (verdict U597-c37800e3 P2 at SKILL.md:29, the round-8 P2 of the skill): round 8's lever exits 1
+        after `MERGED` when the merge commit's first parent is not the main tip read before the listing, and the skill
+        treated `MERGED` at the expected head as authority to record landed. Step 6 names that exit (and the unread
+        parent) and its recovery: a sweep of the merge commit dispatched to the sweep seat and recorded as a `sweep`
+        row of the unit at the merge commit before the `MERGED` line, the ledger row and `state=landed`; the merge is
+        never undone and the lever never run twice. Round 11 (verdict U597-2bebb5ae P2 at SKILL.md:31): the lever
+        prints the receipt line before its error line, so the step records the merge from it with `ledger-row.py
+        merged` first, names the tree check among the exits, says the next merge is refused until the sweep row
+        stands, and tells the exit 0 of a moved main whose landed diff touches no class apart. The sentence comes after
+        the merge-error sentence and before the `MERGED` line."""
+        merge = step(ORCHESTRATION.read_text(), "The loop", 6)
+        self.assertIn(MOVED_MAIN, merge)
+        self.assertLess(merge.index(MERGE_ERROR), merge.index(MOVED_MAIN))
+        self.assertLess(merge.index(MOVED_MAIN), merge.index("Then `MERGED v1"))
+        self.assertEqual(merge.count("sweep of the merge commit"), 1)
+        self.assertIn("`~/.local/bin/common/ledger-row.py <store> sweep --head <merge sha> --unit U<n>", merge)
+        self.assertIn(
+            '`~/.local/bin/common/ledger-row.py <store> merged --pr <n> --head <head sha> --unit U<n> --receipt "<receipt line>"`',
+            merge,
+        )
+        self.assertLess(merge.index('--receipt "<receipt line>"'), merge.index("dispatch a sweep of the merge commit"))
+        self.assertNotIn("U613", merge)
 
     def test_step_one_creates_the_worker_worktree_with_the_lever_whose_worktree_cannot_push(self):
         brief = step(ORCHESTRATION.read_text(), "The loop", 1)

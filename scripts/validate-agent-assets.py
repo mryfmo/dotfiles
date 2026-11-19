@@ -1343,6 +1343,15 @@ ASSET_VERIFY_BY_SOURCE = {
 }
 # `release: latest` resolves at install time; only these sources can do that.
 ROLLING_ASSET_SOURCES = {"github-release", "https-download", "crates"}
+# The `security-audit-skill` asset (regime-cutover U597 round 8) pins the two validators `ledger-row.py daily` runs
+# and, since round 9, the `report-schema.json` that `validate-findings.cjs` loads from its own directory:
+# `validators_sha256` maps exactly these file names to the sha256 of each installed file, and the writer copies each
+# into a private directory and hashes the copy against its digest before `node` runs the copies, so a manifest without
+# all three keys as 64 hex earns no PASS. The digest is held by `re.fullmatch` (round 9, verdict U597-c37800e3 P3 at
+# :1445: `$` matched before a trailing newline, so a digest the writer's line reader never matches passed here).
+SECURITY_AUDIT_SKILL_ASSET = "security-audit-skill"
+SECURITY_AUDIT_VALIDATORS = ("validate-findings.cjs", "validate-coverage-ledger.cjs", "report-schema.json")
+SHA256_HEX = re.compile(r"[0-9a-f]{64}")
 # A rolling asset carries no version or checksum of its own.
 ROLLING_ASSET_FORBIDDEN_FIELDS = ("pin", "ref", "ref_commit", "sha256")
 # A rolling asset needs a check independent of the release page it comes from: a release attestation,
@@ -1424,6 +1433,36 @@ def asset_pin_values(asset: dict[str, Any]) -> list[tuple[str, Any]]:
     return values
 
 
+def validate_security_audit_validators(asset: dict[str, Any]) -> None:
+    """`assets.security-audit-skill.validators_sha256` holds exactly the two validators' and the schema's sha256
+    digests, each 64 lowercase hex and nothing more (U597 round 8; round 9: `report-schema.json` beside them, and the
+    digest held whole by `re.fullmatch`, so a trailing newline is refused; round 12: a key that is no string is refused
+    naming it before the keys are compared, since `sorted` over mixed types raised TypeError): `ledger-row.py daily` reads them as text,
+    one `<file>: <64 hex>` line each, and refuses a file whose copy hashes to anything else, so a missing, extra or
+    malformed key is refused here, before any row depends on it."""
+    digests = asset.get("validators_sha256")
+    if isinstance(digests, dict):
+        # A key that is no string (YAML reads a bare `1:` as an integer) is its own refusal naming the key (U597
+        # round 12, verdict U597-097d1615 P3 at :1443: `sorted` over mixed types raised TypeError instead).
+        for key in digests:
+            if not isinstance(key, str):
+                fail(
+                    f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256 holds the key {key!r}, which is not a file"
+                    f" name string; the keys are exactly {list(SECURITY_AUDIT_VALIDATORS)}"
+                )
+    if not isinstance(digests, dict) or sorted(digests) != sorted(SECURITY_AUDIT_VALIDATORS):
+        fail(
+            f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256 must map exactly {list(SECURITY_AUDIT_VALIDATORS)} "
+            f"to sha256 digests (ledger-row.py daily holds the installed files' copies to them), not {digests!r}"
+        )
+    for validator, digest in digests.items():
+        if not isinstance(digest, str) or SHA256_HEX.fullmatch(digest) is None:
+            fail(
+                f"assets.{SECURITY_AUDIT_SKILL_ASSET}.validators_sha256.{validator} must be 64 lowercase hex, "
+                f"not {digest!r}"
+            )
+
+
 def validate_assets(manifest: dict[str, Any]) -> None:
     """Require one complete declaration per asset and no hand-written installer versions."""
     assets = manifest.get("assets")
@@ -1487,6 +1526,8 @@ def validate_assets(manifest: dict[str, Any]) -> None:
             fail(f"assets.{name} must record sha256 for verify {asset['verify']!r}")
         if asset["verify"] == "gpg" and not asset.get("gpg_fingerprint"):
             fail(f"assets.{name} must record gpg_fingerprint for verify 'gpg'")
+        if name == SECURITY_AUDIT_SKILL_ASSET:
+            validate_security_audit_validators(asset)
         if asset["source"] in INSTALLING_ASSET_SOURCES:
             absent = [key for key in ("install_path", "installer") if not asset.get(key)]
             if absent:

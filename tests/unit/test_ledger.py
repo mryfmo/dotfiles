@@ -394,6 +394,42 @@ class LedgerDailyTest(unittest.TestCase):
         run = self.cli("daily", "86400")
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, daily(hour_old, A), ""))
 
+    def test_an_unpadded_ts_is_malformed_to_the_daily_reader_and_the_ledger_alike(self):
+        """U597 round 6 (verdict U597-10d46fe0 P3 at ledger.py:343): `strptime` under `%m`, `%d`, `%H`, `%M` and `%S`
+        reads one digit as well as two, so the daily reader accepted `2026-11-9T4:5:6Z` under a grammar that spells
+        two digits in every field. `timestamp` holds the cell to `TS_SHAPE` first, the one grammar of both files: an
+        unpadded field in a daily row or in a ledger row is Malformed naming the line and the form, the padded ts
+        still parses, and the CLI exits 2 naming the line."""
+        name = str(self.daily_file)
+        self.assertEqual(self.reader.TS_SHAPE.pattern, r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
+        self.assertEqual(self.reader.timestamp("2026-11-09T04:05:06Z"), datetime(2026, 11, 9, 4, 5, 6))
+        for value in (
+            "2026-11-9T4:5:6Z",
+            "2026-1-09T04:05:06Z",
+            "2026-11-9T04:05:06Z",
+            "2026-11-09T4:05:06Z",
+            "2026-11-09T04:5:06Z",
+            "2026-11-09T04:05:6Z",
+            "026-11-09T04:05:06Z",
+            "2026-11-09T04:05:06",
+            "2026-11-09t04:05:06Z",
+            "２０２６-11-09T04:05:06Z",
+        ):
+            with self.subTest(value):
+                self.assertIsNone(self.reader.timestamp(value))
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.write(daily(value, A))
+                self.assertEqual(str(caught.exception), f"{name}:2: the ts {value!r} is not YYYY-MM-DDThh:mm:ssZ")
+                ledger_text = HEADER + "\t".join((value, "U7", "7", A, "pushed", "coordinator", "x")) + "\n"
+                with self.assertRaises(self.reader.Malformed) as caught:
+                    self.reader.parse_ledger("ledger.tsv", ledger_text)
+                self.assertEqual(str(caught.exception), f"ledger.tsv:2: the ts {value!r} is not YYYY-MM-DDThh:mm:ssZ")
+        # the CLI: a malformed store naming the line, never "none" and never the padded row beside it
+        self.daily_file.write_text(DAILY_HEADER + daily(ago(3600), A) + daily("2026-11-9T4:5:6Z", B))
+        run = self.cli("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn(f"{name}:3: the ts '2026-11-9T4:5:6Z' is not YYYY-MM-DDThh:mm:ssZ", run.stderr)
+
     def test_a_malformed_daily_file_is_malformed_naming_the_line_and_the_field(self):
         ts = "2026-11-19T10:00:00Z"
         name = str(self.daily_file)

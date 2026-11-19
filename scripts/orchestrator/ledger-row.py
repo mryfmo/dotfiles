@@ -13,7 +13,8 @@ name, re-reads the ledger plus the new line through `ledger.parse_ledger` before
 the one line. It states no grammar of its own: `ledger.py` beside it is the one reader, imported from that path alone
 (as `audit-carry.py` imports it), and a row the reader would refuse is never written.
 
-`ledger-row.py <store> <kind> ...`, one subcommand per kind; `ts` is now in UTC under the reader's `TS_FORMAT`:
+`ledger-row.py <store> <kind> ...`, one subcommand per kind; `ts` is now in UTC under the reader's `TS_FORMAT` (the
+`daily` kind's is its `--swept-at`, the sweep's own time; round 6):
 - `merged --pr <pr> --head <sha> --unit <unit> --receipt <line> [--note <text>]`: verdict `-`, verifier exactly
   `pr-merge.sh`, evidence the `pr-merge.sh` receipt (`merged pr=<pr> head=<sha8 or sha40> commit=<40 hex>`, whose pr
   and head must equal the arguments) then `; <note>`.
@@ -39,20 +40,28 @@ the one line. It states no grammar of its own: `ledger.py` beside it is the one 
   the lever name alone, one of `pr-update-branch.sh`, `pr-close.sh`, `records-sync.sh`; evidence the receipt then `;
   <note>`.
 - `daily --head <40 hex> --seat <seat> --run <n> --task <U<n> or daily-<YYYY-MM-DD>> --findings
-  sweeps/<dir>/findings.json --count <n>` (regime-cutover U597 round 4): not a ledger row but the one row of the
-  store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file `ledger.py daily` reads and
-  `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its own sweep row), ts the
-  clock, head main's head the sweep ran at, verifier as the `sweep` kind composes it (`security-audit-skill <pin8>
-  (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`), evidence `<findings>; <count> findings;
-  validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS` with the findings path a regular file under the
-  store. Round 5 (verdicts/U597-1b3c4b1d.md): the day's first file, the header and the first row, is written whole
-  through a temporary file of the store directory and `os.replace` under the ledger's lock (so two first writers
-  serialise and the second appends), and appears whole or not at all, where round 4's `O_CREAT | O_EXCL` header
-  write left a malformed file after a short write that no retry repaired; a later row is read, checked through
-  `ledger.parse_daily` and appended as one write under the daily file's own lock as the ledger is; a file whose
-  header is malformed is refused naming the line, never repaired; and a `--findings` path an existing daily row
-  already names (the evidence's first `;`-separated field) is refused naming that row's ts, so a finished run is
-  not re-recorded to refresh the window (the writer dates the row by the clock, not the sweep).
+  sweeps/<dir>/findings.json --swept-at <YYYY-MM-DDTHH:MM:SSZ>` (regime-cutover U597 round 4): not a ledger row but the
+  one row of the store's `daily-sweeps.tsv` (header `ts head_sha verifier evidence`, the file `ledger.py daily` reads
+  and `pr-merge.sh` requires within 24 hours before a head outside every sweep class skips its own sweep row), ts the
+  sweep's own time (round 6, verdicts/U597-10d46fe0.md: `--swept-at`, the RESULT message's bus timestamp the
+  coordinator passes, under the reader's strict form, refused when later than the clock plus 60 seconds, the reader's
+  slack, or more than 24 hours before it, since such a row would be born stale; round 5 dated the row by the clock, so
+  a delayed recording granted a fresh window), head main's head the sweep ran at, verifier as the `sweep` kind
+  composes it (`security-audit-skill <pin8> (full audit mode on the srt worker seat <seat>, run-<n>; TASK <task>)`),
+  evidence `<findings>; <count> findings; validators pass; recorded <ts>` with the findings path a regular file of this
+  user under the store that the writer opens itself (round 6: `O_NOFOLLOW`, `fstat` a regular file of this uid, strict
+  UTF-8, JSON, a list whose every element is an object, else a refusal naming the file; `<count>` is that list's length
+  and `--count` is gone from this kind; `validators pass` is the coordinator's statement that both validators exited
+  0, which no reader depends on; `recorded <ts>` the clock at the write). Round 5 (verdicts/U597-1b3c4b1d.md): the
+  day's first file, the header and the first row, is written whole through a temporary file of the store directory
+  and `os.replace` under the ledger's lock (so two first writers serialise and the second appends), and appears whole
+  or not at all, where round 4's `O_CREAT | O_EXCL` header write left a malformed file after a short write that no
+  retry repaired; a later row is read, checked through `ledger.parse_daily` and appended as one write under the daily
+  file's own lock as the ledger is; a file whose header is malformed is refused naming the line, never repaired; and a
+  `--findings` path an existing daily row already names (the evidence's first `;`-separated field) or a `(seat, run)`
+  one already carries (the verifier's `seat <seat>, run-<n>;` fields; round 6, since the same run's findings copied
+  to another path refreshed the window) is refused naming that row's ts and line, so a finished run is not
+  re-recorded.
 
 Two refusals cross rows, before any write (standing order 21): a `pushed` or `receipt` row whose head is 40 hex while
 `ledger.already_audited` names an audit row of the same pull request at that head is refused naming that row's ts (the
@@ -95,6 +104,7 @@ import argparse
 import errno
 import fcntl
 import importlib.util
+import json
 import math
 import os
 import re
@@ -102,7 +112,7 @@ import stat
 import sys
 import tempfile
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 # `python3 -I -S` still writes `__pycache__` beside an imported module: `ledger.tsv` is the one file this lever writes.
 sys.dont_write_bytecode = True
@@ -167,6 +177,12 @@ SWEEP_SEAT = re.compile(r"^\S+$")
 # The task id of the coordinator's daily dispatch (U597 round 4), the kit's `daily-sweep-brief.md` template: one per
 # UTC day; a daily row may also record a sweep dispatched as a unit (U<n>).
 DAILY_TASK = re.compile(r"^daily-[0-9]{4}-[0-9]{2}-[0-9]{2}$")
+# The seat and the run of a daily row's verifier, as sweep_verifier composes them (round 6: the repeat guard keys on
+# them beside the findings path, since a run's findings copied to another path are still that run's).
+SWEEP_SEAT_RUN = re.compile(r"\(full audit mode on the srt worker seat (\S+), run-(0|[1-9][0-9]*); TASK ")
+# The oldest `--swept-at` the daily kind records (round 6): the window pr-merge.sh reads with (its DAILY_SWEEP_MAX_AGE,
+# 86400 seconds); a row dated earlier would be born stale and stand for no head.
+SWEPT_AT_MAX_AGE = 86400
 # The manifest, read as text by one indentation rule (pr-merge.sh `sweep_pin_probe`, brief-check.py `manifest_levers`):
 # a bare `<key>:` line opens a mapping, a line indented no deeper closes it, and the pin is the one `pin: <40 hex>`
 # line at the indentation of the `security-audit-skill` asset's first field under the top-level `assets:`.
@@ -313,6 +329,8 @@ def sweep_row(args, store):
         refuse(f"the task unit {args.task!r} is not U<n> or U<n><letter>")
     if args.pr is not None:
         check_pr(args.pr)
+    if not DIGITS.match(args.count):
+        refuse(f"the count {args.count!r} is not a decimal number")
     verifier = sweep_verifier(args)
     store_file(store, args.findings, "findings path")
     evidence = (
@@ -384,11 +402,10 @@ def receipt_row(args):
 
 def sweep_verifier(args):
     """The verifier of a `sweep` or `daily` row: the skill, its pin word from the manifest, the seat, the run and the
-    task, after the run, the count, the seat and the findings path are checked."""
+    task, after the run, the seat and the findings path are checked (the `sweep` kind's count is its own check; the
+    `daily` kind reads its count from the file, round 6)."""
     if not DIGITS.match(args.run):
         refuse(f"the run {args.run!r} is not a decimal number")
-    if not DIGITS.match(args.count):
-        refuse(f"the count {args.count!r} is not a decimal number")
     if not SWEEP_SEAT.match(args.seat):
         refuse(f"the seat {args.seat!r} is not one word")
     match = SWEEP_FINDINGS.match(args.findings)
@@ -406,16 +423,117 @@ def sweep_verifier(args):
 
 def daily_row(args, store):
     """`daily` (U597 round 4): the one row of `daily-sweeps.tsv`, main's head the sweep ran at, the verifier of the
-    `sweep` kind, the evidence the findings file (a regular file under the store), the count and the two validators;
-    the task the coordinator's daily id `daily-<YYYY-MM-DD>` or a unit."""
+    `sweep` kind, the evidence the findings file (a regular file under the store, read for the count; round 6), the
+    coordinator's `validators pass` and the recording time; the ts the sweep's own, `--swept-at` (round 6); the task
+    the coordinator's daily id `daily-<YYYY-MM-DD>` or a unit."""
     check_head(args.head)
     if not UNIT.match(args.task) and not DAILY_TASK.match(args.task):
         refuse(f"the task {args.task!r} is not daily-<YYYY-MM-DD> or U<n>")
+    swept_at = check_swept_at(args.swept_at)
     verifier = sweep_verifier(args)
-    store_file(store, args.findings, "findings path")
-    evidence = f"{args.findings}; {args.count} findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
-    ts = now()
-    return ledger.DailyRow(ledger.timestamp(ts), args.head, verifier, evidence, 0, ts)
+    count = findings_count(store_file(store, args.findings, "findings path"), args.findings)
+    evidence = f"{args.findings}; {count} findings; validators pass; recorded {now()}"
+    return ledger.DailyRow(swept_at, args.head, verifier, evidence, 0, args.swept_at)
+
+
+def check_swept_at(text):
+    """`--swept-at` as a time (round 6): the RESULT message's bus timestamp under the reader's one form
+    (`ledger.timestamp`: the shape, two digits in every field, then the calendar), no later than the clock plus the
+    reader's slack (`DAILY_FUTURE_SLACK`, 60 seconds: a sweep's RESULT is never ahead of its recording) and no earlier
+    than the clock minus SWEPT_AT_MAX_AGE (24 hours, the window `pr-merge.sh` reads with: a row dated earlier would be
+    born stale and stand for no head). Any other value is a refusal naming it and the clock."""
+    at = ledger.timestamp(text)
+    if at is None:
+        refuse(
+            f"--swept-at {text!r} is not {ledger.TS_FORM} (the RESULT message's bus timestamp in UTC, two digits in "
+            "every field)"
+        )
+    clock = ledger.utc_now()
+    clock_text = clock.strftime(ledger.TS_FORMAT)
+    if at > clock + timedelta(seconds=ledger.DAILY_FUTURE_SLACK):
+        refuse(
+            f"--swept-at {text} is in the future: later than the clock {clock_text} plus {ledger.DAILY_FUTURE_SLACK} "
+            "seconds; a sweep's RESULT time is never ahead of its recording, and a row dated ahead would stand longer "
+            "than its sweep"
+        )
+    if at < clock - timedelta(seconds=SWEPT_AT_MAX_AGE):
+        refuse(
+            f"--swept-at {text} is more than {SWEPT_AT_MAX_AGE} seconds (24 hours) before the clock {clock_text}; the "
+            "row would be born stale, outside the window pr-merge.sh reads with, and stand for no head"
+        )
+    return at
+
+
+def seat_run_of(verifier):
+    """The `(seat, run)` a daily row's verifier carries in the form sweep_verifier composes, or None for a verifier
+    of another form (a hand-written row keys on its findings path alone)."""
+    match = SWEEP_SEAT_RUN.search(verifier)
+    return None if match is None else (match.group(1), match.group(2))
+
+
+def json_kind(value):
+    """A JSON value's kind in the refusals' words."""
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "a boolean"
+    if isinstance(value, (int, float)):
+        return "a number"
+    if isinstance(value, str):
+        return "a string"
+    if isinstance(value, list):
+        return "a list"
+    return "an object"
+
+
+def findings_count(path, relative):
+    """The count of the findings file a daily row names (round 6; the round-5 P2 at daily_row: the writer stated
+    `<count> findings` and two validator passes after checking that the file existed, so invalid or truncated JSON
+    backed a daily exemption): `path`, already held by store_file's path rule, is opened `O_RDONLY | O_NOFOLLOW`
+    (the open itself follows no link at the end), its descriptor `fstat`ed a regular file of this user, read whole,
+    decoded as strict UTF-8, parsed as JSON, and held to a list whose every element is an object (the skill's
+    findings set); the list's length is the count the evidence states. Any other outcome is a refusal naming the
+    file: the writer states no count it did not read."""
+    try:
+        descriptor = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
+    except OSError as error:
+        refuse(f"cannot open the findings file {relative}: {error.strerror}")
+    chunks = []
+    try:
+        status = os.fstat(descriptor)
+        if not stat.S_ISREG(status.st_mode):
+            refuse(f"the findings file {relative} is not a regular file")
+        if status.st_uid != os.geteuid():
+            refuse(f"the findings file {relative} is not this user's (owned by uid {status.st_uid}); it is not read")
+        while True:
+            chunk = os.read(descriptor, 1 << 16)
+            if not chunk:
+                break
+            chunks.append(chunk)
+    except OSError as error:
+        refuse(f"cannot read the findings file {relative}: {error.strerror}")
+    finally:
+        try:
+            os.close(descriptor)
+        except OSError:
+            pass
+    try:
+        text = b"".join(chunks).decode("utf-8")
+    except UnicodeDecodeError as error:
+        refuse(f"the findings file {relative} is not UTF-8: {error.reason}")
+    try:
+        findings = json.loads(text)
+    except ValueError as error:
+        refuse(f"the findings file {relative} is not JSON: {error}")
+    if not isinstance(findings, list):
+        refuse(f"the findings file {relative} is not a JSON list of findings but {json_kind(findings)}")
+    for index, finding in enumerate(findings):
+        if not isinstance(finding, dict):
+            refuse(
+                f"the findings file {relative} holds {json_kind(finding)} at index {index}, not an object; a findings "
+                "set is a list of objects"
+            )
+    return len(findings)
 
 
 def refuse_if_audited(read, kind, row):
@@ -465,7 +583,6 @@ def parser():
         sub.add_argument("--run", required=True, help="the run number")
         sub.add_argument("--task", required=True, help=task_help)
         sub.add_argument("--findings", required=True, help="sweeps/<dir>/findings.json, a regular file under the store")
-        sub.add_argument("--count", required=True, help="the findings count")
 
     merged = kind("merged", "the merge receipt: verdict -, verifier pr-merge.sh")
     merged.add_argument("--receipt", required=True, help="the line pr-merge.sh printed")
@@ -476,11 +593,26 @@ def parser():
     carried.add_argument("--evidence-note", help="appended to the evidence after '; '")
     sweep = kind("sweep", "the security-audit skill's row: pr -, verdict sweep", pr=False)
     sweep_arguments(sweep, "the sweep's own unit, U<n>")
+    sweep.add_argument("--count", required=True, help="the findings count")
     sweep.add_argument("--pr", help="the pull request swept; the pr cell stays '-'")
     daily = kind(
-        "daily", "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger", pr=False, unit=False
+        "daily",
+        "the daily sweep of main's head: one row of daily-sweeps.tsv, not of the ledger; its ts is --swept-at and its "
+        "count is read from the findings file",
+        pr=False,
+        unit=False,
     )
     sweep_arguments(daily, "the daily dispatch's task id, daily-<YYYY-MM-DD>, or a unit U<n>")
+    daily.add_argument(
+        "--swept-at",
+        required=True,
+        metavar="TS",
+        help=(
+            "the sweep's RESULT timestamp, YYYY-MM-DDTHH:MM:SSZ in UTC, written as the row's ts; refused later than "
+            f"the clock plus {ledger.DAILY_FUTURE_SLACK} seconds or more than {SWEPT_AT_MAX_AGE} seconds (24 hours) "
+            "before it"
+        ),
+    )
     audit = kind("audit", "the audit verdict: the word read from the verdict file's last line")
     audit.add_argument("--verdict-file", required=True, help="verdicts/<unit>-<sha8>.md")
     audit.add_argument("--verifier", required=True, help="the verifier text, starting with pr-audit.sh")
@@ -785,14 +917,21 @@ def write_row(args, store, ledger_path, descriptor, composed=None):
         refuse(str(error))
     if args.kind == "daily":
         row = composed
-        # A findings path an earlier daily row names is a finished run (round 5): recording it again would date a
-        # new row by the clock and refresh the window without a new sweep.
+        # A findings path an earlier daily row names is a finished run (round 5), and so is a (seat, run) one carries
+        # (round 6: the same run's findings copied to another path): recording either again would date a new row
+        # and refresh the window without a new sweep.
         for existing in read.rows:
             if existing.sweep_evidence_path == args.findings:  # lint-comparisons: allow named-text: a recorded path
                 refuse(
                     f"the findings file {args.findings} is already recorded by the daily sweep row of"
                     f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded to"
                     " refresh the window"
+                )
+            if seat_run_of(existing.verifier) == (args.seat, args.run):
+                refuse(
+                    f"run-{args.run} of the seat {args.seat} is already recorded by the daily sweep row of"
+                    f" {existing.ts_text} ({ledger_path}:{existing.line}); a finished run is not re-recorded under"
+                    " another findings path to refresh the window"
                 )
         header = ledger.DAILY_HEADER
         cells = (row.ts_text, row.head_sha, row.verifier, row.evidence)

@@ -12,11 +12,13 @@ the required cells and the choice of a newest row are each stated once.
 `read_ledger(path)` (or `parse_ledger(name, text)` for a text read elsewhere, as `rounds-check.py --head` reads a
 git blob) returns a `Ledger` of `Row`s or raises `Malformed` naming the file and line: the first line must be the
 header `ts unit pr head_sha verdict verifier evidence`; every other line is split on the tab alone (an empty field
-is still a field; U119 round 3), must have the header's column count, a ts `datetime.strptime` reads under
-`%Y-%m-%dT%H:%M:%SZ` and nothing else (no shape pattern stands beside it: hour 25 is a ValueError, so a malformed
-row), and no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty cell matched no pull request
-and read as "no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every choice of a newest row is
-made in) and as written (`ts_text`, for the lines that name the row), its seven cells and its line number.
+is still a field; U119 round 3), must have the header's column count, a ts of the one shape `YYYY-MM-DDThh:mm:ssZ`
+(`TS_SHAPE`: four digits, then two in every other field; U597 round 6, where `strptime` alone read `2026-11-9T4:5:6Z`
+under a form that spells two digits) that `datetime.strptime` then reads under `%Y-%m-%dT%H:%M:%SZ` (hour 25 is a
+ValueError, so a malformed row), and no empty `ts`, `unit`, `pr`, `head_sha` or `verdict` cell (round 2: an empty
+cell matched no pull request and read as "no row"). A `Row` carries its ts parsed (`ts`, a datetime, the order every
+choice of a newest row is made in) and as written (`ts_text`, for the lines that name the row), its seven cells and
+its line number.
 
 The four questions, each the newest row by `(ts, line)` (the later line at an equal ts, the file position deciding
 nothing else; round 5): `newest_for_head(pr, head)` is the newest row of the pull request at the full sha, whatever
@@ -49,16 +51,17 @@ sweep of the `security-audit` skill per UTC day, the standing control a head out
 its rows live in the store's own file `daily-sweeps.tsv` (header `ts head_sha verifier evidence`), written by
 `ledger-row.py daily` and read here alone. `read_daily(path)` returns a `Daily` of `DailyRow`s, or None when no file
 exists at the path (the day's first sweep is not yet recorded: `none` to the lever, never a refusal), or raises
-Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts `strptime`
-reads under the one form, no empty cell, a `head_sha` of 40 hex, and the verifier and the evidence the exact fields
-of the sweep rule (`security-audit-skill <pin>`, a findings file `sweeps/<path>.json`), each fault naming the line and
-the field. `Daily.newest_within(now, max_age)` is the newest row by `(ts, line)` whose ts lies within the window
-`now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60 seconds, the clocks' skew; round 5: a row dated further in the
-future is not within the window, so it does not count and is not refused as malformed, where round 4's floor alone
-let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily <max-age-seconds>`
-prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none` (no file, or no
-row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a row, so the
-exemption of rule C is bound to the control it rests on.
+Malformed with the ledger's strictness: the header exact, four cells per row split on the tab alone, a ts of the one
+shape `timestamp` reads (`TS_SHAPE`, then `strptime`; round 6: `2026-11-9T4:5:6Z` is Malformed naming the line, where
+round 5's `strptime` alone read it), no empty cell, a `head_sha` of 40 hex, and the verifier and the evidence the
+exact fields of the sweep rule (`security-audit-skill <pin>`, a findings file `sweeps/<path>.json`), each fault naming
+the line and the field. `Daily.newest_within(now, max_age)` is the newest row by `(ts, line)` whose ts lies within
+the window `now - max_age <= ts <= now + DAILY_FUTURE_SLACK` (60 seconds, the clocks' skew; round 5: a row dated
+further in the future is not within the window, so it does not count and is not refused as malformed, where round 4's
+floor alone let a future-dated row waive per-head sweeps until a day after its ts). `ledger.py <store> daily
+<max-age-seconds>` prints `<ts>\\t<head_sha>\\t<verifier>\\t<evidence>` of that row against the clock (UTC), or `none`
+(no file, or no row within the window); `pr-merge.sh` asks it with 86400 and skips a head's own sweep row only on a
+row, so the exemption of rule C is bound to the control it rests on.
 """
 
 from __future__ import annotations
@@ -74,6 +77,9 @@ HEADER = ("ts", "unit", "pr", "head_sha", "verdict", "verifier", "evidence")
 REQUIRED = range(1, 6)  # ts unit pr head_sha verdict: an empty cell is a malformed row, never "no row"
 TS_FORMAT = "%Y-%m-%dT%H:%M:%SZ"  # the one timestamp form of the store, read by strptime alone
 TS_FORM = "YYYY-MM-DDThh:mm:ssZ"  # the same form as the refusals spell it
+# The shape every ts cell has before the calendar check (U597 round 6): four ASCII digits, then two in each of the five
+# other fields, the literals in their places; `strptime` alone accepts one digit where the form spells two.
+TS_SHAPE = re.compile(r"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$")
 # A verdict column that starts with the word `correct` or `incorrect` (pr-merge.sh's correct_re, both words).
 AUDIT_VERDICT = re.compile(r"^(correct|incorrect)(?:$|[\s(;,])")
 # A verdict column that starts with the word `sweep` (the security-audit skill's advisory row, AGENTS.md Audit sweep
@@ -141,8 +147,12 @@ class Malformed(Exception):
 
 
 def timestamp(text):
-    """The ts cell as a time, or None: `datetime.strptime` under TS_FORMAT and nothing else, so a text outside the
-    form and a time no calendar holds (hour 25, month 13) are both None, a malformed row to every reader."""
+    """The ts cell as a time, or None: the shape TS_SHAPE first (U597 round 6: `strptime` reads one digit as well as
+    two under `%m`, `%d`, `%H`, `%M` and `%S`, so `2026-11-9T4:5:6Z` passed a form that spells two), then
+    `datetime.strptime` under TS_FORMAT, so a text outside the form and a time no calendar holds (hour 25, month 13)
+    are both None, a malformed row to every reader."""
+    if TS_SHAPE.match(text) is None:
+        return None
     try:
         return datetime.strptime(text, TS_FORMAT)
     except ValueError:

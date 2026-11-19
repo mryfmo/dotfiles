@@ -5,8 +5,9 @@ mixed head's class, a docs-only head that requires nothing, and the CLI forms pr
 under `python3 -I -S`: `<base> <head>` (the paths `git diff --name-only --no-renames <base>...<head>` lists, from the
 toplevel whatever `diff.relative` says or where the command runs; round 3) and `--files-json` (the audited head's
 files as the lever's one read of the compare API prints them, `gh api 'repos/{owner}/{repo}/compare/main...<head>'
---jq '(.files // error("no files key")) | .[] | [.status, .filename, (if has("previous_filename") then
-.previous_filename else null end)] | @json'`, one JSON array per file, keyed by the head's sha (round 4); round 5:
+--jq '(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end) |
+.[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'`, one JSON
+array per file, keyed by the head's sha (round 4; round 6 holds `files` to an array before iterating); round 5:
 completeness read from the listing itself, 300 or more entries, the API's cap, answering `required cap`, and the
 `--changed-files <n>` count of rounds 3 and 4 gone), each printing `required <class>`, `required cap` or
 `not-required`, and exit 2 with one stderr line on a failed git read, an empty listing, a path git would not list, a
@@ -86,10 +87,11 @@ CLASSES_LITERAL = (
 )
 # The lever's jq form and the reader's call, as pr-merge.sh spells them (round 3; round 4 passes previous_filename
 # through as it is, so a boolean reaches the reader and is refused instead of being mapped to null; round 5 requires
-# the `files` key, so a response without one is the jq's error and never an empty listing).
+# the `files` key; round 6 holds `files` to an array before `.[]` iterates it, so an object, a string, a number, a
+# boolean or null there is the jq's error naming the type and never a listing).
 FILES_JQ = (
-    '\'(.files // error("no files key")) | .[] | [.status, .filename, '
-    '(if has("previous_filename") then .previous_filename else null end)] | @json\''
+    '\'(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end)'
+    ' | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json\''
 )
 READER_CALL = '"${scope_reader}" --files-json <<< "${listing}"'
 # The compare API's cap on `files` (round 5), as the reader names it.
@@ -731,7 +733,14 @@ class SweepRuleDocumentsTest(unittest.TestCase):
         text = LEVER.read_text()
         self.assertIn(f"--jq {FILES_JQ}", text, "the jq form, in the call")
         self.assertIn('[.status, .filename, (if has("previous_filename") then .previous_filename else null end)]', text)
-        self.assertIn('`(.files // error("no files key"))`', text, "the files key named in the prose")
+        self.assertIn(
+            'error("files is " + (.files | type) + ", not an array")', text, "the array check named in the prose"
+        )
+        self.assertEqual(
+            text.count('(.files // error("no files key"))'),
+            1,
+            "the round-5 projection, which iterated an object's values, is named once as history and runs nowhere",
+        )
         self.assertIn("`sweep-scope.py --files-json`", text)
         self.assertIn("`required cap`", text)
         self.assertIn("`daily-sweeps.tsv`", text)

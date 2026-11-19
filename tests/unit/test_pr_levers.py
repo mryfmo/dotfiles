@@ -1200,10 +1200,12 @@ SKIP_LINE = "sweep: not required (no lever, policy, credential or deployed-execu
 # they are; rounds 2 and 3 read the files endpoint keyed by the pull request's number, which no reread around it
 # bound to the audited head). Round 5: one call without `--paginate` (the files are on the first page alone, at most
 # 300), the `files` key required by the jq so a response without one is its error and never an empty listing, and
-# no count of the pull request read beside it (the round-4 P1: a number-keyed count no pin bound).
+# no count of the pull request read beside it (the round-4 P1: a number-keyed count no pin bound). Round 6: `files`
+# held to an array before `.[]` iterates it (the round-5 P1: `.[]` over an object iterated its values, so a one-record
+# object read as that file's listing), the jq's error naming the type.
 FILES_JQ = (
-    '(.files // error("no files key")) | .[] | [.status, .filename, '
-    '(if has("previous_filename") then .previous_filename else null end)] | @json'
+    '(if (.files | type) == "array" then .files else error("files is " + (.files | type) + ", not an array") end)'
+    ' | .[] | [.status, .filename, (if has("previous_filename") then .previous_filename else null end)] | @json'
 )
 # Any compare request the fixture did not key: GitHub's answer to a basehead it does not hold is an error.
 COMPARE_OTHER_MATCH = r"^api repos/\{owner\}/\{repo\}/compare/"
@@ -2920,8 +2922,9 @@ class PrMergeTest(PrLeverTestCase):
             f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api {pinned}); the sweep scope"
             " is decided from them",
         )
-        # a response without a `files` key (a later page of the compare endpoint holds `commits` alone): the jq's
-        # error fails the call, exit 1 naming the key, never an empty listing read as not required
+        # a response without a `files` key (a later page of the compare endpoint holds `commits` alone): `.files` is
+        # null there, so the jq's array check fails the call, exit 1 naming the type, never an empty listing read as
+        # not required (round 6: the same check that refuses an object, a string, a number and a boolean)
         for name, response in (
             ("a commits page without files", {"url": "https://api.github.com/x", "commits": [], "total_commits": 0}),
             ("files null", {"files": None, "commits": []}),
@@ -2934,9 +2937,9 @@ class PrMergeTest(PrLeverTestCase):
                     run,
                     1,
                     f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api {pinned}); the sweep"
-                    " scope is decided from them, and a response without its files key",
+                    " scope is decided from them, and a response whose files is not an array",
                 )
-                self.assertIn("no files key", run.stderr, "the jq's own error reaches stderr")
+                self.assertIn("files is null, not an array", run.stderr, "the jq's own error reaches stderr")
         # the cap: 300 entries or more of docs paths keep the gate as a class does
         for count in (CAP, CAP + 1, 3000):
             with self.subTest(entries=count):
@@ -3426,6 +3429,131 @@ class PrMergeTest(PrLeverTestCase):
         self.assertIn("\n        component_dir=${component_dir}/${relative%%/*}\n", text)
         self.assertIn("[[ ! -L ${component_dir} && -d ${component_dir} && -O ${component_dir} ]] ||", text)
         self.assertIn('[[ ${resolved_dir}/ == "${resolved_store}/sweeps/"* ]] ||', text)
+
+    def test_a_compare_response_whose_files_is_not_an_array_fails_the_listing_with_no_merge(self):
+        """U597 round 6 (verdict U597-10d46fe0 P1 at pr-merge.sh:745): round 5's jq, `(.files // error("no files
+        key")) | .[]`, iterated an object's values, so a response whose `files` was one file record as an object
+        passed that record's fields through as a listing and a docs head reached `not-required` with the daily sweep
+        standing. The jq holds `files` to an array before anything iterates: an object (the one-record shape that
+        merged at 10d46fe0, and one keyed by filename), a string, null, a number and a boolean each fail the call
+        through the jq's own error naming the type, exit 1 with no merge, no skip line and no CI read, through the
+        lever's own jq run by the fake as gh runs it; the same record inside an array is the listing it should be and
+        the docs head merges on the daily sweep."""
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        self.daily(daily_row())  # the daily sweep stands, so the listing alone decides
+        pinned = f"repos/{{owner}}/{{repo}}/compare/main...{SHA_A}"
+        checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
+        record = {"status": "modified", "filename": "docs/plan.md"}
+        for name, files, kind in (
+            ("an object holding one file record", record, "object"),
+            ("an object keyed by filename", {"docs/plan.md": record}, "object"),
+            ("a string", "docs/plan.md", "string"),
+            ("null", None, "null"),
+            ("a number", 1, "number"),
+            ("a boolean", True, "boolean"),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                self.github(compare_json={"url": "https://api.github.com/x", "files": files})
+                run = self.merge()
+                self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+                self.assertIn(
+                    f"cannot list the changed paths of the head {SHA_A} of pull request 7 (gh api {pinned}); the sweep"
+                    " scope is decided from them, and a response whose files is not an array",
+                    run.stderr,
+                )
+                self.assertIn(f"files is {kind}, not an array", run.stderr, "the jq's own error names the type")
+                self.assertNotIn("sweep: not required", run.stderr)
+                self.assertEqual(run.stdout, "", "no receipt")
+                self.assertEqual(self.writes(), [])
+                calls = self.gh_calls()
+                self.assertEqual([call for call in calls if call[:1] == ["api"]], [COMPARE_CALL], "one call, the jq")
+                self.assertNotIn(checks_call, [call[: len(checks_call)] for call in calls], "before CI")
+        # the record inside an array is a listing of one docs file: the head merges on the daily sweep
+        self.calls.unlink(missing_ok=True)
+        self.github(compare_json={"url": "https://api.github.com/x", "files": [record]})
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+        self.assertIn(f"--jq '{FILES_JQ}'", (LEVERS / "pr-merge.sh").read_text(), "the call spells the check")
+
+    def test_a_failed_physical_path_read_of_the_store_or_the_findings_directory_never_merges(self):
+        """U597 round 6 (verdict U597-10d46fe0 P3 at pr-merge.sh:901; standing order 21): `sweep_row_fields` reads
+        the physical path of the store and of the findings file's directory (`cd` and `pwd -P`, each with its status
+        read), and round 5's test exercised the symlink refusals before either read. `pwd` is a builtin, so the
+        failure is injected through a `BASH_ENV` file the lever's bash reads at start, whose `pwd` function fails
+        inside `sweep_row_fields` when the working directory is the store, or the findings directory, and is the
+        builtin everywhere else: each failed read is exit 1 naming the path, with no merge, no skip line and no CI
+        read, for the daily row and for a unit's sweep row (the one function); without the injection both rows
+        merge."""
+        docs = files_listing("docs/plan.md")
+        checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
+        injection = self.root / "bash-env.sh"
+
+        def inject(target):
+            injection.write_text(
+                "pwd() {\n"
+                f'    if [[ ${{FUNCNAME[1]}} == sweep_row_fields && ${{PWD}} == "{target}" ]]; then\n'
+                "        echo 'fake pwd: read failed' >&2\n"
+                "        return 1\n"
+                "    fi\n"
+                '    builtin pwd "$@"\n'
+                "}\n"
+            )
+            self.env["BASH_ENV"] = str(injection)
+
+        def failed(run, message):
+            self.assertEqual(run.returncode, 1, run.stdout + run.stderr)
+            self.assertIn(f"pr-merge.sh: {message}", run.stderr)
+            self.assertIn("fake pwd: read failed", run.stderr, "the injected read failed, and its status was read")
+            self.assertNotIn("sweep: not required", run.stderr)
+            self.assertEqual(run.stdout, "", "no receipt")
+            self.assertEqual(self.writes(), [])
+            self.assertNotIn(checks_call, [call[: len(checks_call)] for call in self.gh_calls()], "before CI")
+            self.calls.unlink(missing_ok=True)
+
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))  # no sweep row
+        self.daily(daily_row())
+        for name, target, message in (
+            ("the store", self.records, f"cannot resolve the store {self.records} to its physical path"),
+            (
+                "the findings directory",
+                self.records / "sweeps/daily-2026-11-19",
+                f"cannot resolve the directory of the findings file {self.records}/{DAILY_FINDINGS} to its physical"
+                " path",
+            ),
+        ):
+            with self.subTest(name):
+                inject(target)
+                self.github(paths=docs)
+                failed(self.merge(), message)
+        # a unit's sweep row at a lever head goes through the same two reads
+        self.ledger(ledger_row(SHA_A))  # the fixture's sweep row at the head, its findings file under sweeps/
+        inject(self.records / "sweeps")
+        self.github()
+        failed(
+            self.merge(),
+            f"cannot resolve the directory of the findings file {self.records}/sweeps/U71-{SHA_A[:8]}.json to its"
+            " physical path",
+        )
+        inject(self.records)
+        self.github()
+        failed(self.merge(), f"cannot resolve the store {self.records} to its physical path")
+        # without the injection both reads succeed and both rows merge
+        del self.env["BASH_ENV"]
+        self.github()
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.calls.unlink()
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + ledger_row(SHA_A))
+        self.github(paths=docs)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(SKIP_LINE, run.stderr)
+        text = (LEVERS / "pr-merge.sh").read_text()
+        self.assertIn('resolved_store=$(cd "${store}" 2> /dev/null && pwd -P) || fail', text)
+        self.assertIn('resolved_dir=$(cd "${findings_file%/*}" 2> /dev/null && pwd -P) || fail', text)
 
 
 class DispositionDriftTest(unittest.TestCase):

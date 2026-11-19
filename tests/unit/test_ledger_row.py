@@ -18,7 +18,7 @@ import tempfile
 import time
 import unittest
 import warnings
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -32,6 +32,16 @@ COMMIT = "d" * 40
 DIGEST = "f" * 64
 PIN = "c1c8a8c1471069fb0e188eeaff69b8e8db6564a8"
 TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+
+
+def ts_ago(seconds):
+    """A ts `seconds` before now (a negative count: after), in the store's form."""
+    return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+# The daily row's `--swept-at` (U597 round 6): the sweep's RESULT time, written as the row's ts; an hour before this
+# module loaded, within the writer's 24-hour window for the run of these tests.
+SWEPT_AT = ts_ago(3600)
 MANIFEST = (
     "assets:\n"
     "  other-skill:\n"
@@ -260,7 +270,9 @@ class LedgerRowTest(unittest.TestCase):
 
     def assert_daily_appended(self, args, head, verifier, evidence):
         """The `daily` kind appends exactly one row to `daily-sweeps.tsv` (made with its header when absent), the
-        ledger untouched byte for byte; stdout names the ts and the line; the row is returned as a list of cells."""
+        ledger untouched byte for byte; the row's ts is the `--swept-at` argument (round 6), the evidence the given
+        text then `; recorded <ts>` with the recording time within the run; stdout names the ts and the line; the row
+        is returned as a list of cells."""
         daily = self.store / "daily-sweeps.tsv"
         ledger_before = self.ledger.read_bytes()
         before = daily.read_bytes() if daily.exists() else DAILY_HEADER.encode()
@@ -274,22 +286,28 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(added.count("\n"), 1, added)
         cells = added[:-1].split("\t")
         self.assertEqual(len(cells), 4, cells)
-        ts = cells[0]
-        self.assertRegex(ts, TS)
-        at = datetime.strptime(ts, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
+        swept_at = args[args.index("--swept-at") + 1]
+        self.assertEqual(cells[0], swept_at, "the row's ts is the sweep's own time, --swept-at (round 6)")
+        self.assertEqual(cells[1:3], [head, verifier])
+        prefix = f"{evidence}; recorded "
+        self.assertTrue(cells[3].startswith(prefix), cells[3])
+        recorded = cells[3][len(prefix) :]
+        self.assertRegex(recorded, TS)
+        at = datetime.strptime(recorded, "%Y-%m-%dT%H:%M:%SZ").replace(tzinfo=timezone.utc)
         self.assertTrue(start <= at <= end, (start, at, end))
-        self.assertEqual(cells[1:], [head, verifier, evidence])
         line = before.count(b"\n") + 1
-        self.assertEqual(run.stdout, f"appended {ts} line {line}\n")
+        self.assertEqual(run.stdout, f"appended {swept_at} line {line}\n")
         self.assertEqual(self.ledger.read_bytes(), ledger_before, "the ledger is not the daily row's file")
         return cells
 
     def test_a_daily_row_writes_the_exact_row_of_daily_sweeps_tsv_making_the_file_with_its_header(self):
         """U597 round 4: the `daily` kind writes the one row of the store's `daily-sweeps.tsv`, main's head, the
-        verifier of the `sweep` kind with the daily task id, the findings file and the count; the file is made with
-        its header when absent and appended when present; the ledger is untouched; `ledger.py daily` reads the newest
-        row back; a unit's id is accepted as the task too (round 5: the second row is another run, with its own
-        findings file, since a findings file already recorded is refused)."""
+        verifier of the `sweep` kind with the daily task id, the findings file and the count read from it (round 6:
+        no `--count`; the ts is `--swept-at`, the evidence ends with the coordinator's `validators pass` and the
+        recording time); the file is made with its header when absent and appended when present; the ledger is
+        untouched; `ledger.py daily` reads the newest row back; a unit's id is accepted as the task too (round 5: the
+        second row is another run, with its own findings file, since a findings file already recorded is refused;
+        round 6: and another run number, since a recorded `(seat, run)` is refused too)."""
         daily = self.store / "daily-sweeps.tsv"
         args = (
             "daily",
@@ -303,14 +321,14 @@ class LedgerRowTest(unittest.TestCase):
             "daily-2026-11-19",
             "--findings",
             "sweeps/U9-bbbbbbbb/findings.json",
-            "--count",
-            "0",
+            "--swept-at",
+            SWEPT_AT,
         )
         verifier = (
             f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-3, run-170; "
             "TASK daily-2026-11-19)"
         )
-        evidence = "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
+        evidence = "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validators pass"
         self.assertFalse(daily.exists())
         self.assert_daily_appended(args, A, verifier, evidence)
         text = daily.read_text()
@@ -318,11 +336,11 @@ class LedgerRowTest(unittest.TestCase):
         self.assertEqual(text.count("\n"), 2, "the header and one row")
         self.assertFalse(daily.is_symlink())
         (self.store / "sweeps/U9-cccccccc").mkdir()
-        (self.store / "sweeps/U9-cccccccc/findings.json").write_text("[]\n")
+        (self.store / "sweeps/U9-cccccccc/findings.json").write_text('[{"id": "F1"}, {"id": "F2"}]\n')
         cells = self.assert_daily_appended(
-            (*args[:7], "--task", "U9", "--findings", "sweeps/U9-cccccccc/findings.json", "--count", "2"),
+            (*args[:5], "--run", "171", "--task", "U9", "--findings", "sweeps/U9-cccccccc/findings.json", *args[11:]),
             A,
-            verifier.replace("TASK daily-2026-11-19", "TASK U9"),
+            verifier.replace("run-170; TASK daily-2026-11-19", "run-171; TASK U9"),
             evidence.replace("U9-bbbbbbbb", "U9-cccccccc").replace("0 findings", "2 findings"),
         )
         self.assertEqual(daily.read_text().count("\n"), 3, "appended, the header once")
@@ -337,9 +355,10 @@ class LedgerRowTest(unittest.TestCase):
     def test_a_daily_row_refuses_a_bad_head_pin_or_path_and_writes_nothing(self):
         """U597 round 4: every refusal of the `daily` kind is exit 2 with one stderr line, the daily file unchanged
         (or still absent) and the ledger unchanged: a head that is not 40 hex, a task that is neither the daily id nor
-        a unit, a run or a count that is no number, a seat of two words, a findings path outside `sweeps/`, with a
-        `;` in its directory or naming no regular file, a manifest without the pin, a daily file that is a symlink,
-        and a daily file the reader refuses (a malformed row), which is named with its line."""
+        a unit, a run that is no number, a seat of two words, a findings path outside `sweeps/`, with a `;` in its
+        directory or naming no regular file, a manifest without the pin, a daily file that is a symlink, and a daily
+        file the reader refuses (a malformed row), which is named with its line (the `--swept-at` refusals and the
+        findings file's shape are their own tests, round 6)."""
         daily = self.store / "daily-sweeps.tsv"
         base = {
             "--head": A,
@@ -347,7 +366,7 @@ class LedgerRowTest(unittest.TestCase):
             "--run": "170",
             "--task": "daily-2026-11-19",
             "--findings": "sweeps/U9-bbbbbbbb/findings.json",
-            "--count": "0",
+            "--swept-at": SWEPT_AT,
         }
 
         def args(**changes):
@@ -377,7 +396,6 @@ class LedgerRowTest(unittest.TestCase):
             ),
             ("a task that is a word", args(task="main"), "the task 'main' is not daily-<YYYY-MM-DD> or U<n>"),
             ("a run that is no number", args(run="x"), "the run 'x' is not a decimal number"),
-            ("a count that is no number", args(count="-1"), "the count '-1' is not a decimal number"),
             ("a seat of two words", args(seat="sweep 3"), "the seat 'sweep 3' is not one word"),
             (
                 "a findings path outside sweeps/",
@@ -439,26 +457,24 @@ class LedgerRowTest(unittest.TestCase):
         "daily-2026-11-19",
         "--findings",
         "sweeps/U9-bbbbbbbb/findings.json",
-        "--count",
-        "0",
+        "--swept-at",
+        SWEPT_AT,
     )
     DAILY_VERIFIER = f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat sweep-3, run-170; TASK daily-2026-11-19)"
-    DAILY_EVIDENCE = (
-        "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS"
-    )
+    DAILY_EVIDENCE = "sweeps/U9-bbbbbbbb/findings.json; 0 findings; validators pass"
 
     def test_a_daily_row_refuses_a_findings_path_an_existing_row_already_names(self):
-        """U597 round 5 (verdict U597-1b3c4b1d P2 at ledger-row.py:408): the writer dates the row by the clock, not
+        """U597 round 5 (verdict U597-1b3c4b1d P2 at ledger-row.py:408): the writer dated the row by the clock, not
         the sweep, so recording a finished run again refreshed the exemption's window without a new sweep. A
         `--findings` path any existing daily row names (the evidence's first `;`-separated field, stripped) is refused
-        with one line naming that row's ts and line, the file unchanged byte for byte; another findings file appends;
-        a hand-written row with spaces around the path names it all the same."""
+        with one line naming that row's ts and line, the file unchanged byte for byte; another findings file of
+        another run appends; a hand-written row with spaces around the path names it all the same."""
         daily = self.store / "daily-sweeps.tsv"
         first = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
         before = daily.read_bytes()
         for name, arguments in (
             ("the same arguments", self.DAILY_ARGS),
-            ("another count and head", (*self.DAILY_ARGS[:2], B, *self.DAILY_ARGS[3:-1], "3")),
+            ("another head and swept-at", (*self.DAILY_ARGS[:2], B, *self.DAILY_ARGS[3:-1], ts_ago(7200))),
             ("another task", (*self.DAILY_ARGS[:8], "daily-2026-11-20", *self.DAILY_ARGS[9:])),
         ):
             with self.subTest(name):
@@ -471,22 +487,24 @@ class LedgerRowTest(unittest.TestCase):
                     " window\n",
                 )
                 self.assertEqual(daily.read_bytes(), before, "the daily file is unchanged")
-        # another findings file is another run: appended
+        # another findings file of another run is another sweep: appended
         (self.store / "sweeps/daily-2026-11-20").mkdir()
-        (self.store / "sweeps/daily-2026-11-20/findings.json").write_text("[]\n")
+        (self.store / "sweeps/daily-2026-11-20/findings.json").write_text('[{"id": "F1"}]\n')
         other = (
-            *self.DAILY_ARGS[:8],
+            *self.DAILY_ARGS[:5],
+            "--run",
+            "171",
+            "--task",
             "daily-2026-11-20",
             "--findings",
             "sweeps/daily-2026-11-20/findings.json",
-            "--count",
-            "1",
+            *self.DAILY_ARGS[11:],
         )
         self.assert_daily_appended(
             other,
             A,
-            self.DAILY_VERIFIER.replace("daily-2026-11-19", "daily-2026-11-20"),
-            "sweeps/daily-2026-11-20/findings.json; 1 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+            self.DAILY_VERIFIER.replace("run-170; TASK daily-2026-11-19", "run-171; TASK daily-2026-11-20"),
+            "sweeps/daily-2026-11-20/findings.json; 1 findings; validators pass",
         )
         self.assertEqual(daily.read_text().count("\n"), 3)
         # a hand-written earlier row with spaces around the path still names the path (the field is stripped)
@@ -501,6 +519,187 @@ class LedgerRowTest(unittest.TestCase):
             run.stderr,
         )
         self.assertEqual(daily.read_text().count("\n"), 2, "unchanged")
+
+    def test_a_daily_row_refuses_a_seat_and_run_an_existing_row_already_records(self):
+        """U597 round 6 (verdict U597-10d46fe0 P2 at ledger-row.py:791): round 5's guard keyed on the findings path
+        alone, so the same run's findings copied to another path refreshed the window with the same head, seat, run
+        and task. The `(seat, run)` an existing row's verifier carries (`seat <seat>, run-<n>;`, as the writer
+        composes it) is refused with one line naming that row's ts and line, the file unchanged byte for byte,
+        whatever the head, the task or the time; another run of the seat and the same run of another seat append; a
+        hand-written row whose verifier lacks the fields keys on its findings path alone."""
+        daily = self.store / "daily-sweeps.tsv"
+        first = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        before = daily.read_bytes()
+        for directory in ("daily-2026-11-19-run-170", "daily-2026-11-19-run-171", "daily-2026-11-19-run-170-b"):
+            (self.store / "sweeps" / directory).mkdir()
+            (self.store / "sweeps" / directory / "findings.json").write_text("[]\n")
+        copied = (
+            *self.DAILY_ARGS[:9],
+            "--findings",
+            "sweeps/daily-2026-11-19-run-170/findings.json",
+            "--swept-at",
+            ts_ago(600),
+        )
+        for name, arguments in (
+            ("the same seat and run under another findings path", copied),
+            ("with another head and task too", (*copied[:2], B, *copied[3:8], "U9", *copied[9:])),
+        ):
+            with self.subTest(name):
+                run = self.run_writer(*arguments)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(
+                    run.stderr,
+                    "ledger-row: refused: run-170 of the seat sweep-3 is already recorded by the daily sweep row of"
+                    f" {first[0]} ({daily}:2); a finished run is not re-recorded under another findings path to"
+                    " refresh the window\n",
+                )
+                self.assertEqual(daily.read_bytes(), before, "the daily file is unchanged")
+        # another run of the seat appends, and the same run of another seat
+        self.assert_daily_appended(
+            (*copied[:6], "171", *copied[7:10], "sweeps/daily-2026-11-19-run-171/findings.json", *copied[11:]),
+            A,
+            self.DAILY_VERIFIER.replace("run-170", "run-171"),
+            "sweeps/daily-2026-11-19-run-171/findings.json; 0 findings; validators pass",
+        )
+        self.assert_daily_appended(
+            (*copied[:4], "sweep-4", *copied[5:]),
+            A,
+            self.DAILY_VERIFIER.replace("seat sweep-3,", "seat sweep-4,"),
+            "sweeps/daily-2026-11-19-run-170/findings.json; 0 findings; validators pass",
+        )
+        self.assertEqual(daily.read_text().count("\n"), 4)
+        # a hand-written earlier row without the seat and run fields keys on its path alone
+        daily.write_text(
+            DAILY_HEADER + f"2026-11-19T01:00:00Z\t{B}\tsecurity-audit-skill {PIN[:8]} (x)\t"
+            "sweeps/daily-2026-11-19-run-170-b/findings.json; 0 findings\n"
+        )
+        self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        run = self.run_writer(*copied[:10], "sweeps/daily-2026-11-19-run-170-b/findings.json", *copied[11:])
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("is already recorded by the daily sweep row of 2026-11-19T01:00:00Z", run.stderr)
+        self.assertIn("the findings file sweeps/daily-2026-11-19-run-170-b/findings.json", run.stderr)
+
+    def test_a_daily_row_s_ts_is_its_swept_at_time_and_a_future_or_stale_one_is_refused(self):
+        """U597 round 6 (verdict U597-10d46fe0 P2 at ledger-row.py:417): round 5 dated the row at recording time, so
+        a delayed first recording granted a fresh 24-hour window to a sweep that finished outside it. The row's ts is
+        `--swept-at`, the RESULT message's timestamp (the appended row and the receipt carry it; the recording time
+        goes into the evidence as `recorded <ts>`), and `ledger.py daily` answers the row by it; a value later than
+        the clock plus 60 seconds is refused as in the future, one more than 24 hours before the clock as born stale,
+        and a value off the strict form (one digit in a field, no `Z`, a space, hour 25, a word, nothing) is refused
+        naming the form, each with one stderr line and no file made; 30 seconds ahead and 23 hours past are
+        recorded."""
+        daily = self.store / "daily-sweeps.tsv"
+
+        def refused(value, *reasons):
+            run = self.run_writer(*self.DAILY_ARGS[:-1], value)
+            self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+            self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+            self.assertTrue(run.stderr.startswith("ledger-row: refused: --swept-at "), run.stderr)
+            self.assertIn(value, run.stderr)
+            for reason in reasons:
+                self.assertIn(reason, run.stderr)
+            self.assertFalse(daily.exists(), "a refusal makes no file")
+
+        refused(ts_ago(-120), "is in the future: later than the clock ", " plus 60 seconds")
+        refused(ts_ago(-86400), "is in the future")
+        refused(ts_ago(86400 + 120), "is more than 86400 seconds (24 hours) before the clock ", "born stale")
+        refused("2026-01-01T00:00:00Z", "born stale")
+        for value in (
+            "2026-11-9T4:5:6Z",
+            "2026-11-19T10:00:00",
+            "2026-11-19 10:00:00Z",
+            "2026-11-19T25:00:00Z",
+            "2026-11-19T10:00:00+00:00",
+            "now",
+            "",
+        ):
+            with self.subTest(value):
+                refused(value, "is not YYYY-MM-DDThh:mm:ssZ")
+        cells = self.assert_daily_appended(self.DAILY_ARGS, A, self.DAILY_VERIFIER, self.DAILY_EVIDENCE)
+        self.assertEqual(cells[0], SWEPT_AT)
+        run = self.read("daily", "86400")
+        self.assertEqual((run.returncode, run.stdout, run.stderr), (0, "\t".join(cells) + "\n", ""))
+        # within the reader's slack, and within the window: recorded under their own runs and findings files
+        for run_number, age in (("171", -30), ("172", 23 * 3600)):
+            with self.subTest(age=age):
+                directory = self.store / f"sweeps/daily-2026-11-19-run-{run_number}"
+                directory.mkdir()
+                (directory / "findings.json").write_text("[]\n")
+                self.assert_daily_appended(
+                    (
+                        *self.DAILY_ARGS[:5],
+                        "--run",
+                        run_number,
+                        *self.DAILY_ARGS[7:9],
+                        "--findings",
+                        f"sweeps/daily-2026-11-19-run-{run_number}/findings.json",
+                        "--swept-at",
+                        ts_ago(age),
+                    ),
+                    A,
+                    self.DAILY_VERIFIER.replace("run-170", f"run-{run_number}"),
+                    f"sweeps/daily-2026-11-19-run-{run_number}/findings.json; 0 findings; validators pass",
+                )
+
+    def test_a_daily_row_reads_its_count_from_the_findings_file_and_refuses_another_shape(self):
+        """U597 round 6 (verdict U597-10d46fe0 P2 at ledger-row.py:416): round 5 took `--count` as an argument and
+        stated both validators' PASS after checking that the findings file existed, so invalid or truncated JSON
+        backed a daily exemption. The writer opens the findings file it names, parses it as JSON and requires a list
+        whose every element is an object: the list's length is the count (three objects are `3 findings`), the
+        validators' words are the coordinator's one statement `validators pass`, and a file that is not UTF-8, not
+        JSON, truncated, an object, a string, a number, null, or a list holding a number, null, a string, a list or a
+        boolean is refused with one line naming the file, no daily file made; `--count` is no argument of the daily
+        kind (argparse's exit 2), while the `sweep` kind keeps it."""
+        daily = self.store / "daily-sweeps.tsv"
+        findings = self.store / "sweeps/U9-bbbbbbbb/findings.json"
+        for name, content, reason in (
+            ("not UTF-8", b"\xff\n", "is not UTF-8"),
+            ("an empty file", b"", "is not JSON"),
+            ("truncated JSON", b'[{"id": "F1"}', "is not JSON"),
+            ("text", b"3 findings\n", "is not JSON"),
+            ("an object", b'{"findings": []}\n', "is not a JSON list of findings but an object"),
+            ("a string", b'"[]"\n', "is not a JSON list of findings but a string"),
+            ("a number", b"3\n", "is not a JSON list of findings but a number"),
+            ("null", b"null\n", "is not a JSON list of findings but null"),
+            ("a boolean", b"true\n", "is not a JSON list of findings but a boolean"),
+            ("a list holding a number", b"[1]\n", "holds a number at index 0, not an object"),
+            ("a list holding null after an object", b"[{}, null]\n", "holds null at index 1, not an object"),
+            ("a list holding a string", b'[{}, "F1"]\n', "holds a string at index 1, not an object"),
+            ("a list holding a list", b"[[]]\n", "holds a list at index 0, not an object"),
+            ("a list holding a boolean", b"[{}, {}, false]\n", "holds a boolean at index 2, not an object"),
+        ):
+            with self.subTest(name):
+                findings.write_bytes(content)
+                run = self.run_writer(*self.DAILY_ARGS)
+                self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+                self.assertEqual(run.stderr.count("\n"), 1, run.stderr)
+                self.assertTrue(
+                    run.stderr.startswith("ledger-row: refused: the findings file sweeps/U9-bbbbbbbb/findings.json "),
+                    run.stderr,
+                )
+                self.assertIn(reason, run.stderr)
+                self.assertFalse(daily.exists(), "a refusal makes no file")
+        # --count is gone from the daily kind: argparse refuses it before anything is read
+        findings.write_text("[]\n")
+        run = self.run_writer(*self.DAILY_ARGS, "--count", "0")
+        self.assertEqual((run.returncode, run.stdout), (2, ""), run.stderr)
+        self.assertIn("unrecognized arguments: --count 0", run.stderr)
+        self.assertFalse(daily.exists())
+        # three objects are three findings, whatever their fields
+        findings.write_text('[{"id": "F1"}, {"id": "F2", "severity": "P3"}, {}]\n')
+        self.assert_daily_appended(
+            self.DAILY_ARGS, A, self.DAILY_VERIFIER, "sweeps/U9-bbbbbbbb/findings.json; 3 findings; validators pass"
+        )
+        # the sweep kind keeps its count argument and its evidence form
+        self.assert_appended(
+            self.sweep_args(),
+            "U7",
+            "-",
+            B,
+            "sweep",
+            f"security-audit-skill {PIN[:8]} (full audit mode on the srt worker seat s, run-1; TASK U9)",
+            "sweeps/U9-bbbbbbbb/findings.json; pr none; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+        )
 
     def inject_short_write(self, *args):
         """The lever under `python3 -I -S` with `os.write` replaced by one that lands the first two bytes alone (the
@@ -567,12 +766,14 @@ class LedgerRowTest(unittest.TestCase):
         (self.store / "sweeps/daily-2026-11-20").mkdir()
         (self.store / "sweeps/daily-2026-11-20/findings.json").write_text("[]\n")
         other = (
-            *self.DAILY_ARGS[:8],
+            *self.DAILY_ARGS[:5],
+            "--run",
+            "171",
+            "--task",
             "daily-2026-11-20",
             "--findings",
             "sweeps/daily-2026-11-20/findings.json",
-            "--count",
-            "0",
+            *self.DAILY_ARGS[11:],
         )
         run = self.inject_short_write(*other)
         self.assertEqual((run.returncode, run.stdout), (1, ""), run.stderr)
@@ -582,8 +783,8 @@ class LedgerRowTest(unittest.TestCase):
         self.assert_daily_appended(
             other,
             A,
-            self.DAILY_VERIFIER.replace("daily-2026-11-19", "daily-2026-11-20"),
-            "sweeps/daily-2026-11-20/findings.json; 0 findings; validate-findings.cjs PASS; validate-coverage-ledger.cjs PASS",
+            self.DAILY_VERIFIER.replace("run-170; TASK daily-2026-11-19", "run-171; TASK daily-2026-11-20"),
+            "sweeps/daily-2026-11-20/findings.json; 0 findings; validators pass",
         )
         # a malformed header is refused naming line 1 and never repaired
         for text, message in (

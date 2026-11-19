@@ -87,13 +87,15 @@ SWEEP_TASK = (
 )
 # U597 round 4: the daily sweep of main's head is the coordinator's dispatch once per UTC day from the kit's template,
 # recorded with ledger-row.py daily as a row of the store's daily-sweeps.tsv, the row pr-merge.sh reads before it
-# skips a head's own sweep row.
+# skips a head's own sweep row; round 6: the row's ts is the RESULT's timestamp (`--swept-at`), the findings go into a
+# run-keyed directory, and the writer reads the count from the file (no `--count`).
 DAILY_DISPATCH = (
     "and main's head one full sweep per UTC day, which you dispatch once per UTC day to the sweep seat at main's head "
     "from the kit's brief template `~/.agents/regime/daily-sweep-brief.md` (task id `daily-<YYYY-MM-DD>`; the "
     "`<head>`, `<run>` and `<prev>` placeholders filled) and record with `~/.local/bin/common/ledger-row.py <store> "
-    "daily --head <head> --seat <seat> --run <n> --task daily-<YYYY-MM-DD> --findings sweeps/<dir>/findings.json "
-    "--count <n>` (`ledger-row.py daily`) as a row of the store's `daily-sweeps.tsv`"
+    "daily --head <head> --seat <seat> --run <n> --task daily-<YYYY-MM-DD> --findings "
+    "sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json --swept-at <ts>` (`ledger-row.py daily`; `<ts>` the RESULT's bus "
+    "timestamp, the row's ts; the count is read from the findings file) as a row of the store's `daily-sweeps.tsv`"
 )
 DAILY_GATE = (
     "skips the row for every other head only while `ledger.py daily 86400` finds a daily sweep of main's head within "

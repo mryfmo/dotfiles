@@ -87,11 +87,24 @@ class DailySweepBriefTemplateTest(unittest.TestCase):
         timebox = text[text.index("\nTIMEBOX\n") : text.index("\nFORBIDDEN\n")]
         self.assertIn("status=partial", timebox)
         self.assertNotIn("status=ready_for_review", timebox, "the timeout path never sends the full sweep's RESULT")
+        # round 6 (verdict U597-10d46fe0 P2 at :44 and P2 at ledger-row.py:416-417): the recording step copies the
+        # findings into a run-keyed directory behind a `test ! -e` guard, so a same-day retry never lands over the
+        # earlier row's evidence, passes the RESULT's timestamp as `--swept-at`, and passes no count: the writer reads
+        # the findings file itself
         self.assertIn(
-            "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
-            "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>/findings.json --count <count>`",
+            "`test ! -e <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> && mkdir <store>/sweeps/daily-<YYYY-MM-DD>-run-<n> "
+            "&& cp <output-dir>/findings.json <store>/sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json`",
             text,
         )
+        self.assertIn(
+            "`~/.local/bin/common/ledger-row.py <store> daily --head <head> --seat <seat> --run <n> --task "
+            "daily-<YYYY-MM-DD> --findings sweeps/daily-<YYYY-MM-DD>-run-<n>/findings.json --swept-at <ts>`",
+            text,
+        )
+        self.assertIn("the RESULT message's bus timestamp", text)
+        self.assertNotIn("--count", text, "the writer reads the count from the findings file (round 6)")
+        self.assertNotIn("sweeps/daily-<YYYY-MM-DD>/findings.json", text, "the destination is keyed by the run")
+        self.assertNotIn("` and runs", text.split("`test ! -e")[0][-50:], "the guard comes before the copy")
         self.assertIn("`daily-sweeps.tsv`", text)
         self.assertIn("`ledger.py daily 86400`", text)
         self.assertIn("validate-findings.cjs", text)

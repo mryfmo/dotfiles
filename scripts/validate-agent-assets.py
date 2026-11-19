@@ -1629,36 +1629,42 @@ def validate_agent_manifest() -> dict[str, Any]:
     required_profiles = {"express", "standard", "review", "deep", "security", "audit"}
     if set(profiles) != required_profiles:
         fail(f"{manifest_path} must define the six base profiles and no others")
-    # Operator decision (2026-09-29): security runs codex gpt-6-astra high under
-    # ChatGPT login; gpt-daybreak-blue-latest needs API-key auth. It audits pending
-    # changes without editing them, so it is read-only like the audit profile (U70).
+    # Operator decision (2026-11-18, handoff/41, replacing 2026-09-29): security runs codex gpt-6.2-astra high
+    # under the ChatGPT Pro login (OpenAI: high for reviewer and security agents); gpt-daybreak-blue-latest needs
+    # API-key auth. It audits pending changes without editing them, so it is read-only like the audit profile (U70).
     security_codex = profiles["security"].get("codex", {})
-    for key, expected in (("model", "gpt-6-astra"), ("model_reasoning_effort", "high"), ("sandbox_mode", "read-only")):
+    for key, expected in (
+        ("model", "gpt-6.2-astra"),
+        ("model_reasoning_effort", "high"),
+        ("sandbox_mode", "read-only"),
+    ):
         if security_codex.get(key) != expected:
             fail(
                 f"{manifest_path} security profile must set codex.{key}: {expected} "
-                f"(operator decision 2026-09-29): {security_codex.get(key)!r}"
+                f"(operator decision 2026-11-18): {security_codex.get(key)!r}"
             )
-    # Operator pin (2026-10-09, T115): the auditor is codex gpt-6-astra xhigh, read-only.
+    # Operator decision (2026-11-18, replacing the pin of 2026-10-09, T115): the auditor is codex gpt-6.2-sol high,
+    # read-only; xhigh only where an eval shows a benefit.
     audit_codex = profiles["audit"].get("codex", {})
     for key, expected in (
-        ("model", "gpt-6-astra"),
-        ("model_reasoning_effort", "xhigh"),
+        ("model", "gpt-6.2-sol"),
+        ("model_reasoning_effort", "high"),
         ("sandbox_mode", "read-only"),
     ):
         if audit_codex.get(key) != expected:
             fail(
                 f"{manifest_path} audit profile must set codex.{key}: {expected} "
-                f"(operator pin): {audit_codex.get(key)!r}"
+                f"(operator decision 2026-11-18): {audit_codex.get(key)!r}"
             )
     if manifest.get("interactive_profile") not in profiles:
         fail(f"{manifest_path} interactive_profile must name a defined model profile")
-    # Operator pin (2026-09-27): worker claude launches carry --advisor fable. The pin read its profile from the
-    # manifest's worker-profile key, standard, until U40 removed that key; it stays on the profile it
-    # checked.
-    advisor_profile = "standard"
+    # Operator decision (2026-11-18, replacing the pin of 2026-09-27 on the standard profile): the Fable advisor rides
+    # the deep preset alone, the hardest tenth of the work, so Opus 5.5 sessions consult no Fable by default.
+    advisor_profile = "deep"
     if profiles.get(advisor_profile, {}).get("claude", {}).get("advisor") != "fable":
-        fail(f"{manifest_path} worker profile {advisor_profile!r} must set claude.advisor: fable (operator pin)")
+        fail(
+            f"{manifest_path} profile {advisor_profile!r} must set claude.advisor: fable (operator decision 2026-11-18)"
+        )
     # INV-7 (operator decision 2026-10-13, plan 007 T717): the Claude review profile is the deep profile's model and
     # effort, so review independence rests on a fresh context, not a different model.
     for key in ("model", "effort"):

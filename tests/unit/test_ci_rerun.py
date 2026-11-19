@@ -88,6 +88,14 @@ SAMPLES = {
             "test_the_report_of_many_findings_in_one_file_is_linear_in_the_findings) (step='8,000 to 32,000')"
         ),
     ),
+    "descriptor-probe-unattributed-reader": (
+        "test (ubuntu-24.04, server)",
+        (
+            "2026-11-19T19:08:11.6820521Z FAIL: test_metadata_reads_and_other_files_are_not_reads_of_the_input"
+            " (test_trusted_exec_contract.TrustedExecContractTest."
+            "test_metadata_reads_and_other_files_are_not_reads_of_the_input)"
+        ),
+    ),
 }
 # measure.md: run 39079197825's test_validate_agent_assets failure, and a plain test assertion failure.
 REAL_FAILURES = (

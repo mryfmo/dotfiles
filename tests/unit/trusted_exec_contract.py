@@ -2,6 +2,7 @@
 
 import contextlib
 import errno
+import fcntl
 import functools
 import hashlib
 import json
@@ -125,18 +126,48 @@ class WorkerRoot:
     """An input, an output and a new output under a worker root; the consumer runs through consume().
 
     The input is a FIFO read sentinel, never a regular file: opening it for reading is a kernel event the probe sees
-    from outside the consumer. consume(target) runs the consumer step in a worker thread and, while it runs, the
-    probe itself alternates a short join with one `os.open(input, O_WRONLY | O_NONBLOCK)`:
-      - ENXIO: no process has the input open for reading;
-      - success: a reader holds it (the consumer step's thread, a thread it starts, or a subprocess, by any path):
-        the read is recorded and the descriptor closed, which gives the reader EOF, so it cannot hang;
-      - ENOENT or ELOOP: the input is removed or replaced by a link at this poll, which is recorded;
-      - any other errno: recorded as an error, so the check fails closed.
-    One last attempt runs after the join. At the deadline the probe makes one more attempt (which releases a reader
-    blocked on the sentinel) and waits GRACE_S; a consumer thread still running then fails consume() with
-    "consumer thread still running after the deadline". Python cannot stop a thread, so nothing is claimed about it. Between attempts the probe opens and closes a non-blocking reader, so a consumer that opens the input
-    for writing is released (its write then fails, EPIPE) instead of waiting for the deadline. No thread runs in the
-    probe outside consume(), and stat() opens nothing, so metadata checks never count.
+    from outside the consumer. consume(target) runs the consumer step in a worker thread and, for as long as it
+    runs, one sentinel thread stays blocked in `os.open(input, O_WRONLY)`. A blocking write-open of a FIFO returns
+    exactly when a reader opens it, however briefly the reader holds it (POSIX; measured on macOS 27 and the kit's
+    Ubuntu container at 500 of 500 reader opens that closed again within microseconds), so the blocked thread is a
+    latch with no gap: every read open of the input wakes it. On a wake the sentinel records the clock (UTC and
+    time.monotonic()), checks by fstat that the descriptor is the probe's own FIFO, runs the holder scan while
+    still holding the writer (a reader blocked in read() has its descriptor, and is nameable), closes the writer,
+    which gives the reader EOF so it cannot hang, pauses POLL_S (dead time: a reader that still holds the input
+    would make the next write-open return at once, and the pause keeps that from spinning) and blocks again. A
+    consumer that opens the input for writing blocks in its open until a reader comes, which with the latch in
+    place is the teardown's release at the deadline (DEADLINE_S, then GRACE_S): its write then fails (EPIPE) and
+    consume() returns, instead of hanging; until round 4 the probe's own non-blocking reader released it within
+    POLL_S. Python cannot stop a thread, so a consumer thread still running GRACE_S after the deadline fails
+    consume() with "consumer thread still running after the deadline" and nothing is claimed about it. stat()
+    opens nothing, so metadata checks never count.
+
+    Why a latch and not a sample. Rounds 3 and 4 of U625 (07efa1d4, b26cbb87) detected an open of either FIFO by a
+    non-blocking write-open repeated on a schedule (each attempt, each pass of the holder scan, each poll of the
+    settle). The fourth audit (verdicts/U625-3ef4caf7.md, P1 f2 s5, trusted_exec_contract.py:349 at b26cbb87)
+    reproduced the gap any sample leaves: one pass over 150 or more /proc entries takes longer than a scanner
+    needs to open and close the control, so the control's open fell between two looks and the input's open was
+    recorded as the consumer's read (control_closed=True, scanner_opens=0, reads=1). A finer sample moves the gap
+    and never closes it; the latch has none, because the kernel wakes the blocked writer for a reader that has
+    already closed. The sentinels see opens, not names: a rename of either FIFO wakes nothing, so consume() keeps
+    one identity check, `os.lstat` of both names every POLL_S between joins and once more at the teardown, which
+    records the input removed, replaced or made a link in `replaced` and the control's in `errors`; a swap put back
+    between two checks is out of scope, as before. The teardown releases a blocked sentinel by the probe's own
+    `open(fifo, O_RDONLY | O_NONBLOCK)` of the FIFO's second name (release/<name> under the base, a hard link to the
+    same inode, so the release reaches the sentinel whatever the consumer did to the name) after setting the
+    sentinel's stop flag, and repeats it every POLL_S until the thread has ended, because a sentinel between two
+    blocking opens (handling a wake) misses a single release. The sentinel marks a wake it finds the flag set on as
+    the teardown's, not a reader's; so before the flag is set the teardown waits until the sentinel holds no write
+    descriptor on the FIFO (this process's descriptors, listed through /dev/fd), because the kernel installs that
+    descriptor the instant the sentinel's open returns, before the thread runs again: a descriptor present is a
+    wake the sentinel has not finished handling, whatever the scheduler did with the thread (the first container
+    run of round 5 lost a reader this way, the stop flag set between the kernel's wake and the thread's next
+    instruction), and none present is a sentinel still blocked or one between two opens with nothing pending. The
+    sentinel is armed before the consumer starts: it signals `armed` from the statement before its open, and
+    consume() starts the consumer only after that signal, so on CPython the open has released the interpreter
+    lock, which it does on entering the system call, before the consumer runs; what remains is one preemption of
+    the sentinel between that release and the system call, inside which a non-blocking reader open that closes
+    again is unseen (a blocking one waits for the writer the latch is about to be).
 
     The input's access time is not used: another process that reads a fresh regular file sets it too (the macOS
     host's Spotlight importer or endpoint scanner reads new temporary files within a second); none of those opened
@@ -164,42 +195,50 @@ class WorkerRoot:
 
     A directory scanner opens what it finds; the lever opens the input it was given. So a control FIFO,
     `.probe-control`, lies beside the input (same directory, same mode, created and removed with the worker root)
-    and is watched the same way: a non-blocking write-open that does not fail with ENXIO means a reader has it
-    open, and the descriptor is closed at once, which gives that reader EOF. The probe looks at the control at the
-    start of every attempt, between every two passes of the holder scan's loop (each POLL_S while _holders
-    rescans for HOLDER_WAIT_S), and every POLL_S while _settle waits for a window to close, so no part of the window
-    goes unwatched: the scan's loop is part of it because the probe's writer holds the input open through the scan,
-    so a scanner the write-open woke is awake exactly then and reaches the control while the scan runs (round 3
-    polled before and after the scan only, and the verdict of 07efa1d4 showed such an open laid on the lever). An
-    open of the input with a named holder is a read, as before. An open with no named holder is a read too,
-    recorded as the pre-U625 string with `(control silent)` before it (`<input> (control silent) opened for reading
-    by no process whose descriptors this user can read (N unreadable)`), unless the control also had a reader
-    inside the open's window: from CONTROL_WINDOW_S before the write-open that detected the open to
-    CONTROL_WINDOW_S after the holder scan ended (the writer closes right then; a scanner that took the input first
-    reaches the control during the scan or after that close, one that took the control first blocks on the input
-    until the next attempt). Then both opens are a scanner's: the record names both, with the unreadable count,
-    the attempts and the UTC time, goes to `scanner_opens`, is printed on stderr as `worker root: scanner open:
-    ...` so the job log keeps the case, and fails nothing. consume() settles such an open after its last attempt,
-    watching the control until the window has closed. The rule is the same on a host without /proc (macOS):
-    nothing names a holder there, so every open is a read (`<input> (control silent) opened for reading reader not
-    identified (no /proc)`) unless the control was opened too. Left out, what the rule cannot tell: a control open
-    that closes between two of the probe's looks (a non-blocking open-and-close of microseconds) is unseen, as a
-    read open of the input that closes between two polls is; a scanner that opens only files whose names it knows
-    (the input alone, never the control) is reported as the lever's read with the control's silence in the record,
-    so the log shows the case; a scanner of this user is named by the scan and reported as a read, as before; and
-    on a host without /proc a read the lever made while a scanner happened to open the control passes, since no
-    holder can be named there (no macOS host has opened a FIFO of the probe so far).
+    and has a sentinel of its own, latched the same way for the whole of consume(): each wake of it is a reader of
+    the control, recorded as a clock in `_control_wakes`, the writer closed at once (the reader gets EOF). An open
+    of the input with a named holder is a read, as before. An open with no named holder is a read too, recorded as
+    the pre-U625 string with `(control silent)` before it (`<input> (control silent) opened for reading by no
+    process whose descriptors this user can read (N unreadable)`), unless the control woke inside the open's
+    window: from CONTROL_WINDOW_S before the input's wake to CONTROL_WINDOW_S after its holder scan ended (the
+    writer closes right then; a scanner that took the input first reaches the control during the scan or after
+    that close, one that took the control first wakes the control's sentinel and then the input's). Then both
+    opens are a scanner's: the record names both FIFOs, the unreadable count, the UTC clock of the input's wake
+    and each control wake's offset from it, goes to `scanner_opens`, is printed on stderr as `worker root: scanner
+    open: ...` so the job log keeps the case, and fails nothing. consume() settles such an open after the input's
+    sentinel has stopped, keeping the control's sentinel armed until the last window has closed. The rule is the
+    same on a host without /proc (macOS): nothing names a holder there, so every open is a read (`<input> (control
+    silent) opened for reading reader not identified (no /proc)`) unless the control woke too. An error in a
+    sentinel (its FIFO removed or replaced before a re-arm, or an open failing with anything but the teardown's
+    release) is recorded in `errors`, the sentinel ends, and assert_untouched fails: a control the probe cannot
+    watch cannot tell a scanner from the lever.
 
-    Scope. The probe detects a blocking read open of the input by the consumer step, and a replacement or removal of
-    the input that is present at any poll or at the check. The consumer under test is repository code reviewed in
-    the same PR, and the probe guards against an accidental read, not against an adversary inside the test process.
-    So it does not claim to detect (residual): a replacement swapped in and restored between two polls (about a
-    millisecond apart); reads made by audit hooks or other callbacks running inside the probe's own calls; a read
-    open that never blocks (O_NONBLOCK, or O_RDWR) and closes between two polls; a write to the input in place (a
-    FIFO keeps no content).
+    Left out, what the latch cannot tell: a reader whose open the kernel coalesces with the probe's own release at
+    the teardown (between the teardown's last look at the descriptors and its release the stop flag is set, the
+    probe records that wake as the teardown's and ignores it, and a reader inside that same wake is unseen; the
+    consumer step has ended by then, so such a reader is not the step's own, and at the deadline it is a reader
+    that outlived the step); a non-blocking reader open that closes inside the arming preemption named above; a
+    second open of the same FIFO inside the POLL_S dead time after a wake (for the input, the first is recorded, so
+    the check fails on it anyway; for the control, the first wake lies in every window the second would, short of
+    the window's edge by under a millisecond); a scanner that opens only files whose names it knows (the input
+    alone, never the control) is reported as the lever's read with the control's silence in the record, so the log
+    shows the case; a scanner of this user is named by the scan and reported as a read, as before; and on a host
+    without /proc a read the lever made while a scanner happened to open the control passes, since no holder can be
+    named there (no macOS host has opened a FIFO of the probe so far).
+
+    Scope. The probe detects any read open of the input during the consumer step, and a replacement or removal of
+    the input that is present at an identity check or at the final check. The consumer under test is repository
+    code reviewed in the same PR, and the probe guards against an accidental read, not against an adversary inside
+    the test process. So it does not claim to detect (residual): a replacement swapped in and restored between two
+    identity checks (about a millisecond apart); reads made by audit hooks or other callbacks running inside the
+    probe's own calls; a write to the input in place (a FIFO keeps no content).
     """
 
-    POLL_S, DEADLINE_S, GRACE_S = 0.001, 30.0, 2.0
+    POLL_S, DEADLINE_S, GRACE_S = (
+        0.001,
+        30.0,
+        2.0,
+    )  # POLL_S: the join and identity-check interval, a sentinel's dead time
     HOLDER_WAIT_S = 0.2  # how long a holder scan keeps rescanning before it settles for naming no holder
     CONTROL_WINDOW_S = 0.2  # how far either side of an input open with no named holder a control open reaches
     PROC_ROOT = "/proc"  # an instance attribute points a test's scan at a scratch tree of the same shape
@@ -209,22 +248,27 @@ class WorkerRoot:
         seat.mkdir(parents=True)
         self.input, self.output, self.new_output = seat / "ledger.tsv", seat / "out.txt", seat / "new" / "out.txt"
         self.control = seat / ".probe-control"  # a FIFO beside the input that the lever has no reason to touch (U625)
-        self.reads, self.errors, self.replaced, self.attempts = [], [], [], 0
+        self.reads, self.errors, self.replaced, self.checks = [], [], [], 0
         self.scanner_opens = []  # input opens with no named holder and a control open in their window: no failure
-        self._pending, self._control_opens = [], []  # input opens awaiting _settle; (attempt, clock) of control opens
+        self._pending, self._control_wakes = [], []  # input wakes awaiting _settle; monotonic clocks of control wakes
+        self._sentinels = {}  # FIFO -> (thread, stop flag) while consume() runs
         os.mkfifo(self.input, 0o600)
         os.mkfifo(self.control, 0o600)
+        (base / "release").mkdir()
+        self._release = {fifo: base / "release" / fifo.name for fifo in (self.input, self.control)}
+        for fifo, alias in self._release.items():
+            os.link(fifo, alias)  # a second name of the same inode: the teardown's release reaches a blocked sentinel
         self.output.write_text(LEGIT)
         os.utime(self.output, ns=(BASELINE_NS, BASELINE_NS))
         self._identity = {path: (os.lstat(path).st_ino, os.lstat(path).st_mode) for path in (self.input, self.output)}
-        st = os.lstat(self.input)
-        self._dev_ino = (st.st_dev, st.st_ino)  # what os.stat of a /proc descriptor link reports for a holder
-        self._control_ino = os.lstat(self.control).st_ino
+        self._dev_inos = {fifo: (os.lstat(fifo).st_dev, os.lstat(fifo).st_ino) for fifo in (self.input, self.control)}
+        self._dev_ino = self._dev_inos[self.input]  # what os.stat of a /proc descriptor link reports for a holder
+        self._control_ino = self._dev_inos[self.control][1]
         self._self_test()
 
     def _open_writer(self, path=None):
-        """One write-open attempt on PATH, the input by default: a descriptor when a reader holds it, None when none
-        does (ENXIO)."""
+        """One non-blocking write-open of PATH, the input by default: a descriptor when a reader holds it, None when
+        none does (ENXIO). The self-test's probe of the FIFO (and a test's); consume() itself blocks instead."""
         try:
             return os.open(self.input if path is None else path, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
         except OSError as error:
@@ -260,20 +304,43 @@ class WorkerRoot:
             os.close(fd)
             raise RuntimeError(f"{path} still has a reader after the self-test closed its own")
 
-    def _not_sentinel(self, error=None, fd=None):
-        """Whether the input is not the probe's FIFO at this poll, recorded, so the check fails even if the FIFO is
-        back by then (a swap and restore between two polls is out of scope). ENOENT is a removal and ELOOP a link
-        put in its place."""
-        if error is not None:
-            if error.errno in (errno.ENOENT, errno.ELOOP):
-                self.replaced.append(f"{self.input} was {'removed' if error.errno == errno.ENOENT else 'a link'}")
-                return True
-            raise error
-        st = os.fstat(fd)
+    def _note_error(self, entry):
+        """One line of `errors`, once: the sentinels and the identity check repeat, the record does not."""
+        if entry not in self.errors:
+            self.errors.append(entry)
+
+    def _not_sentinel(self, st):
+        """Whether ST (an lstat of the input's name, or an fstat of the descriptor its sentinel opened) is not the
+        probe's FIFO, recorded in `replaced` when so, so the check fails even if the FIFO is back by then."""
         if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._identity[self.input][0]:
             return False
-        self.replaced.append(f"{self.input} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})")
+        kind = (
+            "a link"
+            if stat.S_ISLNK(st.st_mode)
+            else f"another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})"
+        )
+        self.replaced.append(f"{self.input} was {kind}")
         return True
+
+    def _check_identity(self):
+        """Both names by os.lstat, which opens nothing (so no sentinel wakes): the input removed, a link or another
+        file goes to `replaced`; the control's to `errors` once, since a control the probe cannot see cannot tell a
+        scanner from the lever. Every POLL_S between consume()'s joins and once more at the teardown: the sentinels
+        see opens, never names, so a rename is seen here or not at all."""
+        self.checks += 1
+        try:
+            self._not_sentinel(os.lstat(self.input))
+        except FileNotFoundError:
+            self.replaced.append(f"{self.input} was removed")
+        except OSError as error:
+            self._note_error(f"cannot tell whether {self.input} is being read: {error!r}")
+        try:
+            st = os.lstat(self.control)
+        except OSError as error:
+            self._note_error(f"cannot tell whether {self.control} is being read: {error!r}")
+            return
+        if not (stat.S_ISFIFO(st.st_mode) and st.st_ino == self._control_ino):
+            self._note_error(f"{self.control} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})")
 
     def _holders(self, writer):
         """Who holds the input open now, from /proc on Linux: `by pid P (comm, ppid Q: cmdline)` for each process
@@ -282,15 +349,14 @@ class WorkerRoot:
         /proc/<pid>/fd/<n> link follows it to the open file without opening it, so the scan itself never opens the
         sentinel (a scan that did would record its own read). Every read of the tree tolerates OSError as a class,
         because a pid that exits between its fd listing and its field reads answers ESRCH from /proc and a scan that
-        let that escape would abort the attempt and lose the read it had already detected; a holder whose fields are
+        let that escape would abort the wake and lose the read it had already detected; a holder whose fields are
         gone is still named by its pid. A scan that names nobody is repeated every POLL_S for HOLDER_WAIT_S before
         its answer stands, because a reader the write-open just woke has no descriptor until its `open()` returns
-        (the kernel counts it as a reader before that), so the first scan can look before the entry exists. Between
-        two passes the control FIFO is write-probed (_note_control), the same probe _attempt makes before the
-        input's write-open and _settle makes after the scan: the probe's writer holds the input open for the whole
-        scan, so a scanner it woke is awake exactly then and reaches the control inside the scan, and a scan that
-        looked only at the input let that open go unseen (verdict of 07efa1d4, P1: the input open became the
-        consumer's read with `(control silent)`). The scan's passes are so part of the open's window."""
+        (the kernel counts it as a reader before that), so the first scan can look before the entry exists. The
+        scan runs in the input's sentinel thread while that thread holds its writer; the control's sentinel stays
+        latched meanwhile, so a scanner that reaches the control during the scan is seen without the scan looking
+        (round 4 sampled the control between two passes, and the verdict of b26cbb87 showed the open that fell
+        between them laid on the lever)."""
         return self._attribution(writer)[0]
 
     def _attribution(self, writer):
@@ -346,131 +412,177 @@ class WorkerRoot:
             record, named = scan()
             if named or time.monotonic() >= settle:
                 return record, named
-            self._note_control()  # the writer holds the input through the scan: a woken scanner reaches the control now
             time.sleep(self.POLL_S)
 
-    def _record_read(self, writer):
-        """One detected open of the sentinel. A named holder is the consumer's read at once. An open with no named
-        holder (the scan settled on nobody, or no tree could name one) waits in `_pending` with the clocks of its
-        window, the write-open that detected it and the end of the holder scan (the writer closes right after that,
-        and a reader that waited for EOF moves on only then); _settle attributes it once the window has closed."""
-        opened = time.monotonic()
+    def _record_read(self, writer, woke, when):
+        """One wake of the input's sentinel at the clocks WOKE (monotonic) and WHEN (UTC), WRITER its descriptor. A
+        named holder is the consumer's read at once. An open with no named holder (the scan settled on nobody, or
+        no tree could name one) waits in `_pending` with the clocks of its window, the wake and the end of the
+        holder scan (the writer closes right after that, and a reader that waited for EOF moves on only then);
+        _settle attributes it once the window has closed."""
         record, named = self._attribution(writer)
         if named:
             self.reads.append(f"{self.input} opened for reading {record}")
             return
-        when = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
-        self._pending.append((self.attempts, record, when, opened, time.monotonic()))
+        self._pending.append((record, when, woke, time.monotonic()))
 
-    def _note_control(self):
-        """Whether the control FIFO has a reader now, by the input's own test (a non-blocking write-open that does
-        not fail with ENXIO): the attempt and the clock go to `_control_opens`, and the descriptor is closed, which
-        gives the reader EOF. A write-open that fails otherwise, or reaches another file, is recorded once as an
-        error: a control that is gone cannot tell a scanner from the lever, so the check fails closed."""
+    def _sentinel(self, fifo, woke, armed, stopping):
+        """The latch on FIFO, in a thread of its own for the whole of consume(): signal ARMED, block in a write-open
+        until a reader opens, hand the wake to WOKE (the descriptor and both clocks; False from it ends the latch),
+        close the writer (a reader blocked in read() gets EOF), pause POLL_S (the dead time) and block again, until
+        STOPPING is set. The teardown's release is a wake too: STOPPING is set before it opens, so a wake that finds
+        it set is the teardown's and is not handed on. An open that fails (ENOENT: the FIFO removed before a
+        re-arm; ELOOP: a link in its place; anything else) is recorded in `errors` and ends the latch, so the check
+        fails closed; so is any other failure of the thread, before the thread's hook reports it."""
         try:
-            fd = self._open_writer(self.control)
-        except OSError as error:
-            entry = f"cannot tell whether {self.control} is being read: {error!r}"
-            self.errors += [] if entry in self.errors else [entry]
-            return
-        if fd is None:
-            return
-        try:
-            st = os.fstat(fd)
-            if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._control_ino:
-                self._control_opens.append((self.attempts, time.monotonic()))
+            while not stopping.is_set():
+                armed.set()
+                try:
+                    fd = os.open(fifo, os.O_WRONLY | os.O_NOFOLLOW)
+                except OSError as error:
+                    self._note_error(f"cannot tell whether {fifo} is being read: {error!r}")
+                    return
+                clocks = time.monotonic(), time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+                try:
+                    if stopping.is_set() or not woke(fd, *clocks):
+                        return
+                finally:
+                    os.close(fd)
+                time.sleep(self.POLL_S)
+        except Exception as error:
+            self._note_error(f"the sentinel of {fifo} failed: {error!r}")
+            raise
+
+    def _input_woke(self, fd, woke, when):
+        """A reader opened the input: a descriptor on another file (the name swapped before this re-arm) is a
+        replacement and ends the latch; else the holder scan runs while FD is held, and the open is recorded."""
+        if self._not_sentinel(os.fstat(fd)):
+            return False
+        self._record_read(fd, woke, when)
+        return True
+
+    def _control_woke(self, fd, woke, when):
+        """A reader opened the control: the clock goes to `_control_wakes`; a descriptor on another file is an error
+        (the control cannot be watched) and ends the latch."""
+        st = os.fstat(fd)
+        if stat.S_ISFIFO(st.st_mode) and st.st_ino == self._control_ino:
+            self._control_wakes.append(woke)
+            return True
+        self._note_error(f"{self.control} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})")
+        return False
+
+    def _start_sentinel(self, fifo, woke):
+        """Start the latch on FIFO and return once it is armed (the class docstring: the signal comes from the
+        statement before the blocking open, and the consumer is started only after it)."""
+        armed, stopping = threading.Event(), threading.Event()
+        name = f"sentinel {fifo.name}"
+        thread = threading.Thread(target=self._sentinel, args=(fifo, woke, armed, stopping), name=name, daemon=True)
+        self._sentinels[fifo] = (thread, stopping)
+        thread.start()
+        while not armed.wait(self.GRACE_S):
+            if not thread.is_alive():  # the open failed at once: the error is recorded, nothing to arm
                 return
-            entry = f"{self.control} was another file (inode {st.st_ino}, mode {stat.filemode(st.st_mode)})"
-            self.errors += [] if entry in self.errors else [entry]
-        finally:
-            os.close(fd)
 
-    def _control_opens_inside(self, opened, released):
-        """The attempts at which the control had a reader inside the window of an input open detected at the clock
-        OPENED whose holder scan ended at RELEASED: CONTROL_WINDOW_S either side."""
+    def _holds_writer(self, fifo):
+        """Whether this process holds a write descriptor on FIFO, from /dev/fd (this process's descriptors on both
+        platforms): the kernel installs the sentinel's descriptor the instant its open returns, before the thread
+        runs again, so this tells a wake the sentinel has not yet handled from a sentinel still blocked."""
+        for name in os.listdir("/dev/fd"):
+            try:
+                fd = int(name)
+                st = os.fstat(fd)
+                if (st.st_dev, st.st_ino) != self._dev_inos[fifo]:
+                    continue
+                if fcntl.fcntl(fd, fcntl.F_GETFL) & os.O_ACCMODE == os.O_WRONLY:
+                    return True
+            except (ValueError, OSError):  # not a descriptor number, or one closed meanwhile
+                continue
+        return False
+
+    def _stop_sentinel(self, fifo):
+        """End the latch on FIFO. First wait, every POLL_S for at most GRACE_S, until this process holds no write
+        descriptor on the FIFO (_holds_writer: a wake the sentinel has not finished handling; one that outlasts the
+        grace is recorded as an error). Then set the stop flag, open and close a non-blocking reader of the FIFO's
+        second name (release/<name>, the same inode whatever the consumer did to the name), which wakes a sentinel
+        blocked in its write-open and any consumer blocked in a write-open of the input, and repeat every POLL_S
+        until the thread has ended, since a sentinel between two blocking opens misses a single release.
+        Idempotent."""
+        if (sentinel := self._sentinels.pop(fifo, None)) is None:
+            return
+        thread, stopping = sentinel
+        settle = time.monotonic() + self.GRACE_S
+        while thread.is_alive() and self._holds_writer(fifo):
+            if time.monotonic() > settle:
+                self._note_error(f"the sentinel of {fifo} did not finish handling a wake within {self.GRACE_S} s")
+                break
+            time.sleep(self.POLL_S)
+        stopping.set()
+        while thread.is_alive():
+            os.close(os.open(self._release[fifo], os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW))
+            thread.join(self.POLL_S)
+
+    def _control_wakes_inside(self, opened, released):
+        """The clocks at which the control woke inside the window of an input wake at the clock OPENED whose holder
+        scan ended at RELEASED: CONTROL_WINDOW_S either side."""
         first, last = opened - self.CONTROL_WINDOW_S, released + self.CONTROL_WINDOW_S
-        return [attempt for attempt, at in self._control_opens if first <= at <= last]
+        return [at for at in self._control_wakes if first <= at <= last]
 
     def _settle(self):
-        """Attribute every input open still waiting. The control is watched until the last window has closed (or a
-        control open lies inside every window), then an open with a control open inside its window is a scanner's:
-        the record names both, goes to `scanner_opens` and is printed on stderr as `worker root: scanner open: ...`,
-        no failure; any other is the consumer's read, the pre-U625 record with `(control silent)` before it, and
-        assert_untouched fails on it (the class docstring's rule)."""
-        while self._pending:
-            silent = [p for p in self._pending if not self._control_opens_inside(p[3], p[4])]
-            remaining = max((p[4] for p in silent), default=0.0) + self.CONTROL_WINDOW_S - time.monotonic()
-            if not silent or remaining <= 0:
-                break
-            self._note_control()
-            time.sleep(min(self.POLL_S, remaining))
-        for attempt, record, when, opened, released in self._pending:
-            if control := self._control_opens_inside(opened, released):
+        """Attribute every input wake still waiting, once the control can have nothing more to say about it: the
+        control's sentinel stays latched until CONTROL_WINDOW_S after the last silent wake's scan ended (nothing to
+        wait for when a control wake lies inside every window), then ends. Then a wake with a control wake inside
+        its window is a scanner's: the record names both, with each control wake's offset from the input's, goes
+        to `scanner_opens` and is printed on stderr as `worker root: scanner open: ...`, no failure; any other is
+        the consumer's read, the pre-U625 record with `(control silent)` before it, and assert_untouched fails on
+        it (the class docstring's rule). Idempotent: consume() settles its own wakes."""
+        silent = [
+            released for _, _, opened, released in self._pending if not self._control_wakes_inside(opened, released)
+        ]
+        if silent and (remaining := max(silent) + self.CONTROL_WINDOW_S - time.monotonic()) > 0:
+            time.sleep(remaining)
+        self._stop_sentinel(self.control)
+        for record, when, opened, released in self._pending:
+            if wakes := self._control_wakes_inside(opened, released):
+                offsets = ", ".join(f"{at - opened:+.3f} s" for at in wakes)
                 entry = f"{self.input} opened for reading {record}, and {self.control} opened for reading inside its"
-                entry += f" window at {when} (attempt {attempt}; control at attempt {', '.join(map(str, control))})"
+                entry += f" window at {when} (control woke {offsets} from the input's wake)"
                 self.scanner_opens.append(entry)
                 print(f"worker root: scanner open: {entry}", file=sys.stderr, flush=True)
             else:
                 self.reads.append(f"{self.input} (control silent) opened for reading {record}")
         self._pending = []
 
-    def _attempt(self):
-        """One attempt while the consumer runs: note a reader of the control, record a reader of the input, then
-        release any writer waiting for a reader."""
-        self.attempts += 1
-        self._note_control()
-        try:
-            fd = self._open_writer()
-        except OSError as error:
-            if error.errno not in (errno.ENOENT, errno.ELOOP):
-                self.errors.append(f"cannot tell whether {self.input} is being read: {error!r}")
-                return
-            self._not_sentinel(error=error)
-            return
-        if fd is not None:
-            try:
-                if not self._not_sentinel(fd=fd):
-                    self._record_read(fd)
-            finally:
-                os.close(fd)  # the reader now sees EOF
-        try:
-            fd = os.open(self.input, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
-        except OSError as error:
-            if error.errno not in (errno.ENOENT, errno.ELOOP):
-                self.errors.append(f"cannot release a writer of {self.input}: {error!r}")
-                return
-            self._not_sentinel(error=error)
-            return
-        try:
-            self._not_sentinel(fd=fd)
-        finally:
-            os.close(fd)  # a writer blocked on the open is released; nothing is read from the sentinel
-
     def consume(self, target, deadline=None):
         """Run the consumer step TARGET in a worker thread while observing the input; return its result or raise
-        its exception. A step still running GRACE_S after DEADLINE seconds fails with AssertionError ("consumer
-        thread still running after the deadline"); the thread itself is left running (it cannot be stopped). After
-        the last attempt the input opens with no named holder are settled (_settle: at most CONTROL_WINDOW_S)."""
+        its exception. Both sentinels are armed before the step starts and end after it; the identity check runs
+        every POLL_S between joins. A step still running GRACE_S after DEADLINE seconds fails with AssertionError
+        ("consumer thread still running after the deadline"); the input's sentinel is released first, which also
+        releases a consumer blocked in a write-open of the input; the thread itself is left running (it cannot be
+        stopped). After the step the input wakes with no named holder are settled (_settle: at most
+        CONTROL_WINDOW_S)."""
         outcome = {}
         worker = threading.Thread(target=lambda: outcome.update(value=target()), name="consumer", daemon=True)
         _CONSUMER_ERRORS[worker] = outcome
         try:
             end = time.monotonic() + (self.DEADLINE_S if deadline is None else deadline)
+            self._start_sentinel(self.control, self._control_woke)
+            self._start_sentinel(self.input, self._input_woke)
             worker.start()
             while worker.is_alive():
                 if time.monotonic() > end:
-                    # Python cannot stop a thread: release a reader blocked on the sentinel, give it a short grace,
+                    # Python cannot stop a thread: release a writer blocked on the sentinel, give it a short grace,
                     # and fail if it is still running (nothing is claimed about cleaning it up).
-                    self._attempt()
+                    self._stop_sentinel(self.input)
                     worker.join(self.GRACE_S)
                     if worker.is_alive():
                         raise AssertionError("worker root: consumer thread still running after the deadline")
                     break
-                self._attempt()
+                self._check_identity()
                 worker.join(self.POLL_S)
-            self._attempt()
-            self._settle()
+            self._check_identity()
         finally:
+            self._stop_sentinel(self.input)
+            self._settle()
             _CONSUMER_ERRORS.pop(worker, None)
         if "error" in outcome:
             raise outcome["error"]

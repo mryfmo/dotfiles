@@ -31,6 +31,10 @@ ATTACK_NAMES = {"GIT_DIR", "GIT_WORK_TREE", "GIT_CONFIG_GLOBAL", "GIT_CONFIG_SYS
 ATTACK_NAMES |= {"GIT_CEILING_DIRECTORIES", "GIT_ALTERNATE_OBJECT_DIRECTORIES"}
 REDIRECTED, HOOK = "attacker root .*; attacker content", "attacker hook ran"  # whole reasons: no part goes inert
 ATTACKS = (("environment", f"{REDIRECTED}; {HOOK}"), ("local-worktree", REDIRECTED), ("local-include", HOOK))
+# The tail of a scanner-open record: the UTC clock of the input's wake, then each control wake's offset from it.
+WAKE_FORM = (
+    r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(control woke [-+]\d+\.\d{3} s(, [-+]\d+\.\d{3} s)* from the input's wake\)$"
+)
 
 
 def run(argv, env, timeout=60, **kw):
@@ -144,12 +148,13 @@ def read_relative(path):
 
 
 def swap_and_restore(probe, swap_in):
-    """Move the input FIFO aside, put SWAP_IN's file in its place until the probe made two attempts, put it back."""
+    """Move the input FIFO aside, put SWAP_IN's file in its place until the probe's identity check looked twice,
+    put it back."""
     aside = probe.base / "aside"
     os.rename(probe.input, aside)
     swap_in(probe.input)
-    seen = probe.attempts
-    while probe.attempts < seen + 2:
+    seen = probe.checks
+    while probe.checks < seen + 2:
         time.sleep(0.001)
     os.unlink(probe.input)
     os.rename(aside, probe.input)
@@ -494,8 +499,9 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             self.assertRegex(str(by_thread.exception), r"opened for reading reader not identified \(no /proc\)$")
 
     def holder_scan(self, probe):
-        """probe._holders with a writer descriptor obtained the way _attempt does: our own reader of the sentinel is
-        what makes the write-open succeed, and both descriptors are closed again before the record is returned."""
+        """probe._holders with a writer descriptor obtained the way the input's sentinel holds one: our own reader of
+        the sentinel is what makes the write-open succeed, and both descriptors are closed again before the record is
+        returned."""
         reader = os.open(probe.input, os.O_RDONLY | os.O_NONBLOCK)
         try:
             writer = probe._open_writer()
@@ -579,7 +585,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
             probe.assert_untouched()
         form = re.escape(f"{probe.input} (control silent) opened for reading ") + self.unnamed_record() + "$"
         self.assertRegex(str(silent.exception), form)
-        self.assertGreaterEqual(len(probe.reads), 1)  # the reader's close may span a poll
+        self.assertGreaterEqual(len(probe.reads), 1)  # the re-arm returns at once while the reader holds the input
         for entry in probe.reads:
             self.assertRegex(entry, form)
         self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
@@ -591,8 +597,8 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         then, in a second probe, the input first (a listing's order is the filesystem's), with the scan's listing held
         until the input's reader has closed as in the test above, so no holder is named on any host. Each input open
         lies beside a control open inside CONTROL_WINDOW_S: it is a scanner open, recorded naming both FIFOs with the
-        unreadable count, the attempts and the time, printed as `worker root: scanner open: ...`, and assert_untouched
-        passes; nothing is a read."""
+        unreadable count, the time and each control wake's offset, printed as `worker root: scanner open: ...`, and
+        assert_untouched passes; nothing is a read."""
         import contextlib
         import io
         import re
@@ -619,7 +625,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 self.assertGreaterEqual(len(probe.scanner_opens), 1, printed.getvalue())
                 form = re.escape(f"{probe.input} opened for reading ") + self.unnamed_record()
                 form += re.escape(f", and {probe.control} opened for reading inside its window at ")
-                form += r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(attempt \d+; control at attempt \d+(, \d+)*\)$"
+                form += WAKE_FORM
                 for entry in probe.scanner_opens:
                     self.assertRegex(entry, form)
                     self.assertIn(f"worker root: scanner open: {entry}\n", printed.getvalue())
@@ -662,90 +668,166 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         with self.assertRaisesRegex(AssertionError, "worker root: read ") as by_pid:
             probe.assert_untouched()
         self.assertRegex(str(by_pid.exception), re.escape(str(probe.input)) + " " + named)
-        self.assertGreaterEqual(len(probe._control_opens), 1, "the control's reader was not seen")
+        self.assertGreaterEqual(len(probe._control_wakes), 1, "the control's reader was not seen")
         self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
         self.assertEqual("", printed.getvalue())
 
-    def test_a_scanner_that_opens_the_control_during_the_holder_scan_is_a_scanner_open(self):
-        """U625 round 4 (verdict of 07efa1d4, P1 f2 s5): the round-3 probe paused the control poll while the holder
-        scan ran, so a scanner that opened the input and then opened and closed the control without blocking while
-        the scan was running was never seen on the control, and its input open became the consumer's read with
-        `(control silent)`. The scanner here is a thread: it opens the input (its blocking open returns when the
-        probe's write-open arrives, which is when the scan starts), opens the control with O_NONBLOCK at once and
-        holds it across two further listings of the proc root (counted through os.listdir: so it is open while the
-        scan rescans and closed long before the scan settles after HOLDER_WAIT_S), then closes both. Two shapes of
-        "no holder named", each on every host: the scan pointed at a scratch tree whose one descriptor table is
-        unreadable (the runner's case, the holder's table is another user's) with the input held open until the
-        control has been closed; and the real tree with its listing held until the input has closed (the shape of
-        the round-3 tests). Each is a scanner open, printed, and assert_untouched passes; nothing is a read."""
+    def scratch_proc_tree(self, entries, unreadable=1):
+        """A tree of /proc's shape under a scratch directory for the holder scan to walk: ENTRIES pids, each with a
+        descriptor table of one descriptor on another file (listed and stat'ed, never a match), and UNREADABLE
+        tables of mode 0000 (another user's, as on a runner). The scan names nobody there, so it rescans for
+        HOLDER_WAIT_S, and each pass lists ENTRIES tables: the time a sample between two passes was blind for."""
+        proc = self.scratch("trusted-exec-proc-")
+        for pid in range(1000, 1000 + entries):
+            table = proc / str(pid) / "fd"
+            table.mkdir(parents=True)
+            os.symlink(os.devnull, table / "3")
+        for pid in range(900, 900 + unreadable):
+            blocked = proc / str(pid) / "fd"
+            blocked.mkdir(parents=True)
+            blocked.chmod(0o000)
+            self.addCleanup(blocked.chmod, 0o700)
+            with self.assertRaises(PermissionError):  # root could list it, and the count below would be 0 instead
+                os.listdir(blocked)
+        return proc
+
+    def test_a_control_open_of_under_a_millisecond_during_the_holder_scan_is_a_scanner_open(self):
+        """U625 round 5 (verdict of b26cbb87, P1 f2 s5): the round-4 probe sampled the control between two passes of
+        the holder scan, and one pass over 150 or more /proc entries takes longer than a scanner needs to open and
+        close the control, so a control open inside a pass fell between two samples and the input's open became the
+        consumer's read with `(control silent)`. The scanner here is a thread: it opens the input (the latch is a
+        writer, so the open returns at once and the scan starts), waits until the scan has listed the tree and then
+        a random part of the scan's HOLDER_WAIT_S more, opens the control with O_NONBLOCK and closes it at once
+        (tens of microseconds; a blocking open would have waited for the round-4 probe's next sample and been seen
+        by it), then closes the input. The scan walks a scratch tree of 200 descriptor tables, slow enough that a
+        sample between two passes is blind for the whole flicker. Twenty repetitions, each a probe of its own: every
+        one is a scanner open, printed, and assert_untouched passes; none is a read. Red on the round-4 probe."""
         import contextlib
         import io
+        import random
         import re
         import threading
 
-        cases = (("unreadable table, input held", True), ("holder gone before the listing", False))
-        for name, unreadable_table in cases:
-            with self.subTest(name):
+        proc, moments = self.scratch_proc_tree(200), random.Random()
+        record = r"by no process whose descriptors this user can read \(1 unreadable\)"
+        for repetition in range(20):
+            delay = moments.uniform(0.0, 0.1)
+            with self.subTest(repetition=repetition, delay=round(delay, 4)):
                 probe = self.worker_root_probe()
-                listings, input_closed, listdir = [], threading.Event(), os.listdir
-                if unreadable_table:
-                    proc = probe.base / "proc"
-                    probe.PROC_ROOT = str(proc)
-                    blocked = proc / "4343" / "fd"
-                    blocked.mkdir(parents=True)
-                    blocked.chmod(0o000)
-                    self.addCleanup(blocked.chmod, 0o700)
-                    with self.assertRaises(PermissionError):  # root could list it, and the count would be 0 instead
-                        os.listdir(blocked)
-                    record = r"by no process whose descriptors this user can read \(1 unreadable\)"
-                    input_closed.set()  # no listing waits: the input stays open through the scan
-                else:
-                    record = self.unnamed_record()
+                probe.PROC_ROOT = str(proc)
+                inside, listdir = threading.Event(), os.listdir
 
-                def listing(path, *args, root=probe.PROC_ROOT, seen=listings, closed=input_closed, real=listdir, **kw):
+                def listing(path, *args, root=str(proc), inside=inside, real=listdir, **kwargs):
                     if path == root:
-                        seen.append(time.monotonic())
-                        closed.wait(30)
-                    return real(path, *args, **kw)
+                        inside.set()
+                    return real(path, *args, **kwargs)
 
-                def scanner(hold_input=unreadable_table, probe=probe, seen=listings, closed=input_closed):
-                    fd = os.open(probe.input, os.O_RDONLY)  # returns when the probe's write-open arrives
-                    control = os.open(probe.control, os.O_RDONLY | os.O_NONBLOCK)  # returns at once, no writer needed
-                    before = len(seen)
-                    if not hold_input:
+                def scanner(probe=probe, inside=inside, delay=delay):
+                    fd = os.open(probe.input, os.O_RDONLY)  # returns at once: the latch is a writer; the scan starts
+                    try:
+                        if not inside.wait(30):
+                            raise AssertionError("the holder scan never listed the tree")
+                        time.sleep(delay)
+                        started = time.perf_counter()
+                        os.close(os.open(probe.control, os.O_RDONLY | os.O_NONBLOCK))  # the flicker
+                        return time.perf_counter() - started
+                    finally:
                         os.close(fd)
-                        closed.set()
-                    end = time.monotonic() + 30
-                    while len(seen) < before + 2 and time.monotonic() < end:
-                        time.sleep(0.0005)
-                    passes = len(seen) - before
-                    os.close(control)
-                    if hold_input:
-                        os.close(fd)
-                    return passes
 
                 patched = mock.patch.object(tec.os, "listdir", listing)
                 with patched, contextlib.redirect_stderr(io.StringIO()) as printed:
-                    passes = probe.consume(lambda: in_thread(scanner))
-                self.assertGreaterEqual(passes, 2, "the control was not held across two passes of the scan")
-                probe.assert_untouched()
+                    held = probe.consume(lambda: in_thread(scanner))
+                try:
+                    probe.assert_untouched()
+                except AssertionError as failed:
+                    self.fail(f"{failed} (the control was held {held * 1e6:.0f} us)")
                 self.assertEqual(([], []), (probe.reads, probe.errors))
                 self.assertGreaterEqual(len(probe.scanner_opens), 1, printed.getvalue())
                 form = re.escape(f"{probe.input} opened for reading ") + record
-                form += re.escape(f", and {probe.control} opened for reading inside its window at ")
-                form += r"\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ \(attempt \d+; control at attempt \d+(, \d+)*\)$"
+                form += re.escape(f", and {probe.control} opened for reading inside its window at ") + WAKE_FORM
                 for entry in probe.scanner_opens:
                     self.assertRegex(entry, form)
                     self.assertIn(f"worker root: scanner open: {entry}\n", printed.getvalue())
 
+    def test_an_input_open_of_under_a_millisecond_with_the_control_untouched_is_a_read_every_time(self):
+        """U625 round 5, the CI case kept strict (21e0da60, run 44599355380: the test's own reader opened the input and
+        closed it before any look of the probe landed). A lever-like reader, a thread that opens the input for
+        reading and closes it at once (the open returns at once, the latch being a writer; tens of microseconds in
+        all) and never touches the control. The input's sentinel wakes for it every time: twenty repetitions, each
+        a probe of its own, each a read, with `(control silent)` or the holder named (on Linux the scan can still
+        find the thread's descriptor), and assert_untouched fails on it; nothing is a scanner open, nothing is
+        printed."""
+        import contextlib
+        import io
+        import re
+
+        for repetition in range(20):
+            with self.subTest(repetition=repetition):
+                probe = self.worker_root_probe()
+
+                def lever(probe=probe):
+                    started = time.perf_counter()
+                    os.close(os.open(probe.input, os.O_RDONLY))
+                    return time.perf_counter() - started
+
+                with contextlib.redirect_stderr(io.StringIO()) as printed:
+                    held = probe.consume(lambda: in_thread(lever))
+                with self.assertRaisesRegex(AssertionError, "worker root: read ") as read:
+                    probe.assert_untouched()
+                self.assertIn(f"{probe.input} ", str(read.exception))
+                self.assertGreaterEqual(len(probe.reads), 1, f"the input was held {held * 1e6:.0f} us")
+                for entry in probe.reads:
+                    self.assertRegex(entry, re.escape(str(probe.input)) + r" (\(control silent\) )?opened for reading ")
+                self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
+                self.assertEqual("", printed.getvalue())
+
+    def test_a_wake_the_sentinel_has_not_handled_when_the_step_ends_is_still_recorded(self):
+        """U625 round 5, from the first container run of the repetition tests (one repetition in twenty lost the
+        lever's read): the kernel woke the input's sentinel for the lever's open, but the thread had not run again
+        before the step ended, consume() set its stop flag and released it, and the sentinel took the wake for the
+        teardown's. The sentinel is held exactly there: os.open is wrapped so that the sentinel's write-open of the
+        input, once it has returned, waits until consume() has entered _stop_sentinel for the input (wrapped too,
+        to signal), the worst scheduling the kernel allows. The teardown must wait for the wake (the write
+        descriptor the kernel installed is in this process's table), so the read is recorded, and nothing is an
+        error or a scanner open."""
+        import contextlib
+        import io
+        import threading
+
+        probe = self.worker_root_probe()
+        tearing_down, real_open, stop = threading.Event(), os.open, probe._stop_sentinel
+
+        def delayed_open(path, flags, *args, **kwargs):
+            fd = real_open(path, flags, *args, **kwargs)
+            if os.fspath(path) == os.fspath(probe.input) and flags & os.O_ACCMODE == os.O_WRONLY:
+                tearing_down.wait(30)  # the sentinel does not run between the kernel's wake and the teardown
+            return fd
+
+        def stopping(fifo):
+            if fifo == probe.input:
+                tearing_down.set()
+            return stop(fifo)
+
+        patched = mock.patch.object(tec.os, "open", delayed_open), mock.patch.object(probe, "_stop_sentinel", stopping)
+        with patched[0], patched[1], contextlib.redirect_stderr(io.StringIO()) as printed:
+            probe.consume(lambda: in_thread(lambda: os.close(os.open(probe.input, os.O_RDONLY))))
+        self.assertTrue(tearing_down.is_set(), "consume() never reached the input's teardown")
+        with self.assertRaisesRegex(AssertionError, "worker root: read "):
+            probe.assert_untouched()
+        self.assertGreaterEqual(len(probe.reads), 1)
+        self.assertEqual(([], []), (probe.scanner_opens, probe.errors))
+        self.assertEqual("", printed.getvalue())
+
     def test_an_error_in_the_control_path_during_consume_is_recorded_and_fails_the_check(self):
         """U625 round 4 (verdict of 07efa1d4, P2 f1 s3; AGENTS.md's rule that a safety decision carries a
-        failure-injection test): the control FIFO decides scanner versus lever, so a control the probe cannot read
+        failure-injection test): the control FIFO decides scanner versus lever, so a control the probe cannot see
         mid-consume must not pass silently. The consumer removes the control, or puts a regular file or a link in
-        its place (by os.replace, so no poll sees the control absent), and returns after two further attempts have
-        polled it. Each case is recorded once in `errors` naming the control and the failure, consume() itself raises
-        nothing it swallowed (the consumer's own value comes back), assert_untouched fails on the entry, and nothing
-        is a read or a scanner open."""
+        its place (by os.replace, so no check sees the control absent), and returns after two further identity
+        checks have looked at it (round 5: the control's sentinel is blocked on the FIFO's inode and wakes for no
+        rename, so the identity check, an lstat of the name every POLL_S, is what sees the swap; a link is what the
+        lstat says it is). Each case is recorded once in `errors` naming the control and the failure, consume()
+        itself raises nothing it swallowed (the consumer's own value comes back), assert_untouched fails on the
+        entry, and nothing is a read or a scanner open."""
         import contextlib
         import io
         import re
@@ -764,7 +846,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         cases = (
             ("removed", removed, r"cannot tell whether .* is being read: FileNotFoundError\("),
             ("a regular file", regular_file, r" was another file \(inode \d+, mode -rw-"),
-            ("a link", link, rf"cannot tell whether .* is being read: OSError\({errno.ELOOP}, "),
+            ("a link", link, r" was another file \(inode \d+, mode l"),
         )
         for name, inject, failure in cases:
             with self.subTest(name):
@@ -772,8 +854,8 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
                 def consumer(inject=inject, probe=probe):
                     inject(probe.control)
-                    seen = probe.attempts
-                    while probe.attempts < seen + 2:
+                    seen = probe.checks
+                    while probe.checks < seen + 2:
                         time.sleep(0.001)
                     return "consumed"
 
@@ -785,7 +867,7 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                 with self.assertRaisesRegex(AssertionError, "worker root: ") as failed:
                     probe.assert_untouched()
                 self.assertIn(probe.errors[0], str(failed.exception))
-                self.assertEqual(([], [], []), (probe.reads, probe.scanner_opens, probe._control_opens))
+                self.assertEqual(([], [], []), (probe.reads, probe.scanner_opens, probe._control_wakes))
                 self.assertEqual("", printed.getvalue())
 
     def test_the_holder_scan_tolerates_a_pid_that_exits_mid_scan(self):
@@ -972,8 +1054,9 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
 
     def test_a_replacement_present_at_a_poll_fails_even_when_restored(self):
         # Audit round 6 of 0b99fa84: a write-open that landed on another file was discarded, so swapping the FIFO out
-        # and back during the step passed. The swap is held for two probe attempts: a replacement present at a poll is
-        # in scope; one swapped and restored between two polls is not (see WorkerRoot's docstring).
+        # and back during the step passed. The swap is held for two identity checks (round 5: the latch sees opens, not
+        # names, so consume() keeps an lstat of both names every POLL_S): a replacement present at a check is in scope;
+        # one swapped and restored between two checks is not (see WorkerRoot's docstring).
         for name, swap_in in (
             ("regular file", lambda path: path.write_text(tec.LEGIT)),
             ("another FIFO", lambda path: os.mkfifo(path)),
@@ -987,10 +1070,11 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
                     probe.assert_untouched()
 
     def test_a_writer_to_the_input_never_hangs(self):
-        # A writer blocked on the open is released by the probe's next attempt (its write then fails or is dropped).
+        # A writer blocks in its open until a reader comes; the latch is a writer too, so that reader is the deadline's
+        # release of the sentinel (its write then fails or is dropped) and consume() returns instead of hanging.
         probe = self.worker_root_probe()
-        probe.consume(lambda: run(["/bin/sh", "-c", 'echo x >> "$0"', str(probe.input)], ALLOWED_ENV))
-        probe.consume(lambda: open(probe.input, "wb").close())
+        probe.consume(lambda: run(["/bin/sh", "-c", 'echo x >> "$0"', str(probe.input)], ALLOWED_ENV), deadline=1)
+        probe.consume(lambda: open(probe.input, "wb").close(), deadline=1)
 
     def test_a_consumer_past_its_deadline_fails_instead_of_hanging(self):
         import threading
@@ -1003,17 +1087,23 @@ class TrustedExecContractTest(tec.TrustedExecContractMixin, unittest.TestCase):
         self.assertLess(time.monotonic() - started, 10)
         self.assertEqual({}, tec._CONSUMER_ERRORS)  # the timed-out worker is not left registered
 
-    def test_a_reader_blocked_past_the_deadline_is_released_and_recorded(self):
-        # No attempt runs until the deadline (one long join), so the reader is still blocked on the sentinel then:
-        # the deadline's attempt releases it, the grace lets it finish, and its read is recorded.
+    def test_a_late_reader_is_recorded_and_a_writer_blocked_past_the_deadline_is_released(self):
+        # Until round 4 a reader blocked on the sentinel's open until the deadline's attempt released it. The latch is a
+        # writer, so no reader blocks on the input any more: a reader that opens after the step began is recorded at
+        # once. What still blocks there is a writer, waiting for a reader: the deadline's release of the sentinel is
+        # that reader, so consume() returns then and not before, instead of hanging; the release's own wake is the
+        # teardown's, not a read, and a FIFO keeps no content, so the check passes.
         probe = self.worker_root_probe()
-        with mock.patch.object(tec.WorkerRoot, "POLL_S", 3.0):
-            started = time.monotonic()
-            late_reader = lambda: (time.sleep(0.2), Path(probe.input).read_bytes())[1]  # opens after the first attempt
-            self.assertEqual(b"", probe.consume(late_reader, deadline=1))
-            self.assertGreaterEqual(time.monotonic() - started, 1)  # released at the deadline, not before
+        late_reader = lambda: (time.sleep(0.2), Path(probe.input).read_bytes())[1]
+        self.assertEqual(b"", probe.consume(late_reader, deadline=1))
         with self.assertRaisesRegex(AssertionError, "worker root: read "):
             probe.assert_untouched()
+        probe = self.worker_root_probe()
+        started = time.monotonic()
+        probe.consume(lambda: open(probe.input, "wb").close(), deadline=1)
+        self.assertGreaterEqual(time.monotonic() - started, 1)  # released at the deadline, not before
+        self.assertLess(time.monotonic() - started, 10)
+        probe.assert_untouched()
 
     def assert_gone(self, pid, timeout=10):
         deadline = time.monotonic() + timeout

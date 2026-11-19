@@ -11,14 +11,18 @@ through the imported files, and every repository path a string literal of those 
 a path in the tree (`scripts/orchestrator/pr-merge.sh`; a directory such as `home/dot_agents/skills`, which reaches
 everything under it), a slash-bearing token inside a longer literal (`"bash -c 'source scripts/lib/x.sh'"`), and the
 directory before the first glob character or f-string field (`home/dot_local/bin/common/executable_*`,
-f"home/dot_agents/skills/{skill}/SKILL.md"). A changed path selects every module whose reach holds it or one of its
-parent directories, and a changed test module selects itself. A lever under scripts/orchestrator/ and its deployed
-twin home/dot_local/bin/common/executable_<name> count as one path, so a change to either selects the tests of both.
+f"home/dot_agents/skills/{skill}/SKILL.md"). A slash-bearing literal is a directory prefix when the head tree holds
+that directory or when a changed path lies under it: a change that deletes a directory's last file still selects the
+module naming the directory. A bare word without a slash (`home`, `Makefile`) is never a prefix, only a root file. A
+changed path selects every module whose reach holds it or one of its parent directories, and a changed test module
+selects itself. A lever under scripts/orchestrator/ and its deployed twin home/dot_local/bin/common/executable_<name>
+count as one path, so a change to either selects the tests of both.
 
 A changed path under --start that is no test module (a helper, a fixture, `__init__.py`), a change under scripts/ci/
 or .github/workflows/, or to Makefile, pyproject.toml or uv.lock answers `all`: the selection itself, the runner, the
-workflow and the code every module shares are not mapped, so the full suite runs. A change nothing reaches selects
-nothing (an empty answer, exit 0).
+workflow and the code every module shares are not mapped, so the full suite runs. A diff with no changed path answers
+`all` too: an empty listing can mean the compare failed or the event carried no usable base, and a required check
+must not turn green without a test. A non-empty change nothing reaches selects nothing (an empty answer, exit 0).
 
 The changed paths are `git diff -z --no-renames --name-only <base>...<head>`, the merge base to the head with both
 sides of a rename. A diff that fails, a start directory without a module, or a module that cannot be read or parsed is
@@ -140,6 +144,9 @@ class Mapper:
     def __init__(self, root: Path, changed: set[str]) -> None:
         self.root = root
         self.changed = changed
+        # The directory chain of every changed path (`a/`, `a/b/` for `a/b/c`): a literal naming one of these is a
+        # directory prefix even when the head tree no longer holds the directory (its last file deleted).
+        self.changed_prefixes = {prefix for entry in changed for prefix in ancestors(entry)}
         self.trees: dict[str, ast.Module] = {}
         self.known: dict[str, tuple[list[str], dict[str, str]]] = {}
 
@@ -219,7 +226,7 @@ class Mapper:
                 reach.setdefault(imported, f"imported by {rel}")
             for text, (spelled, kind) in self.candidates(rel).items():
                 target = self.root / text
-                if kind != "file" and target.is_dir():
+                if kind != "file" and (target.is_dir() or text + SLASH in self.changed_prefixes):
                     reach.setdefault(text + SLASH, f"named as `{spelled}` in {rel}")
                 elif kind != "dir" and (target.is_file() or text in self.changed):
                     reach.setdefault(text, f"named as `{spelled}` in {rel}")
@@ -257,7 +264,9 @@ def test_modules(root: Path, start: Path, pattern: str) -> list[str]:
     return found
 
 
-def select(root: Path, start: Path, pattern: str, changed: list[str]) -> tuple[list[str], dict[str, list[str]]]:
+def select(
+    root: Path, start: Path, pattern: str, changed: list[str], span: str = "the base and the head"
+) -> tuple[list[str], dict[str, list[str]]]:
     """The modules the changed paths reach: `(["all"] or the sorted modules, {module or "all" or "": reasons})`.
 
     `start` is relative to `root`. The reasons name each decision; "" holds the changed paths that reach no module.
@@ -268,6 +277,10 @@ def select(root: Path, start: Path, pattern: str, changed: list[str]) -> tuple[l
     except ValueError:
         fail(f"{start} is not under {root}")
     modules = test_modules(root, start, pattern)
+    if not changed:
+        # Zero paths is `all`, never the empty selection: the diff may be unreadable (a failed compare, an event with
+        # no usable base), and the empty selection would turn a required check green without a test.
+        return ["all"], {"all": [f"no changed path between {span}; the diff may be unreadable, so every module runs"]}
     mapper = Mapper(root, set(changed))
     reasons: dict[str, list[str]] = {}
     for entry in changed:
@@ -311,7 +324,7 @@ def main(argv: list[str]) -> int:
     args = parser.parse_args(argv)
     root = Path.cwd()
     changed = changed_paths(args.base, args.head)
-    selected, reasons = select(root, args.start, args.pattern, changed)
+    selected, reasons = select(root, args.start, args.pattern, changed, f"{args.base} and {args.head}")
     if args.explain:
         print(f"{PROGRAM}: {len(changed)} changed paths from {args.base}...{args.head}", file=sys.stderr)
         for key in sorted(reasons, key=lambda name: (name != "all", name == "", name)):

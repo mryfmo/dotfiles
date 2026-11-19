@@ -318,6 +318,53 @@ class SelectionTest(unittest.TestCase):
         renamed = git(self.repo, "rev-parse", "HEAD")
         self.assertEqual(["tests/unit/test_dotted.py", "tests/unit/test_lever.py"], self.selected(renamed))
 
+    def test_a_diff_with_no_changed_path_answers_all_never_the_empty_selection(self) -> None:
+        # Zero changed paths can mean the compare failed or the event carried no usable base; the empty selection
+        # would let the required check turn green without a test, so the answer is `all` with the reason named.
+        empty = head_with(self.repo, self.base, "empty")
+        result = selector(self.repo, self.base, empty, "--explain")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual("all\n", result.stdout)
+        self.assertIn(f"affected-tests: 0 changed paths from {self.base}...{empty}\n", result.stderr)
+        self.assertIn(
+            f"affected-tests: all: no changed path between {self.base} and {empty}; the diff may be unreadable, "
+            "so every module runs\n",
+            result.stderr,
+        )
+        self.assertIn("affected-tests: all modules selected\n", result.stderr)
+        # The same base and head: zero paths too, `all` too.
+        same = selector(self.repo, self.base, self.base)
+        self.assertEqual((0, "all\n", ""), (same.returncode, same.stdout, same.stderr))
+
+    def test_deleting_a_directorys_last_file_still_selects_the_module_naming_the_directory(self) -> None:
+        # The literal is judged against the changed paths' directory chain, not the head tree alone: the directory
+        # vanished from the head, yet the module naming it is selected. `scripts/orchestrator` has no trailing slash
+        # (the helper's literal); `home/dot_agents/skills/` comes from the f-string's prefix.
+        levers = head_with(
+            self.repo,
+            self.base,
+            "last-lever",
+            removes=["scripts/orchestrator/lever.sh", "scripts/orchestrator/other.sh"],
+        )
+        self.assertFalse((self.repo / "scripts/orchestrator").exists())
+        result = selector(self.repo, self.base, levers, "--explain")
+        self.assertEqual(0, result.returncode, result.stderr)
+        self.assertEqual(["tests/unit/test_dotted.py", "tests/unit/test_lever.py"], result.stdout.splitlines())
+        self.assertIn(
+            "affected-tests: tests/unit/test_lever.py: scripts/orchestrator/lever.sh is scripts/orchestrator/, "
+            "named as `scripts/orchestrator` in tests/unit/helper.py (imported)\n",
+            result.stderr,
+        )
+        skills = head_with(
+            self.repo,
+            self.base,
+            "last-skill",
+            removes=["home/dot_agents/skills/alpha/SKILL.md", "home/dot_agents/skills/beta/SKILL.md"],
+        )
+        self.assertFalse((self.repo / "home/dot_agents").exists())
+        self.assertEqual(["tests/unit/test_skills.py"], self.selected(skills))
+        # The bare words "home" and "scripts" in test_words still reach nothing: the lists above are exact.
+
     def test_a_diff_that_fails_is_exit_2_with_nothing_on_stdout(self) -> None:
         result = selector(self.repo, self.base, "0" * 40)
         self.assertEqual(2, result.returncode)
@@ -423,6 +470,17 @@ class RealTreeTest(unittest.TestCase):
                 selected, reasons = self.select(changed)
                 self.assertEqual(["all"], selected)
                 self.assertEqual(["all"], list(reasons))
+        # No changed path at all: `all`, with the reason naming the compared revisions.
+        selected, reasons = self.select()
+        self.assertEqual(["all"], selected)
+        self.assertEqual(
+            {
+                "all": [
+                    "no changed path between the base and the head; the diff may be unreadable, so every module runs"
+                ]
+            },
+            reasons,
+        )
 
     def test_a_test_module_selects_itself_and_the_modules_that_import_it(self) -> None:
         selected, reasons = self.select("tests/unit/test_pr_levers.py")

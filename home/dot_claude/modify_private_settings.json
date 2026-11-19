@@ -46,10 +46,14 @@ MANAGED_PRE_TOOL_USE_SCRIPTS = ("enforce-uv.sh", "gh-merge-gate.sh")
 # and stays, like every other key the template does not manage.
 # U79 retired `alwaysThinkingEnabled: true`, Claude Code's own default ("`true` changes nothing",
 # code.claude.com/docs/en/settings-reference).
+# U596 moved the Fable advisor to the deep preset: a template whose interactive profile carries no advisor
+# names no `advisorModel`, so the `fable` the old template installed is dropped here; a managed `advisorModel`
+# (the deep profile) wins above, and a value the operator chose stays.
 RETIRED_MANAGED_DEFAULTS: dict[str, Any] = {
     "autoUpdates": False,
     "autoUpdatesChannel": "stable",
     "alwaysThinkingEnabled": True,
+    "advisorModel": "fable",
 }
 
 

@@ -646,7 +646,13 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
             managed = json.loads(render((ROOT / "home/.chezmoitemplates/claude-settings-managed.json").read_text()))
         self.assertNotIn("autoUpdatesChannel", managed, "the current template names no release channel")
         self.assertNotIn("alwaysThinkingEnabled", managed, "the current template leaves thinking at its default")
-        retired = {"alwaysThinkingEnabled": True, "autoUpdates": False, "autoUpdatesChannel": "stable"}
+        self.assertNotIn("advisorModel", managed, "the interactive profile (standard) consults no advisor (U596)")
+        retired = {
+            "alwaysThinkingEnabled": True,
+            "autoUpdates": False,
+            "autoUpdatesChannel": "stable",
+            "advisorModel": "fable",
+        }
         old_template = {}
         for key, value in managed.items():
             old_template[key] = value
@@ -663,6 +669,11 @@ class ClaudeSettingsMergeTest(unittest.TestCase):
         expected = {key: value for key, value in installed.items() if key not in retired}
         self.assertEqual(merged, expected, "only the retired keys change")
         self.assertEqual(self.merge(managed, after), after)
+        # A template that manages the advisor (the deep profile) keeps it, and an operator's other advisor stays.
+        deep = {**managed, "advisorModel": "fable"}
+        self.assertEqual(json.loads(self.merge(deep, json.dumps(installed)))["advisorModel"], "fable")
+        chosen = json.loads(self.merge(managed, json.dumps({**installed, "advisorModel": "opus"})))
+        self.assertEqual(chosen["advisorModel"], "opus")
 
     def test_an_operator_thinking_override_stays(self) -> None:
         """`alwaysThinkingEnabled: false` is not the former managed value, so the merge keeps it (U79)."""

@@ -948,6 +948,15 @@ claude:
   # descriptors from the root directory, read-only, it writes nothing.
   # Installed and pinned the same way, run as `python3 -I`, allowed by the
   # orchestrator policy at its installed path like brief-check.py.
+  # stall-watch.sh (U621, standing orders 57 and 59) runs the stall-check.py
+  # beside it over a program store on a schedule (every 60 seconds, deadline 25
+  # minutes by default; `--once` for one tick) with `<store>/progress` as the
+  # progress root, appends one decisions.tsv row of phase `stall` per new
+  # stalled or no-file unit (once per stall, by a marker file beside the
+  # progress file) and prints the row on stdout for the coordinator's watcher;
+  # it kills and restarts nothing. Installed and pinned the same way, with no
+  # allow rule and no seat policy row: the coordinator runs it outside every
+  # seat, in the background for the program.
   # program-status.py prints the operator's state report of a program store in
   # standing order 56's shape (U497): one word of state and its reason, a signal
   # per tests table, the operator's acts and decisions, the in-flight units with
@@ -1021,6 +1030,7 @@ claude:
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
       stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d
+      stall-watch.sh: 3a30acc78b7be946f2e7f8d663cb79e9f6f9c56c78c4e39d6c47d29d25ea2f14
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).

@@ -115,6 +115,21 @@ CHECKOUT_GUARD = (
     "`~/.local/bin/common/checkout-guard.sh check <checkout>` reports it), so a worker that reaches for the "
     "checkout is sent to the worker-tree lever by the tool, not by a sentence (U129)."
 )
+# U621 (standing orders 57 and 59): step 1 states the delegated worker's progress-file contract, the convention
+# stall-check.py reads, and the coordinator's use of the stall watcher: the lever detects and records, the coordinator
+# stops the worker and dispatches a fresh one with the same consolidated brief.
+WORKER_CONTRACT = (
+    "A delegated worker (a Task subagent dispatched into a worker tree) writes `<store>/progress/<unit>-progress.txt`: "
+    "one `YYYY-MM-DDTHH:MM:SSZ <text>` line after each item of its brief and the bare `done, head=<sha>` line at the "
+    "end, the convention `stall-check.py` reads; the coordinator sets the unit's `units.tsv` state `in-flight` at "
+    "dispatch and runs `~/.local/bin/common/stall-watch.sh <store>` in the background for the program (every 60 "
+    "seconds it runs `stall-check.py` with a 25-minute deadline over that directory, records each new `stalled` or "
+    "`no-file` unit once as a `decisions.tsv` row of phase `stall` and prints the row, the line your `wait` wakes on)."
+)
+STALL_ACTION = (
+    "On a stall line, stop the worker and start a fresh one with the same consolidated brief; the lever itself kills "
+    "and restarts nothing (standing orders 57 and 59; U621)."
+)
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
 # fourth behind a mechanism-change row, two further `incorrect` rows of one class behind another), that the strikes are
@@ -239,6 +254,17 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertLess(brief.index("the check refuses a brief without one."), brief.index(SPLIT_BRIEF))
         self.assertLess(brief.index(SPLIT_BRIEF), brief.index("Add the `units.tsv` row"))
         self.assertIn(CHECKOUT_GUARD, brief)
+
+    def test_step_one_states_the_delegated_worker_contract_and_the_stall_watcher(self):
+        brief = step(ORCHESTRATION.read_text(), "The loop", 1)
+        self.assertIn(WORKER_CONTRACT, brief)
+        self.assertIn(STALL_ACTION, brief)
+        self.assertEqual(brief.count("stall-watch.sh"), 1)
+        # after the release of the worker's tree, before the checkout guard
+        release = "run it before any successor is dispatched on the same tree."
+        self.assertLess(brief.index(release), brief.index(WORKER_CONTRACT))
+        self.assertLess(brief.index(WORKER_CONTRACT), brief.index(STALL_ACTION))
+        self.assertLess(brief.index(STALL_ACTION), brief.index(CHECKOUT_GUARD))
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")

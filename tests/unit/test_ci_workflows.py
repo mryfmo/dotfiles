@@ -283,6 +283,125 @@ class UnittestShardsTest(unittest.TestCase):
             self.assertEqual(result.returncode, 1)
             self.assertIn("found no test modules", result.stderr)
 
+    def test_a_durations_table_cuts_a_module_by_its_measured_cost_and_starts_the_longest_shard_first(self) -> None:
+        # U598: test_big costs 100 s a test in the table, so at 200 s a shard it runs as three shards (two, two and
+        # one test) although --split alone would keep it whole; test_small costs 1 s a test and stays one shard. The
+        # plan line names the table, the estimate and the longest shard, and with one job the shards run in plan
+        # order: the longest first, the cheapest last.
+        with tempfile.TemporaryDirectory() as temp:
+            big = "class S(unittest.TestCase):\n" + "".join(
+                f"    def test_{index}(self):\n        pass\n" for index in range(5)
+            )
+            start = suite(temp, {"test_big.py": big, "test_small.py": PASSING})
+            table = Path(temp) / "durations.tsv"
+            table.write_text("# measured\nmodule\ttests\tseconds\ntest_big.py\t5\t500.0\ntest_small.py\t3\t3.0\n")
+            result = shards(start, "--durations", str(table), "--shard-seconds", "200", "--jobs", "1")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("8 tests in 2 modules, 4 shards", result.stdout)
+            self.assertIn(
+                f"unittest-shards: planned by {table}: 503 shard-seconds estimated, longest shard test_big.py[1/3]"
+                " 200 s, ideal wall 503 s at 1 jobs; 3 heavy shards (5 s a test or more) at most 1 at a time\n",
+                result.stdout,
+            )
+            self.assertEqual(
+                re.findall(r"^===== (\S+): ", result.stdout, re.MULTILINE),
+                ["test_big.py[1/3]", "test_big.py[2/3]", "test_big.py[3/3]", "test_small.py"],
+            )
+            self.assertIn("\nshard-seconds: ", result.stdout)
+            self.assertRegex(
+                result.stdout, r"\nRan 8 tests in [0-9.]+s \(2 modules, 4 shards, 1 jobs\)\nOK \(skipped=1\)\n\Z"
+            )
+
+    def test_at_most_heavy_jobs_heavy_shards_run_at_once_while_light_shards_fill_the_other_slots(self) -> None:
+        # U598: the two heavy modules (100 s a test in the table) may not run together under --heavy-jobs 1, so the
+        # second starts only when the first has ended, while the light module (absent from the table) ran beside the
+        # first in the free slot. Each test logs its start and end to one file.
+        with tempfile.TemporaryDirectory() as temp:
+            log = Path(temp) / "log"
+
+            def module(name: str, sleep: float) -> str:
+                return (
+                    "import time\nfrom pathlib import Path\n\n"
+                    "class T(unittest.TestCase):\n    def test_t(self):\n"
+                    f"        Path({str(log)!r}).open('a').write('start {name}\\n')\n"
+                    f"        time.sleep({sleep})\n"
+                    f"        Path({str(log)!r}).open('a').write('end {name}\\n')\n"
+                )
+
+            start = suite(
+                temp, {"test_h1.py": module("h1", 2.0), "test_h2.py": module("h2", 2.0), "test_l.py": module("l", 0)}
+            )
+            table = Path(temp) / "durations.tsv"
+            table.write_text("module\ttests\tseconds\ntest_h1.py\t1\t100.0\ntest_h2.py\t1\t100.0\n")
+            result = shards(
+                start, "--durations", str(table), "--shard-seconds", "200", "--jobs", "2", "--heavy-jobs", "1"
+            )
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("; 2 heavy shards (5 s a test or more) at most 1 at a time\n", result.stdout)
+            lines = log.read_text().splitlines()
+            self.assertEqual(sorted(lines), ["end h1", "end h2", "end l", "start h1", "start h2", "start l"])
+            self.assertLess(lines.index("end h1"), lines.index("start h2"), lines)
+            self.assertLess(lines.index("start l"), lines.index("end h1"), lines)
+
+    def test_a_module_absent_from_the_table_and_a_missing_table_split_by_count_alone(self) -> None:
+        # The table knows another module: test_big (5 tests) is cut by --split 2 into three shards, as before U598,
+        # and a table that is not there plans every module by count and says so.
+        with tempfile.TemporaryDirectory() as temp:
+            big = "class S(unittest.TestCase):\n" + "".join(
+                f"    def test_{index}(self):\n        pass\n" for index in range(5)
+            )
+            start = suite(temp, {"test_big.py": big})
+            table = Path(temp) / "durations.tsv"
+            table.write_text("module\ttests\tseconds\ntest_other.py\t1\t1000.0\n")
+            result = shards(start, "--durations", str(table), "--split", "2", "--shard-seconds", "1")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("5 tests in 1 modules, 3 shards", result.stdout)
+            missing = Path(temp) / "no-such-table.tsv"
+            result = shards(start, "--durations", str(missing), "--split", "2", "--shard-seconds", "1")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("5 tests in 1 modules, 3 shards", result.stdout)
+            self.assertIn(f"planned by test count (no duration table at {missing}): 5 shard-seconds", result.stdout)
+            # The default, --shard-seconds 0, is the count order whatever the table holds: the 2026-11-19 baseline.
+            result = shards(start, "--durations", str(table), "--split", "2")
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            self.assertIn("5 tests in 1 modules, 3 shards", result.stdout)
+            self.assertIn("planned by test count (--shard-seconds 0): ", result.stdout)
+            self.assertIn("; 0 heavy shards (5 s a test or more) at most ", result.stdout)
+
+    def test_a_durations_row_that_cannot_be_read_fails_the_run_before_any_shard(self) -> None:
+        # Standing order 21: a table that cannot be read is named by file and line, never taken for an empty one.
+        with tempfile.TemporaryDirectory() as temp:
+            start = suite(temp, {"test_a.py": PASSING})
+            table = Path(temp) / "durations.tsv"
+            for row in ("test_a.py\tmany\t5.0", "test_a.py\t0\t5.0", "test_a.py\t3"):
+                with self.subTest(row=row):
+                    table.write_text(f"module\ttests\tseconds\n{row}\n")
+                    result = shards(start, "--durations", str(table))
+                    self.assertEqual(result.returncode, 1, result.stdout + result.stderr)
+                    self.assertIn(f"unittest-shards: {table}:2: ", result.stderr)
+                    self.assertNotIn("=====", result.stdout)
+
+    def test_record_durations_writes_the_measured_table_of_the_run_and_it_reads_back_as_a_plan(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            start = suite(
+                temp,
+                {
+                    "test_a.py": PASSING,
+                    "test_b.py": "class B(unittest.TestCase):\n    def test_b(self):\n        pass\n",
+                },
+            )
+            measured = Path(temp) / "measured.tsv"
+            result = shards(start, "--record-durations", str(measured))
+            self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+            rows = [line.split("\t") for line in measured.read_text().splitlines() if not line.startswith("#")]
+            self.assertEqual(rows[0], ["module", "tests", "seconds"])
+            self.assertEqual([row[:2] for row in rows[1:]], [["test_a.py", "3"], ["test_b.py", "1"]])
+            for row in rows[1:]:
+                self.assertGreaterEqual(float(row[2]), 0.0, row)
+            again = shards(start, "--durations", str(measured), "--shard-seconds", "100")
+            self.assertEqual(again.returncode, 0, again.stdout + again.stderr)
+            self.assertIn(f"unittest-shards: planned by {measured}: ", again.stdout)
+
 
 class MakeUnitTestTest(unittest.TestCase):
     def make(self, *args: str) -> str:

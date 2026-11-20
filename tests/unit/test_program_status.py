@@ -5,7 +5,10 @@ beside a copy of the lever, the absent-lever column, every header refusal and th
 and (U497b) every refusal as one stderr line, every stall-check cell checked, and every report item one line; and
 (U497c) the gates header read by cell names, every printed cell one line, the tables read byte-exact; and (U496h) the
 real stall check's exit 2 with rows (a malformed file beside a stalled worker) read as rows, its exit 2 with nothing on
-stdout as its refusal with the reason, and its exit 1 with a traceback or no row as a refusal by name."""
+stdout as its refusal with the reason, and its exit 1 with a traceback or no row as a refusal by name; and (U649,
+standing order 61) the goal line first, the handoff file's first Markdown quote line with its prefix stripped, in
+both languages, and each of its refusals (a missing file, no quote line, an empty one, a tab, a control character,
+more than 1024 bytes)."""
 
 import os
 import shutil
@@ -28,6 +31,13 @@ UNITS_HEADER = "id\ttrack\tstate\tbranch\tpr\thead_sha\tbrief\tnote\n"
 DECISIONS_HEADER = "ts\tphase\tdecision\twhy\tevidence\tresult\n"
 GATES_HEADER = "| id | gate | moment | options | default | result |\n"
 STALL_HEADER = "unit\tstate\tage_minutes\tlast_line\n"
+# U649 (standing order 61): the goal sentence, the first Markdown quote line of the store's handoff file with its `> `
+# prefix stripped; a second quote line and the prose around it are not the sentence.
+GOAL = "omp at the bottom, DSH in control, the whole kit inside the sandbox, both hosts driving other projects on their own."
+HANDOFF = (
+    "# Purpose and goal (the operator's, 2026-11-06)\n\nThe one goal; not a character of it changes.\n\n"
+    f"> {GOAL}\n\n> a second quote line that is not the goal\n\nThe elements and their distance follow.\n"
+)
 
 
 def test_row(row_id, kind, verdict, command="uv run python -m unittest tests.unit.test_x"):
@@ -66,6 +76,7 @@ UNITS_LANDED = UNITS_HEADER + unit_row("U1", "fix", "landed", "10") + unit_row("
 DECISIONS = DECISIONS_HEADER + decision_row("2026-11-12T06:00:00Z") + decision_row("2026-11-12T06:48:00Z")
 
 REPORT_EN = (
+    f"goal: {GOAL}\n"
     "state: moving: 1 units in flight, last record 12 min ago\n"
     "elements\n"
     "alpha: green 2/2 OK, 0 NG, 0 pending\n"
@@ -78,6 +89,7 @@ REPORT_EN = (
     "U2 feat pr - progress: unknown\n"
 )
 REPORT_JA = (
+    f"ゴール: {GOAL}\n"
     "状態: 進んでいる: 1 units in flight, last record 12 min ago\n"
     "要素\n"
     "alpha: green 2/2 OK, 0 NG, 0 pending\n"
@@ -113,6 +125,7 @@ class ProgramStatusTest(unittest.TestCase):
         root = Path(self.temp.name).resolve()
         self.store = root / "regime-cutover"
         (self.store / "tests").mkdir(parents=True)
+        (self.store / "handoff").mkdir()
         self.write_store()
         self.home = root / "home"
         self.home.mkdir()
@@ -121,13 +134,14 @@ class ProgramStatusTest(unittest.TestCase):
         # stall check sits beside the checkout lever, and over this scratch store it would refuse on its progress root.
         self.copy_lever()
 
-    def write_store(self, alpha=ALPHA, beta=BETA, gates=GATES, units=UNITS, decisions=DECISIONS):
+    def write_store(self, alpha=ALPHA, beta=BETA, gates=GATES, units=UNITS, decisions=DECISIONS, handoff=HANDOFF):
         (self.store / "tests/alpha.tsv").write_text(alpha)
         (self.store / "tests/beta.tsv").write_text(beta)
         (self.store / "tests/notes.txt").write_text("not a table\n")
         (self.store / "gates.md").write_text(gates)
         (self.store / "units.tsv").write_text(units)
         (self.store / "decisions.tsv").write_text(decisions)
+        (self.store / "handoff/08-purpose-and-goal.md").write_text(handoff, encoding="utf-8")
 
     def copy_lever(self):
         """A checkout-shaped copy of the lever two levels below a copy of the manifest, so the self check passes on
@@ -227,21 +241,21 @@ class ProgramStatusTest(unittest.TestCase):
         self.write_store(beta=BETA_GREEN)
         run = self.run_lever()
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(run.stdout.splitlines()[0], "state: done: every table green, last record 12 min ago")
+        self.assertEqual(run.stdout.splitlines()[1], "state: done: every table green, last record 12 min ago")
         run = self.run_lever("--ja")
-        self.assertEqual(run.stdout.splitlines()[0], "状態: 完了: every table green, last record 12 min ago")
+        self.assertEqual(run.stdout.splitlines()[1], "状態: 完了: every table green, last record 12 min ago")
 
     def test_stopped_when_nothing_is_in_flight_and_an_act_or_a_decision_waits(self):
         self.write_store(units=UNITS_LANDED)
         run = self.run_lever()
         self.assertEqual(run.returncode, 0, run.stderr)
         self.assertEqual(
-            run.stdout.splitlines()[0],
+            run.stdout.splitlines()[1],
             "state: stopped: nothing in flight, waiting on 1 operator acts and 1 decisions, last record 12 min ago",
         )
         self.assertIn("\nagent running\nnone\n", run.stdout)
         run = self.run_lever("--ja")
-        self.assertTrue(run.stdout.startswith("状態: 止まっている: nothing in flight"), run.stdout)
+        self.assertTrue(run.stdout.startswith(f"ゴール: {GOAL}\n状態: 止まっている: nothing in flight"), run.stdout)
 
     def test_moving_otherwise_even_with_nothing_in_flight_when_nothing_waits(self):
         gates = GATES.replace(gate_row("G2", "Confirm the second layer", "any time", "leave", ""), "")
@@ -249,11 +263,11 @@ class ProgramStatusTest(unittest.TestCase):
         self.write_store(units=UNITS_LANDED, gates=gates, beta=beta)
         run = self.run_lever()
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertEqual(run.stdout.splitlines()[0], "state: moving: 0 units in flight, last record 12 min ago")
+        self.assertEqual(run.stdout.splitlines()[1], "state: moving: 0 units in flight, last record 12 min ago")
 
     def test_the_age_is_now_minus_the_last_decision_row_in_whole_minutes(self):
         run = self.run_lever()
-        self.assertIn("last record 12 min ago", run.stdout.splitlines()[0])
+        self.assertIn("last record 12 min ago", run.stdout.splitlines()[1])
         run = subprocess.run(
             [sys.executable, "-I", str(self.lever), str(self.store), "--now", "2026-11-13T06:48:59Z"],
             capture_output=True,
@@ -263,7 +277,7 @@ class ProgramStatusTest(unittest.TestCase):
             check=False,
         )
         self.assertEqual(run.returncode, 0, run.stderr)
-        self.assertIn("last record 1440 min ago", run.stdout.splitlines()[0])
+        self.assertIn("last record 1440 min ago", run.stdout.splitlines()[1])
 
     # (c) stall-check.py beside the lever.
 
@@ -274,7 +288,7 @@ class ProgramStatusTest(unittest.TestCase):
         run = self.run_lever("--progress-root", progress_root)
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
         lines = run.stdout.splitlines()
-        self.assertEqual(lines[0], "state: stopped: every in-flight worker silent, last record 12 min ago")
+        self.assertEqual(lines[1], "state: stopped: every in-flight worker silent, last record 12 min ago")
         self.assertEqual(lines[-1], "U2 feat pr - progress: stalled, 47 min, read the brief")
         self.assertNotIn("U9", run.stdout, "a row of a unit not in flight prints nothing")
         # --now and --progress-root pass through to the stall check, after the store.
@@ -338,7 +352,7 @@ class ProgramStatusTest(unittest.TestCase):
             self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
             lines = run.stdout.splitlines()
             self.assertEqual(lines[-2:], expected_tail)
-            self.assertEqual(lines[0], "state: moving: 2 units in flight, last record 12 min ago")
+            self.assertEqual(lines[1], "state: moving: 2 units in flight, last record 12 min ago")
         with self.subTest(checker="a fake replaying the real result byte for byte"):
             self.write_fake(
                 levers,
@@ -395,7 +409,7 @@ class ProgramStatusTest(unittest.TestCase):
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
         lines = run.stdout.splitlines()
-        self.assertEqual(lines[0], "state: moving: 2 units in flight, last record 12 min ago")
+        self.assertEqual(lines[1], "state: moving: 2 units in flight, last record 12 min ago")
         self.assertEqual(
             lines[-2:],
             [
@@ -505,7 +519,7 @@ class ProgramStatusTest(unittest.TestCase):
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
         self.assertEqual(run.stdout.splitlines()[-1], "U2 feat pr - progress: malformed, - min, read the brief")
-        self.assertEqual(run.stdout.splitlines()[0], "state: moving: 1 units in flight, last record 12 min ago")
+        self.assertEqual(run.stdout.splitlines()[1], "state: moving: 1 units in flight, last record 12 min ago")
 
     def test_a_tests_table_named_with_a_newline_or_outside_the_name_class_refuses_naming_the_file(self):
         (self.store / "tests/ga\nmma.tsv").write_text(ALPHA)
@@ -600,7 +614,7 @@ class ProgramStatusTest(unittest.TestCase):
         )
         run = self.run_lever()
         self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
-        self.assertEqual(len(run.stdout.splitlines()), 10, run.stdout)
+        self.assertEqual(len(run.stdout.splitlines()), 11, run.stdout)
         self.assertEqual(
             run.stdout,
             REPORT_EN.replace("beta b3:", "beta b3 x:")
@@ -619,6 +633,67 @@ class ProgramStatusTest(unittest.TestCase):
         self.write_store()
         (self.store / "gates.md").write_bytes(GATES.replace("\n", "\r\n").encode("utf-8"))
         self.assert_refused(str(self.store / "gates.md"), "line 1", "carriage return")
+
+    # (h) U649 (standing order 61): the goal sentence first, read from the handoff file's first quote line.
+
+    def test_the_goal_line_is_the_handoff_files_first_quote_line_with_its_prefix_stripped_and_comes_first(self):
+        run = self.assert_report(REPORT_EN)
+        self.assertEqual(run.stdout.splitlines()[0], f"goal: {GOAL}")
+        run = self.assert_report(REPORT_JA, "--ja")
+        self.assertEqual(run.stdout.splitlines()[0], f"ゴール: {GOAL}")
+        # The first quote line is the sentence whatever follows it; a `>` without a space opens a quote line too; a
+        # `>` inside a line does not.
+        self.write_store(handoff="A > B is not a quote line.\n\n>the sentence\n> not this one\n")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(run.stdout.splitlines()[0], "goal: the sentence")
+        # One space goes with the prefix; a second one and a trailing one stay, the sentence is verbatim.
+        self.write_store(handoff=">  two spaces \n")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(run.stdout.splitlines()[0], "goal:  two spaces ")
+
+    def test_a_missing_unreadable_or_quoteless_handoff_file_refuses_naming_it(self):
+        path = str(self.store / "handoff/08-purpose-and-goal.md")
+        (self.store / "handoff/08-purpose-and-goal.md").unlink()
+        self.assert_refused(path, "is missing", "goal sentence")
+        self.write_store(handoff="# Purpose\n\nno quote line here\n")
+        self.assert_refused(path, "no Markdown quote line")
+        self.write_store(handoff="")
+        self.assert_refused(path, "no Markdown quote line")
+        self.write_store(handoff="# title\n> \n> the real one\n")
+        self.assert_refused(path, "line 2", "empty quote line")
+        (self.store / "handoff/08-purpose-and-goal.md").write_bytes(b"> \xff\n")
+        self.assert_refused(path, "not UTF-8")
+        (self.store / "handoff/08-purpose-and-goal.md").unlink()
+        (self.store / "handoff/08-purpose-and-goal.md").mkdir()
+        self.assert_refused(path, "cannot read")
+
+    def test_a_quote_line_with_a_tab_a_control_character_or_more_than_1024_bytes_refuses_and_1024_bytes_pass(self):
+        path = str(self.store / "handoff/08-purpose-and-goal.md")
+        cases = (
+            ("> a\tb\n", "holds a tab"),
+            ("> a\x1bb\n", "holds a control character"),
+            ("> a\rb\n", "holds a control character"),
+            ("> the goal\r\n", "holds a control character"),
+            ("> a\u2028b\n", "holds a control character"),
+            ("> a\x85b\n", "holds a control character"),
+            ("> " + "x" * 1025 + "\n", "is 1025 bytes, more than 1024"),
+            ("> " + "日" * 342 + "\n", f"is {342 * 3} bytes, more than 1024"),
+        )
+        for text, reason in cases:
+            with self.subTest(text=text[:12]):
+                self.write_store(handoff="# title\n" + text)
+                self.assert_refused(path, "line 2", reason)
+        self.write_store(handoff="> " + "x" * 1024 + "\n")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(run.stdout.splitlines()[0], "goal: " + "x" * 1024)
+        self.assertEqual(len(run.stdout.splitlines()), 11)
+        self.write_store(handoff="> " + "日" * 341 + "\n")
+        run = self.run_lever()
+        self.assertEqual((run.returncode, run.stderr), (0, ""), run.stdout + run.stderr)
+        self.assertEqual(run.stdout.splitlines()[0], "goal: " + "日" * 341)
 
 
 if __name__ == "__main__":

@@ -963,6 +963,16 @@ claude:
   # stall-check.py's progress column when that lever is beside it. Installed and
   # pinned the same way, run as `python3 -I` by the coordinator and allowed by the
   # orchestrator policy alone; it reads the store's tables and writes nothing.
+  # handout-check.py (U649, standing order 61) holds a plan or status handout to
+  # the goal sentence: the first Markdown quote line of the store's
+  # handoff/08-purpose-and-goal.md, which program-status.py prints as its first
+  # line, must appear verbatim on one line of every file given, else of every
+  # handouts/plan-*.md and status-*.md; one stderr line per file that lacks it,
+  # exit 1; the store's shape refused as program-status.py refuses it. Installed
+  # under its bare name at mode 0644 like ledger.py and sweep-scope.py, pinned the
+  # same way and self-checked against this pin, run by the coordinator as
+  # `python3 -I -S` before a handout is written to the store; it reads the store
+  # and the files named and writes nothing.
   # ticket-unit.py binds the Router's pull request to one program unit from its
   # ticket (U493): it reads the ticket whose `follows` names the pull request from
   # the Router's sqlite read-only, renders the request text into a brief as data,
@@ -1027,7 +1037,8 @@ claude:
       router-settings-apply: 46d948c33bb923f9093268ac8716048da0fb31779ad12569cfb923c508b942e2
       router-settings-apply.py: 6cfc903ba8e6b1f4dcf52c11f69a0aa3131c2a83262680dcf63367b6ee4ff3d7
       router-gh: bab47be7273025518efab995f6bd4f444d9f9f8a7447f8d315ef8a984b316b50
-      program-status.py: 28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76
+      program-status.py: ad07ef7c6a047d30fdad7a92fc53aa09d21745468607f75dc7bd32ed4f4d6936
+      handout-check.py: 383a9c5db58716416a5a9c51b69d66a9ce4f1a40660d117fdf83a7880979a8a2
       ticket-unit.py: 38d3236ca4b5010045e9b7d490cbc023c8acd76948380335a8db13412093d2f1
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
       stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d

@@ -249,6 +249,7 @@ LEVERS = (
     "bus-history.sh",
     "checkout-guard.sh",
     "git-isolated.sh",
+    "handout-check.py",
     "hcom-dispatch",
     "hcom-seat",
     "intake-observe.py",
@@ -1163,6 +1164,31 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn(f"\n      sweep-scope.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
         self.assertEqual(
             installed, next(path for path in self.module.lever_pins(manifest) if path.name == "sweep-scope.py")
+        )
+
+    def test_the_handout_check_installs_as_a_pinned_module_like_the_sweep_scope_reader(self) -> None:
+        """U649: the coordinator runs `handout-check.py` as `python3 -I -S ~/.local/bin/common/handout-check.py
+        <store>`, never by path, and the lever hashes itself against `claude.levers.sha256.handout-check.py` first, so
+        it gets the pinned-module form: a twin `home/dot_local/bin/common/handout-check.py` byte-identical to the
+        checkout's lever, no `executable_` prefix (chezmoi installs it at mode 0644), and the pin the generator
+        refreshes."""
+        self.module.ROOT = ROOT
+        source = ROOT / "scripts/orchestrator/handout-check.py"
+        installed = ROOT / "home/dot_local/bin/common/handout-check.py"
+        self.assertIn("handout-check.py", self.module.LEVER_MODULES)
+        self.assertEqual(self.module.lever_install_name("handout-check.py"), "handout-check.py")
+        self.assertTrue(
+            installed.is_file(), f"{installed.relative_to(ROOT)} is missing: the lever hashes itself against its pin"
+        )
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertFalse((ROOT / "home/dot_local/bin/common/executable_handout-check.py").exists())
+        self.assertFalse(os.access(installed, os.X_OK), "run as `python3 -I -S <path>`, never by path")
+        manifest = load_manifest_fixture(self.temp_dir)
+        pin = hashlib.sha256(source.read_bytes()).hexdigest()
+        self.assertEqual(manifest["claude"]["levers"]["sha256"].get("handout-check.py"), pin)
+        self.assertIn(f"\n      handout-check.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.assertEqual(
+            installed, next(path for path in self.module.lever_pins(manifest) if path.name == "handout-check.py")
         )
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:

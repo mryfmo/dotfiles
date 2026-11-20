@@ -290,6 +290,22 @@ def step(text: str, heading: str, number: int) -> str:
     return match.group(0)
 
 
+# U649 (standing order 61): the coordinator's reports of 2026-11-20 twice presented added work (orders 59 and 60) as the
+# goal, and the operator corrected it twice; step 7 says every report quotes program-status.py from its first line, the
+# goal line, and that a plan or status handout is checked by handout-check.py before it is written to the store.
+GOAL_LINE_FIRST = (
+    "Every report to the operator, this map and every status answer included, quotes `python3 -I "
+    "~/.local/bin/common/program-status.py <store>` output from its first line, the `goal:` line that carries the one "
+    "sentence of `handoff/08-purpose-and-goal.md`, before any prose of your own (standing order 61; U649)."
+)
+HANDOUT_CHECK = (
+    "Before a plan or status handout (`handouts/plan-*.md`, `handouts/status-*.md`) is written to the store, run "
+    "`python3 -I -S ~/.local/bin/common/handout-check.py <store> <draft>` over the draft and write it only after exit 0 "
+    "(exit 1 names on stderr each file that lacks the sentence verbatim on one line, exit 2 a store or file the check "
+    "could not read; without a file argument the check reads every such handout the store holds)."
+)
+
+
 class HcomSeatSkillsTest(unittest.TestCase):
     def test_the_worker_keeps_denied_command_names_out_of_quoted_arguments(self):
         self.assertIn(QUOTED_DENY, section(WORKER.read_text(), "Blocked"))
@@ -521,6 +537,20 @@ class HcomSeatSkillsTest(unittest.TestCase):
         text = section(POLICIES.read_text(), "Text that policies see")
         for evidence in ("bus row 467", "pane read 2026-10-24T02:33Z", "`*gh pr comment*`", "&& git status"):
             self.assertIn(evidence, text)
+
+    def test_step_seven_quotes_the_goal_line_first_and_checks_every_plan_or_status_handout(self):
+        """U649 (standing order 61): the report step says the reply quotes program-status.py's output from its first
+        line, the goal line, and runs handout-check.py over a plan or status handout before it is written to the
+        store; one sentence each, after the close sentences, each lever named once in the skill."""
+        text = ORCHESTRATION.read_text()
+        close = step(text, "The loop", 7)
+        self.assertIn(GOAL_LINE_FIRST, close)
+        self.assertIn(HANDOUT_CHECK, close)
+        self.assertLess(close.index("only the operator's gate replaces the predicate."), close.index(GOAL_LINE_FIRST))
+        self.assertLess(close.index(GOAL_LINE_FIRST), close.index(HANDOUT_CHECK))
+        self.assertEqual(text.count("program-status.py"), 1)
+        self.assertEqual(text.count("handout-check.py"), 1)
+        self.assertEqual(text.count("standing order 61"), 1)
 
 
 if __name__ == "__main__":

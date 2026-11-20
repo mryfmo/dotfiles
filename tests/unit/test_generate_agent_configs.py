@@ -272,6 +272,7 @@ LEVERS = (
     "regime-start",
     "regime-stop",
     "regime-store-move",
+    "round-advance.sh",
     "router-gh",
     "router-settings-apply",
     "router-settings-apply.py",

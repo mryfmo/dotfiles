@@ -625,6 +625,13 @@
       "sha256": "592ed0a7513a072446d1dee5a96b27b96b139eda33cfdc5ac95dd559aa66351a"
     },
     {
+      "source": "home/dot_local/bin/common/executable_round-advance.sh",
+      "target": ".local/bin/common/round-advance.sh",
+      "kind": "file",
+      "executable": true,
+      "sha256": "eac331178d0fc789ce1fdefa4c4891728f00320c404a9895510e89224e4ce75f"
+    },
+    {
       "source": "home/dot_local/bin/common/executable_router-gh",
       "target": ".local/bin/common/router-gh",
       "kind": "file",
@@ -998,6 +1005,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "regime-store-move"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "round-advance.sh"
     },
     {
       "source": "home/dot_local/bin/common",

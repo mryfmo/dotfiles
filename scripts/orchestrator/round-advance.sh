@@ -64,7 +64,9 @@
 #   printed with how to read the file (the last two lines are the verdict path and `Verdict: <word>`; the coordinator
 #   copies the file and writes the ledger row as the hcom-orchestration SKILL step 4 says). (h) `ci`, unless `--no-ci`:
 #   `gh pr checks <pr> --repo <owner>/<repo> --watch --interval 60 --fail-fast` started the same way to
-#   `<store>/audits/<unit>-<sha8>-ci.txt`. The lever waits for neither. (i) `decisions`: one row of phase `round` in
+#   `<store>/audits/<unit>-<sha8>-ci.txt`. These two are the lever's only background children, and each receipt
+#   begins `pid=<n> output=<file>` so the coordinator can find or stop the child (`kill -0 <n>`, `kill <n>`) and a
+#   test can wait for its exit. The lever waits for neither. (i) `decisions`: one row of phase `round` in
 #   `<store>/decisions.tsv` (`ts phase decision why evidence result`) naming the pushed head, the update-branch
 #   receipt, the carry's outcome, the sweep unit and run with its receipt or `no sweep`, the audit's pid and output
 #   file or `no audit`, the CI watch's or `no CI watch`; the row is appended through `python3 -I -S` with
@@ -91,7 +93,8 @@
 #   (`claude.levers.sha256.round-advance.sh`), with no allow rule and no seat policy row: the coordinator runs it
 #   outside every seat; `tests/unit/test_round_advance.py` runs the checkout script and the installed layout over a
 #   scratch store, a bare fake origin and a worker tree with `gh`, `hcom-dispatch`, `pr-update-branch.sh`,
-#   `pr-audit.sh` and `audit-carry.py` as recording stubs.
+#   `pr-audit.sh` and `audit-carry.py` as recording stubs, and waits for the pids the `audit` and `ci` receipts name
+#   before the scratch store is removed.
 # @arg $1 path The program store directory holding units.tsv, ledger.tsv, decisions.tsv and briefs/.
 # @arg $2 string The unit, `U<n>` or `U<n><letter>`.
 # @arg $3 int The pull request number.
@@ -110,7 +113,7 @@
 # @env ROUND_ADVANCE_POLL_SECONDS Seconds between two head reads in that wait (default 5).
 # @env HCOM_TEAM The default `--team`.
 # @env REGIME_SEATS_ROOT The default `--seats-root`.
-# @stdout One line per step done, `round-advance: <step> <result>`: `fetch`, `push`, `update-branch`, `carry`, `units`, `sweep`, `audit`, `ci`, `decisions`.
+# @stdout One line per step done, `round-advance: <step> <result>`: `fetch`, `push`, `update-branch`, `carry`, `units`, `sweep`, `audit`, `ci`, `decisions`; the `audit` and `ci` receipts begin `pid=<n> output=<file>`, the background child's pid and its output file.
 # @exitcode 0 Every chosen step ran and the decisions row is appended.
 # @exitcode 1 A step failed: one stderr line names it, what failed and what was done before it; the receipts of the steps done are on stdout.
 # @exitcode 2 Refused before the first step: a bad argument, a store that is not a store, a missing tree, tool or lever.

@@ -11,8 +11,11 @@ the branch on the origin when `STUB_UPDATE_MERGE` is set (GitHub's merge commit)
 `STUB_UPDATE_LAG` is set (the read-back path) and fails when `STUB_UPDATE_FAIL` is set; the carry stub answers from
 `STUB_CARRY`. The push to `https://github.com/owner/repo` reaches the bare origin through a `url.<origin>.insteadOf`
 entry in `GIT_CONFIG_COUNT`, which git reads after every config file, so the lever's `GIT_CONFIG_GLOBAL=/dev/null`
-push route is the one under test. `units-row.py` and `ledger-row.py` are the real levers beside the script. Nothing
-reads the live store, the real `~/.agents` or `~/.local/bin`, and nothing is pushed anywhere but the scratch origin.
+push route is the one under test. `units-row.py` and `ledger-row.py` are the real levers beside the script. The `audit`
+and `ci` receipts name the pid of the background child each step started; every lever run records those pids and
+the test waits for each to exit (round 2) before the scratch directory is removed, so no cleanup races a writer.
+Nothing reads the live store, the real `~/.agents` or `~/.local/bin`, and nothing is pushed anywhere but the scratch
+origin.
 """
 
 from __future__ import annotations
@@ -48,6 +51,8 @@ DISPATCH_RECEIPT = "id=4242 at=2026-11-20T00:00:00Z to=rose kind=TASK"
 NOT_CARRIED = f"not carried: no earlier audited head of {UNIT}"
 REFUSED = "round-advance.sh: refused: "
 TS = re.compile(r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}Z$")
+# The receipt of a step that started a background child: the pid comes first so a reader can find, stop or wait for it.
+CHILD_PID = re.compile(r"^round-advance: (?:audit|ci) pid=([1-9][0-9]*) output=")
 
 STUB_PRELUDE = """#!/usr/bin/env python3
 import json, os, subprocess, sys
@@ -127,6 +132,10 @@ class RoundAdvanceTest(unittest.TestCase):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name).resolve()
+        # The pids the receipts of every lever run name; waited for before the temporary directory goes (cleanups
+        # run last-registered first), so no background stub is still writing under it when it is removed.
+        self.children: list[int] = []
+        self.addCleanup(self.wait_for_children)
         self.home = self.root / "home"
         self.home.mkdir()
         self.bin = self.root / "bin"
@@ -226,7 +235,7 @@ class RoundAdvanceTest(unittest.TestCase):
 
     def run_lever(self, *args: str, lever: Path = LEVER, cwd: Path | None = None, **env: str | None):
         merged = {key: value for key, value in {**self.env, **env}.items() if value is not None}
-        return subprocess.run(
+        run = subprocess.run(
             [str(lever), *args],
             cwd=cwd or self.checkout,
             env=merged,
@@ -235,6 +244,8 @@ class RoundAdvanceTest(unittest.TestCase):
             timeout=120,
             check=False,
         )
+        self.children.extend(self.child_pids(run))
+        return run
 
     def sweep_args(self) -> list[str]:
         return ["--sweep-brief", str(self.sweep_brief), "--sweep-seat", "sweep-3", "--sweep-to", "rose"]
@@ -278,14 +289,29 @@ class RoundAdvanceTest(unittest.TestCase):
         files["audits"] = str((self.store / "audits").exists())
         return files
 
-    def wait_for(self, predicate, what: str, seconds: float = 10.0) -> None:
-        """The background stubs the lever starts finish on their own; the test waits for their trace, bounded."""
+    def child_pids(self, run) -> list[int]:
+        """The pids the `audit` and `ci` receipts name: the background children the lever started and did not wait for."""
+        return [int(match.group(1)) for match in map(CHILD_PID.match, run.stdout.splitlines()) if match]
+
+    def wait_for_exit(self, pids: list[int], seconds: float = 10.0) -> None:
+        """Wait for each background child to be gone: `os.kill(pid, 0)` raises ProcessLookupError once the process has
+        exited and been reaped (its parent, the lever, has exited, so init reaps it); bounded, a child still alive after
+        SECONDS fails the test instead of racing the directory's removal."""
         deadline = time.monotonic() + seconds
-        while time.monotonic() < deadline:
-            if predicate():
-                return
-            time.sleep(0.05)
-        self.fail(f"{what} did not appear within {seconds} seconds")
+        for pid in pids:
+            while True:
+                try:
+                    os.kill(pid, 0)
+                except ProcessLookupError:
+                    break
+                except PermissionError:
+                    break  # the number is worn by another user's process now: the child is gone
+                if time.monotonic() >= deadline:
+                    self.fail(f"the background child pid {pid} did not exit within {seconds} seconds")
+                time.sleep(0.05)
+
+    def wait_for_children(self) -> None:
+        self.wait_for_exit(self.children)
 
     def move_origin_branch(self, text: str = "A\nB\n", merge_main: bool = True) -> str:
         """GitHub moved the branch while the worker committed: a merge of main (or a plain commit changing
@@ -411,11 +437,17 @@ class RoundAdvanceTest(unittest.TestCase):
             ],
             self.calls_of("hcom-dispatch"),
         )
-        self.wait_for(lambda: audit_out.exists() and "Verdict: correct" in audit_out.read_text(), "the audit output")
+        # the background children: their pids are in the receipts, the test waits for both to exit, then reads the
+        # files whole and the stubs' records
+        pids = self.child_pids(run)
+        self.assertEqual(2, len(pids), receipts[6:8])
+        self.assertEqual([f"pid={pid}" for pid in pids], [line.split(" ")[2] for line in receipts[6:8]])
+        self.wait_for_exit(pids)
+        self.assertEqual("/tmp/pr-audit-stub/verdict.md\nVerdict: correct\n", audit_out.read_text())
         self.assertEqual(
             [[PR, "--records", str(self.store), "--cyber-program", "daybreak_blue"]], self.calls_of("pr-audit.sh")
         )
-        self.wait_for(lambda: ci_out.exists() and "stub" in ci_out.read_text(), "the CI watch output")
+        self.assertEqual("all checks have passed (stub)\n", ci_out.read_text())
         self.assertIn(
             ["pr", "checks", PR, "--repo", OWNER_REPO, "--watch", "--interval", "60", "--fail-fast"],
             self.calls_of("gh"),
@@ -494,6 +526,19 @@ class RoundAdvanceTest(unittest.TestCase):
         self.assertIn(f"carried from {'a' * 8} (ledger appended", decision)
         self.assertIn("; no sweep (carried head); no audit (carried head); CI watch pid ", decision)
         self.assertFalse((self.store / "audits" / f"{UNIT}-{head[:8]}.txt").exists())
+        # the one background child is the CI watch: its pid is in the receipt and the decisions row, and the test
+        # waits for it before the store goes
+        pids = self.child_pids(run)
+        self.assertEqual(1, len(pids), self.receipts(run)[5])
+        self.assertRegex(self.receipts(run)[5], rf"^round-advance: ci pid={pids[0]} output=")
+        self.assertIn(f"; CI watch pid {pids[0]} -> ", decision)
+        self.wait_for_exit(pids)
+        ci_out = self.store / "audits" / f"{UNIT}-{head[:8]}-ci.txt"
+        self.assertEqual("all checks have passed (stub)\n", ci_out.read_text())
+        self.assertIn(
+            ["pr", "checks", PR, "--repo", OWNER_REPO, "--watch", "--interval", "60", "--fail-fast"],
+            self.calls_of("gh"),
+        )
 
     # -- the stops -----------------------------------------------------------------------------------------------------
 

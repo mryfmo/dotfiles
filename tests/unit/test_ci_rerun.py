@@ -88,6 +88,21 @@ SAMPLES = {
             "test_the_report_of_many_findings_in_one_file_is_linear_in_the_findings) (step='8,000 to 32,000')"
         ),
     ),
+    "descriptor-probe-unattributed-reader": (
+        "test (ubuntu-24.04, server)",
+        (
+            "2026-11-19T19:08:11.6820521Z FAIL: test_metadata_reads_and_other_files_are_not_reads_of_the_input"
+            " (test_trusted_exec_contract.TrustedExecContractTest."
+            "test_metadata_reads_and_other_files_are_not_reads_of_the_input)"
+        ),
+    ),
+    "aggregator-of-a-known-flaky-shard": (
+        "test (ubuntu-24.04, client)",
+        (
+            "2026-11-19T22:28:29.9154340Z the test-shard rows ended failure; see the test-shard (ubuntu-24.04, client,"
+            " K/2) checks"
+        ),
+    ),
 }
 # measure.md: run 39079197825's test_validate_agent_assets failure, and a plain test assertion failure.
 REAL_FAILURES = (
@@ -286,6 +301,41 @@ class CiRerunTest(unittest.TestCase):
         self.assertNotIn("real failure: public-bootstrap", result.stdout)
         self.assertNotIn(["run", "rerun", "202", "--failed"], calls)
         self.assertEqual(before, self.ledger.read_text())
+
+    def test_ci_rerun_reruns_a_sharded_run_only_when_the_failed_shard_matches_beside_its_aggregator(self):
+        # Regime-cutover U636 round 2: since U622 a failed shard row fails its aggregator too, whose log holds only the
+        # aggregator step's line, so the production registry carries that line as a signature; it is sound only because
+        # the shard row must still match its own, so a real shard failure is still `real failure: <shard>`.
+        (self.repo / ".github/flakes.yaml").write_text((ROOT / ".github/flakes.yaml").read_text())
+        shard, aggregator = "test-shard (ubuntu-24.04, server, 2/2)", "test (ubuntu-24.04, server)"
+        self.runs["101"]["jobs"] = [job(1, shard), job(2, aggregator), job(3, "validate", "success")]
+        self.runs["logs"]["2"] = (
+            "the test-shard rows ended failure; see the test-shard (ubuntu-24.04, server, K/2) checks"
+        )
+        for name, log, code in (
+            ("flaky shard", SAMPLES["descriptor-probe-unattributed-reader"][1], 0),
+            ("real shard failure", REAL_FAILURES[1], 3),
+        ):
+            with self.subTest(case=name):
+                self.runs["logs"]["1"] = log
+                result, calls = self.run_script("101", fresh=True)
+                self.assertEqual(code, result.returncode, result.stdout + result.stderr)
+                if code == 0:
+                    self.assertEqual(1, calls.count(["run", "rerun", "101", "--failed"]))
+                    rows = [line.split("\t")[3:] for line in self.ledger.read_text().splitlines()]
+                    self.assertEqual(
+                        [
+                            [shard, "descriptor-probe-unattributed-reader"],
+                            [aggregator, "aggregator-of-a-known-flaky-shard"],
+                        ],
+                        rows,
+                    )
+                else:
+                    self.assertIn(f"real failure: {shard}", result.stdout)
+                    self.assertNotIn(f"real failure: {aggregator}", result.stdout)
+                    self.assertEqual(
+                        ([], False, False), (self.reruns(), self.ledger.exists(), self.reservation("101").is_dir())
+                    )
 
     def test_ci_rerun_reserves_the_run_before_rerunning_and_never_reruns_twice(self):
         # The run's reservation and every row exist when gh receives the rerun, so a failed or interrupted rerun stays

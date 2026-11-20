@@ -2197,6 +2197,67 @@ class PrMergeTest(PrLeverTestCase):
                 self.assert_refused(self.merge(), "names no 'carried <earlier head> <head> <sha256>' in its evidence")
                 self.assertEqual(self.writes(), [])
 
+    def test_a_carried_head_with_no_sweep_row_of_its_own_passes_the_sweep_gate_on_the_audited_head_s_row(self):
+        """U620 (standing orders 59 and 60): after every `pr-update-branch.sh` (GitHub's merge of main into the branch)
+        the coordinator ran a fresh sweep of the new head beside the fresh audit, six times on 2026-11-19, while the
+        lever asks the sweep row of the audited head, which under a `carried` row is the earlier head the row's
+        evidence names (`require_verdict_row` sets `audited_head` from `carried <earlier> <head> <sha256>`, the head
+        `ledger.py carried-from` answers for the same row; `require_sweep_row` then asks `ledger.py sweep <unit>
+        <audited head>`). On the fixture that answers the GitHub API, with the head's listing a lever path so the
+        class keeps the gate and no daily row stands in: a head with a `carried` row, no sweep row of its own and the
+        earlier head's sweep row merges with no skip line; the same head is refused naming the earlier head as the
+        audited head, before CI is read and with no write, when no sweep row stands at the earlier head, a sweep row
+        at the carried head alone included (a sweep of the moved head is not the audited diff's sweep; the audited
+        head's is). `tests.unit.test_pr_merge.PrMergeSweepGateTest.test_a_carried_head_needs_the_sweep_row_at_the_
+        earlier_head` judges the row's shapes on its fixture; this test is the carry across `pr-update-branch.sh`
+        itself: no fresh sweep for a carried head."""
+        digest = "d" * 64
+        earlier = ledger_row(SHA_B)
+        carried = ledger_row(
+            SHA_A,
+            "carried",
+            ts="2026-10-25T10:00:00Z",
+            evidence=f"carried {SHA_B} {SHA_A} {digest}; verdicts/U71-{SHA_B[:8]}.md",
+        )
+        (self.records / f"verdicts/U71-{SHA_A[:8]}.md").unlink()  # the carried head has no verdict file of its own
+        self.verdict(head=SHA_B)
+        # the findings files the fixture sweep rows name, under the store's sweeps/ as the gate requires
+        self.sweeps.mkdir(exist_ok=True)
+        for head in (SHA_A, SHA_B):
+            (self.sweeps / f"U71-{head[:8]}.json").write_text("{}\n")
+        # the CI read as the fake records it, `pr checks 7 --json bucket,name --jq ...`, matched by its first words
+        checks_call = ["pr", "checks", "7", "--json", "bucket,name"]
+
+        def ci_reads():
+            return [call for call in self.gh_calls() if call[: len(checks_call)] == checks_call]
+
+        no_row = f"has no sweep row for U71 (or a fix unit of it) at the audited head {SHA_B}"
+        lever_paths = files_listing("scripts/orchestrator/pr-merge.sh", "docs/x.md")
+        for name, rows in (
+            ("no sweep row at either head", (earlier, carried)),
+            ("a sweep row at the carried head alone", (earlier, carried, sweep_row(head=SHA_A))),
+        ):
+            with self.subTest(name):
+                self.calls.unlink(missing_ok=True)
+                (self.records / "ledger.tsv").write_text(LEDGER_HEADER + "".join(rows))
+                self.github(paths=lever_paths)
+                run = self.merge()
+                self.assert_refused(run, no_row)
+                self.assertIn("this head changes a lever path", run.stderr)
+                self.assertNotIn(SKIP_LINE, run.stderr)
+                self.assertEqual(ci_reads(), [], "refused before CI is read")
+                self.assertEqual(self.writes(), [])
+        # the earlier head's sweep row alone: the carried head merges on it, with no sweep row of its own
+        self.calls.unlink()
+        (self.records / "ledger.tsv").write_text(LEDGER_HEADER + earlier + carried + sweep_row(head=SHA_B))
+        self.github(paths=lever_paths)
+        run = self.merge()
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertEqual(run.stdout, f"merged pr=7 head={SHA_A} commit={SHA_B} verdict=2026-10-25T10:00:00Z\n")
+        self.assertNotIn(SKIP_LINE, run.stderr)
+        self.assertEqual(len(ci_reads()), 1, "CI read once for the carried head")
+        self.assertEqual(self.writes(), [["pr", "merge", "7", "--squash", "--match-head-commit", SHA_A]])
+
     def test_the_newest_ledger_row_is_the_newest_by_ts_not_by_file_position(self):
         """U122 round 5 (P1): `ledger_verdict` kept the last matching line of the file, so an older row appended after
         a newer one (a late re-audit row, a sync that reordered rows) stood for the head's or the earlier head's newest

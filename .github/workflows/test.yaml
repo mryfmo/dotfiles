@@ -42,6 +42,8 @@ jobs:
     # admin changes the ruleset). macOS is `client` only because this repository defines no macOS `server` target.
     # A failing matrix job never cancels its siblings: each row reports its own conclusion, and
     # scripts/orchestrator/ci-rerun.sh never meets a cancellation that only a sibling caused.
+    # On a pull request the plan is first restricted to the test modules the diff reaches (regime-cutover U623, the
+    # `select` step below); a push to main, a schedule and a dispatch run the whole plan, the net under the selection.
     name: test-shard (${{ matrix.os }}, ${{ matrix.system }}, ${{ matrix.shard }})
     strategy:
       fail-fast: false
@@ -199,6 +201,47 @@ jobs:
           echo "Skipped the unit tests: ${SKIP_REASON}."
           echo "Compared diff range: ${DIFF_RANGE}"
           printf '### Unit tests skipped\n\n%s (diff range %s).\n' "${SKIP_REASON}" "${DIFF_RANGE}" >> "${GITHUB_STEP_SUMMARY}"
+
+      - name: Select the test modules the diff reaches
+        id: select
+        if: ${{ steps.decide.outputs.should_test == 'true' }}
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          # A pull request runs the test modules its diff can reach (regime-cutover U623, standing orders 59 and 60):
+          # scripts/ci/affected-tests.py maps each module to the files it imports and the repository paths its
+          # literals name, and answers `all` for a change to the selection, the runner, a workflow, the Makefile or
+          # the code every module shares. Every other event (a push to main, a dispatch, a schedule) runs the whole
+          # plan, the net under the selection: a module the map misses on a pull request is caught at the merge. The
+          # selection runs inside this job, which always reports (a skipped job or a path-filtered workflow leaves a
+          # required check green or pending), on the runner's python3 before any tool is installed, against the
+          # origin/<base> the decision step fetched. A selector that fails ends the step with its status: a failed
+          # read is never `all` and never `selected`. The list goes to a file the Python step reads
+          # (UNIT_TEST_MODULES); `test_scope` is `all` or `selected`, nothing else.
+          scope=all
+          modules="${RUNNER_TEMP}/unit-test-modules"
+          if [ "${EVENT_NAME}" = pull_request ]; then
+            python3 -I scripts/ci/affected-tests.py --base "origin/${BASE_REF}" --head "${HEAD_SHA}" --explain > "${modules}"
+            status=0
+            grep -qx all "${modules}" || status=$?
+            case "${status}" in
+              0) ;;
+              1) scope=selected ;;
+              *) echo "reading ${modules} failed: grep exit ${status}" >&2; exit "${status}" ;;
+            esac
+          fi
+          echo "test_scope=${scope}" >> "${GITHUB_OUTPUT}"
+          if [ "${scope}" = selected ]; then
+            echo "unit_test_modules=${modules}" >> "${GITHUB_OUTPUT}"
+            echo "test scope: selected, the modules listed in ${modules}:"
+            cat "${modules}"
+          else
+            echo "test scope: all"
+          fi
 
       - name: Drop the Azure apt mirror from the runner image
         # Before the first apt use: the tool installs below and the install tests' real apt installs
@@ -555,7 +598,21 @@ jobs:
         timeout-minutes: 25
         env:
           UNIT_TEST_SHARD: ${{ matrix.shard }}
+          TEST_SCOPE: ${{ steps.select.outputs.test_scope }}
+          UNIT_TEST_MODULES: ${{ steps.select.outputs.unit_test_modules }}
         run: |
+          # The scope the select step decided (regime-cutover U623), named first with the module count so the log says
+          # what this row ran; a scope that is neither word fails the step, since an unset scope is a failed read, not
+          # the whole suite. UNIT_TEST_MODULES (the selected list; empty for all) reaches make through the environment.
+          case "${TEST_SCOPE}" in
+            all) echo "unit tests: scope all, every module under tests/unit" ;;
+            selected)
+              count="$(wc -l < "${UNIT_TEST_MODULES}")"
+              echo "unit tests: scope selected, $((count)) modules listed in ${UNIT_TEST_MODULES}"
+              ;;
+            *) echo "unit tests: scope '${TEST_SCOPE}' is neither all nor selected" >&2; exit 1 ;;
+          esac
+
           if [[ "${OS}" == macos-* ]]; then
             command -v jq > /dev/null 2>&1 || brew install jq
             command -v zsh > /dev/null 2>&1 || brew install zsh

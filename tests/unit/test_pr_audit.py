@@ -19,6 +19,7 @@ import os
 import re
 import shutil
 import signal
+import stat
 import subprocess
 import sys
 import tempfile
@@ -125,6 +126,7 @@ class PrAuditTest(unittest.TestCase):
         (self.home / ".ssh/id_ed25519").write_text("not a key\n")
         self.auth = self.home / ".codex/auth.json"
         self.auth.write_text('{"tokens": {}}\n')
+        self.lock = self.home / ".codex/auth.json.lock"  # the login lock the lever makes beside the login (U642)
         gitconfig = self.root / "gitconfig"
         gitconfig.write_text("[user]\n\tname = t\n\temail = t@example.invalid\n[init]\n\tdefaultBranch = main\n")
         self.env = quiet_git_env(
@@ -263,7 +265,13 @@ class PrAuditTest(unittest.TestCase):
             "## Findings\n\n- none\n\n## Reproduced\n\n- python3 -m unittest: passed\n\nBlocking: 0\nFiled: 0\n"
             "Verdict: correct\n",
         )
-        self.assertEqual(tree_state(self.root, (self.tmp, self.rec)), before, "nothing outside the run dir is written")
+        after = tree_state(self.root, (self.tmp, self.rec))
+        changed = sorted(path for path in before.keys() | after.keys() if before.get(path) != after.get(path))
+        self.assertEqual(
+            changed, [str(self.lock)], "the login lock is the lever's one write outside the run dir (U642)"
+        )
+        self.assertTrue(self.lock.is_file() and not self.lock.is_symlink(), "the lock is a regular file")
+        self.assertEqual((stat.S_IMODE(self.lock.stat().st_mode), self.lock.stat().st_size), (0o600, 0))
 
         calls = self.codex_calls()
         self.assertEqual([c["argv"][0] for c in calls], ["sandbox", "sandbox", "exec"])
@@ -358,15 +366,16 @@ class PrAuditTest(unittest.TestCase):
         self.assertEqual(handed.count(census), 1)
 
     def test_codex_refreshing_its_login_writes_the_callers_auth_json_and_nothing_else(self):
-        """The one write outside the run directory: Codex's own token refresh through the login link lands on the
-        caller's auth.json (learn.chatgpt.com/docs/auth/ci-cd-auth.md: keep the refreshed file; one copy per serialized
-        job stream), never on a copy in the run directory, and changes no other file."""
+        """The one write outside the run directory besides the lever's own login lock (U642): Codex's own token refresh
+        through the login link lands on the caller's auth.json (learn.chatgpt.com/docs/auth/ci-cd-auth.md: keep the
+        refreshed file; one copy per serialized job stream), never on a copy in the run directory, and changes no
+        other file."""
         before = tree_state(self.root, (self.tmp, self.rec))
         run = self.run_lever("7", FAKE_CODEX_REFRESH='{"tokens": {"refreshed": true}}\n')
         self.assertEqual(run.returncode, 0, run.stderr)
         after = tree_state(self.root, (self.tmp, self.rec))
         changed = sorted(path for path in before.keys() | after.keys() if before.get(path) != after.get(path))
-        self.assertEqual(changed, [str(self.auth)])
+        self.assertEqual(changed, sorted((str(self.auth), str(self.lock))), "auth.json and the login lock alone")
         self.assertEqual(self.auth.read_text(), '{"tokens": {"refreshed": true}}\n')
         self.assertFalse(self.auth.is_symlink())
         (rundir,) = self.tmp.iterdir()
@@ -773,6 +782,8 @@ class PrAuditTest(unittest.TestCase):
         empty_objects = self.root / "empty-objects"
         (empty_objects / "info").mkdir(parents=True)
         index = self.root / "foreign-index"
+        # the first run would make the login lock (U642); made here so every run is compared against one tree
+        self.lock.touch(mode=0o600)
         before = tree_state(self.root, (self.tmp, self.rec))
         for name, value in (
             ("GIT_GRAFT_FILE", str(grafts)),
@@ -2787,6 +2798,161 @@ class PrAuditTest(unittest.TestCase):
         self.addCleanup(locked.chmod, 0o755)
         lever = self.lever_copy(lambda text: text + '"~/locked/inner" = "deny"\n')
         self.assert_stopped(self.run_lever("7", lever=lever), 2, f"cannot resolve {locked}")
+
+    def timed_codex(self):
+        """Environment for runs whose `codex` is a stub around the fake codex that records each call's start and end
+        clocks, whether the login lock was held by another descriptor while it ran (a non-blocking `flock` of its own
+        fails exactly then) and the scratch CODEX_HOME that names the run, one JSON line per call in
+        `self.rec/codex-clocks`; `exec` sleeps 2 seconds after the fake codex has written the verdict (U642)."""
+        bindir = Path(tempfile.mkdtemp(dir=self.root, prefix="timed-"))
+        stub = bindir / "codex"
+        stub.write_text(
+            "#!/usr/bin/env python3\n"
+            "import fcntl, json, os, subprocess, sys, time\n"
+            "start = time.time()\n"
+            "held = None\n"
+            "try:\n"
+            "    fd = os.open(os.environ['TIMED_CODEX_LOCK'], os.O_RDONLY)\n"
+            "    try:\n"
+            "        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+            "        held = False\n"
+            "    except BlockingIOError:\n"
+            "        held = True\n"
+            "    os.close(fd)\n"
+            "except FileNotFoundError:\n"
+            "    pass\n"
+            "status = subprocess.call([os.environ['TIMED_CODEX_REAL'], *sys.argv[1:]])\n"
+            "if sys.argv[1:2] == ['exec']:\n"
+            "    time.sleep(2)\n"
+            "record = {'call': sys.argv[1], 'run': os.environ.get('CODEX_HOME'), 'start': start, 'end': time.time(),"
+            " 'lock_held': held}\n"
+            "with open(os.environ['TIMED_CODEX_CLOCKS'], 'a', encoding='utf-8') as out:\n"
+            "    out.write(json.dumps(record) + '\\n')\n"
+            "sys.exit(status)\n"
+        )
+        stub.chmod(0o755)
+        return {
+            "PATH": f"{bindir}:{self.env['PATH']}",
+            "TIMED_CODEX_REAL": str(FAKE_CODEX),
+            "TIMED_CODEX_LOCK": str(self.lock),
+            "TIMED_CODEX_CLOCKS": str(self.rec / "codex-clocks"),
+        }
+
+    def codex_clocks(self):
+        path = self.rec / "codex-clocks"
+        return [json.loads(line) for line in path.read_text().splitlines()] if path.exists() else []
+
+    def hold_lock(self, seconds):
+        """A perl holding LOCK_EX on the login lock in the background for SECONDS, as another audit's supervisor would;
+        returns once it holds the lock. Its stdout then carries the clock at which it let go."""
+        holder = subprocess.Popen(
+            [
+                "perl",
+                "-MFcntl=:flock",
+                "-MTime::HiRes=time",
+                "-e",
+                'open(my $fh, ">>", $ARGV[0]) or die "open: $!"; flock($fh, LOCK_EX) or die "flock: $!"; '
+                '$| = 1; print "held\\n"; sleep $ARGV[1]; print time(), "\\n";',
+                str(self.lock),
+                str(seconds),
+            ],
+            stdout=subprocess.PIPE,
+            text=True,
+        )
+        self.addCleanup(holder.wait)
+        self.addCleanup(holder.kill)
+        self.addCleanup(holder.stdout.close)
+        self.assertEqual(holder.stdout.readline(), "held\n")
+        return holder
+
+    def two_runs(self):
+        """Two levers started together on the one login, each with the timed codex: their (status, stdout, stderr)
+        and the clock records of every codex call of both."""
+        env = {**self.env, **self.timed_codex()}
+        levers = [
+            subprocess.Popen(
+                [str(LEVER), "7"], cwd=self.repo, env=env, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
+            )
+            for _ in range(2)
+        ]
+        results = [lever.communicate(timeout=120) for lever in levers]
+        return [(lever.returncode, out, err) for lever, (out, err) in zip(levers, results)], self.codex_clocks()
+
+    def test_two_audits_started_together_hold_the_login_in_turn_and_both_finish(self):
+        """U642 (measured 2026-11-19T23:49:39Z: two overlapping audits on one auth.json raced its token refresh, the
+        refresh token was revoked for reuse and every codex call failed until the operator signed in again). Every
+        codex call of every run holds LOCK_EX on `<login dir>/auth.json.lock` through its supervisor: with `codex exec`
+        sleeping 2 s, the six recorded intervals of two runs started together never overlap, every call finds the lock
+        held (by its own supervisor), and both verdicts are written."""
+        runs, clocks = self.two_runs()
+        for code, out, err in runs:
+            self.assertEqual(code, 0, err)
+            self.assertTrue(out.endswith("Verdict: correct\n"), out)
+        self.assertEqual(len(list(self.tmp.iterdir())), 2, "one run directory each")
+        self.assertEqual(
+            sorted(c["call"] for c in clocks), ["exec", "exec", "sandbox", "sandbox", "sandbox", "sandbox"]
+        )
+        self.assertEqual(len({c["run"] for c in clocks}), 2, "the records name the two scratch CODEX_HOMEs")
+        self.assertTrue(all(c["lock_held"] for c in clocks), clocks)
+        ordered = sorted(clocks, key=lambda c: c["start"])
+        for earlier, later in zip(ordered, ordered[1:]):
+            self.assertGreaterEqual(later["start"], earlier["end"], f"overlapping codex calls: {earlier} then {later}")
+        self.assertTrue(all(c["end"] - c["start"] >= 2 for c in clocks if c["call"] == "exec"), clocks)
+
+    def test_a_held_login_lock_prints_the_waiting_line_and_the_run_proceeds_when_it_is_released(self):
+        """A lock another process holds (another audit's supervisor; here a perl for 3 s) makes the lever print the one
+        waiting line on stderr and block; it proceeds when the holder lets go, and no codex runs before that. The
+        later calls of the same run find the lock free and print nothing, so the line appears once."""
+        holder = self.hold_lock(3)
+        run = self.run_lever("7", **self.timed_codex())
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertTrue(run.stdout.endswith("Verdict: correct\n"), run.stdout)
+        released = float(holder.stdout.readline())
+        line = f"pr-audit.sh: waiting for the Codex login lock {self.lock} (another audit holds it)\n"
+        self.assertEqual(run.stderr.count(line), 1, run.stderr)
+        clocks = self.codex_clocks()
+        self.assertEqual([c["call"] for c in clocks], ["sandbox", "sandbox", "exec"])
+        self.assertGreaterEqual(clocks[0]["start"], released, "no codex ran while the holder had the lock")
+        self.assertTrue(all(c["lock_held"] for c in clocks), clocks)
+
+    def test_a_login_lock_held_past_the_lock_timeout_is_exit_1_naming_the_lock_and_no_codex_runs(self):
+        """PR_AUDIT_LOCK_TIMEOUT bounds the wait through the perl's alarm: a lock still held after it is exit 1 naming
+        the lock, after the waiting line, with no probe and no audit run and no run directory left; the value keeps
+        the lever's integer grammar."""
+        holder = self.hold_lock(30)
+        started = time.monotonic()
+        run = self.run_lever("7", PR_AUDIT_LOCK_TIMEOUT="1")
+        self.assertLess(time.monotonic() - started, 25, "the lever gave up on the alarm, not on the holder")
+        self.assertIsNone(holder.poll(), "the holder still held the lock when the lever gave up")
+        self.assert_stopped(
+            run, 1, f"the Codex login lock {self.lock} was not released within 1 seconds (PR_AUDIT_LOCK_TIMEOUT)"
+        )
+        self.assertIn(
+            f"pr-audit.sh: waiting for the Codex login lock {self.lock} (another audit holds it)\n", run.stderr
+        )
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        for value in ("0", "x", "1.5"):
+            with self.subTest(value=value):
+                self.assert_refused(
+                    self.run_lever("7", PR_AUDIT_LOCK_TIMEOUT=value),
+                    "PR_AUDIT_LOCK_TIMEOUT and PR_AUDIT_WAIT_TRIES must be positive integers",
+                )
+
+    def test_a_symlink_or_a_non_regular_file_at_the_login_lock_path_is_refused_before_any_codex(self):
+        """A lock path that is a symlink or a directory is a refusal naming it before any codex runs (a link there
+        would lock some other file, and two runs could race again); a link placed after that check fails the perl's
+        own `O_NOFOLLOW` open, exit 1 naming the lock, still before any codex."""
+        self.lock.symlink_to(self.auth)
+        self.assert_refused(self.run_lever("7"), f"the Codex login lock {self.lock} is a symbolic link")
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.lock.unlink()
+        self.lock.mkdir()
+        self.assert_refused(self.run_lever("7"), f"the Codex login lock {self.lock} is not a regular file")
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
+        self.lock.rmdir()
+        path = self.failing_tool("mkdir", "*scratch-tmpdir*", f'ln -s "{self.auth}" "{self.lock}"; exec "$REAL" "$@"')
+        self.assert_stopped(self.run_lever("7", PATH=path), 1, f"cannot open the Codex login lock {self.lock}")
+        self.assertEqual(self.codex_calls(), [], "no probe and no audit")
 
 
 class AuditConfigSourceTest(unittest.TestCase):

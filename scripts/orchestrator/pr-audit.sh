@@ -10,7 +10,8 @@
 #   re-read) and refuses unless the base is `main`. Everything the lever writes lives in one run directory
 #   `<root>/pr-audit-<pr>.XXXXXX`, the root being TMPDIR (default /tmp) by its physical path and refused when it
 #   or an ancestor holds `.git`, `AGENTS.md` or `AGENTS.override.md`; nothing in the checkout, its git directory or the caller's HOME is written, with
-#   one exception that is Codex's, not the lever's: the Codex process (unsandboxed; the permission profile binds only
+#   two exceptions. The lever's own is the lock file `${CODEX_HOME:-~/.codex}/auth.json.lock` beside the login, created
+#   0600 when absent and never removed (the login lock, below). The other is Codex's, not the lever's: the Codex process (unsandboxed; the permission profile binds only
 #   the commands it runs) refreshes a stale ChatGPT session in place through the login link, so the caller's
 #   `${CODEX_HOME:-~/.codex}/auth.json` may be rewritten. That is the supported pattern
 #   (https://learn.chatgpt.com/docs/auth/ci-cd-auth.md: "Keep the refreshed `auth.json` for the next run"; "only one
@@ -88,6 +89,22 @@
 #   codex's process group on both OSes and every descendant on Linux (the supervisor is the child subreaper); on macOS
 #   a descendant that starts its own session can outlive the run, confined by the sandbox it inherited, and the lever
 #   warns with the pid and command of each one it saw (best effort).
+#   Every codex call also runs under an exclusive lock on the login (regime-cutover U642, standing orders 59 and 60;
+#   measured 2026-11-19T23:49:39Z: two audits overlapped on the one `auth.json`, the second refreshed the token the
+#   first had just rotated, and the refresh token was revoked for reuse, so every codex call failed until the operator
+#   signed in again; the supported pattern above allows one serialized job stream per `auth.json`). The lock is the
+#   kernel's flock(2) on `${CODEX_HOME:-~/.codex}/auth.json.lock` beside the login, a regular file the lever creates
+#   0600 when absent (a symlink or any other non-regular file at that path is a refusal naming it, and the perl opens
+#   it `O_NOFOLLOW`). A perl takes it and execs the supervisor with the descriptor kept open (close-on-exec cleared),
+#   so the supervisor holds the lock for codex's whole run, the probes and `codex exec` alike, and the kernel releases
+#   it when the supervisor exits however it exits (a crash, a kill, its deadline): no lock outlives its holder and
+#   none is recovered by age or pid. The two `codex sandbox` probes are locked too: they read the same scratch
+#   CODEX_HOME, where the login link sits beside the config codex must load, the lever cannot show that codex leaves
+#   the login unopened there, and the probes take seconds. A free lock prints nothing; a held one prints one stderr
+#   line `pr-audit.sh: waiting for the Codex login lock <path> (another audit holds it)` before blocking, bounded by
+#   PR_AUDIT_LOCK_TIMEOUT seconds (default 3600) through the perl's `alarm` (cleared before the exec, so the
+#   supervisor inherits no pending alarm); the timeout, and a failed open, flock or exec, is exit 1 naming the lock,
+#   never a run without it.
 #
 #   The verdict is structured data, never a free-text last line (regime-cutover U106, plan P-24): the lever writes
 #   the JSON Schema `verdict.schema.json` into the run directory and passes it with `--output-schema`, so the final
@@ -141,11 +158,14 @@
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call and per `git fetch` (default 60).
 # @env PR_AUDIT_TIMEOUT Seconds for the `codex exec` run (default 3600).
 # @env PR_AUDIT_PROBE_TIMEOUT Seconds per `codex sandbox` probe (default 120).
+# @env PR_AUDIT_LOCK_TIMEOUT Seconds to wait for the Codex login lock while another audit holds it (default 3600).
 # @env PR_AUDIT_WAIT_TRIES Fetches until `refs/pull/<pr>/head` equals the head (default 3).
 # @env PR_AUDIT_WAIT_SECONDS Seconds between those fetches (default 10).
 # @stdout Two lines: the path of `verdict.md`, then `Verdict: correct|incorrect|blocked`, the value read from the JSON.
 # @exitcode 0 The verdict file conforms to the schema and agrees with its findings; `verdict.md` is written.
-# @exitcode 1 A read, the fetch, the repack or the codex run failed, codex wrote no final message, or the verdict file
+# @exitcode 1 A read, the fetch, the repack or the codex run failed, the Codex login lock was not taken (held past
+#   PR_AUDIT_LOCK_TIMEOUT seconds, or its open, flock or exec failed; then no codex ran), codex wrote no final
+#   message, or the verdict file
 #   is not JSON (RFC 8259: a `NaN`, `Infinity` or `-Infinity` literal, a key written twice, a lone surrogate, or a
 #   number the reader cannot represent are not), does not conform to the schema (a type, enum or bound), or names a
 #   verdict its findings contradict; or the schema uses a keyword or type the reader does not implement; or
@@ -155,7 +175,7 @@
 #   pull request (a `Program-Unit:` line) without `--records`, a store that is not a readable directory or not the
 #   body's program's, a malformed or doubled `Program-Unit:` line, a store whose earlier findings cannot be read as
 #   data (audit-carry.py exited other than 0 or 1), the
-#   login missing or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
+#   login missing or not a regular file, the login lock path a symbolic link or not a regular file, a config that does not select the `audit` allowlist profile, or a probe
 #   that read a denied path, wrote outside the scratch TMPDIR, reached the network or could not run, or codex could
 #   not be given a process group of its own.
 # @exitcode 3 Refused by the round cap or the brief gate: `rounds-check.py` or `brief-check.py` exited non-zero for the
@@ -294,6 +314,7 @@ usage='usage: pr-audit.sh <pr> [--records <store>] [--cyber-program <standard|da
 gh_timeout=${PR_LEVER_GH_TIMEOUT:-60}
 audit_timeout=${PR_AUDIT_TIMEOUT:-3600}
 probe_timeout=${PR_AUDIT_PROBE_TIMEOUT:-120}
+lock_timeout=${PR_AUDIT_LOCK_TIMEOUT:-3600}
 wait_tries=${PR_AUDIT_WAIT_TRIES:-3}
 wait_seconds=${PR_AUDIT_WAIT_SECONDS:-10}
 probe_done='pr-audit-probe: all denied'
@@ -635,8 +656,55 @@ except BaseException as error:
 os._exit(exit_code)
 '
 
+# The taker of the Codex login lock (regime-cutover U642). Two audits that overlap on one `auth.json` race its refresh:
+# a refresh rotates the refresh token, and the second process refreshing the stale one trips the reuse revocation
+# (measured 2026-11-19T23:49:39Z: every codex call failed with "your refresh token was revoked" until the operator
+# signed in again). The supported pattern is one serialized job stream per `auth.json` copy, so every codex call of
+# every run holds `LOCK_EX` on `${login_lock}` for its whole span. macOS ships no flock(1), so perl takes the lock, as
+# in `bounded` and regime-start: it opens the file `O_RDWR | O_CREAT | O_NOFOLLOW` at mode 0600 (a symlink at the path
+# fails the open; the lever refused one earlier as well), checks it is a regular file, clears close-on-exec on the
+# descriptor (perl sets it on every descriptor above 2, and the lock would otherwise be dropped at the exec), tries
+# `LOCK_EX | LOCK_NB` once (silent when free), else prints the one waiting line and blocks under `alarm` for the
+# lock timeout, clears the alarm (an alarm survives an exec and would stop the supervisor), and execs the supervisor
+# in its own pid, so the supervisor's parent is still the lever and the lock is the supervisor's for as long as it
+# lives: codex, its group stop and the survivor report all happen under it, and the kernel releases it when the
+# supervisor exits however it exits. Every failure (open, a non-regular file, fcntl, flock, the timeout, exec) is
+# written to the lock mark file and exit 1 before anything is launched; the lever fails naming the reason, so no run
+# ever proceeds without the lock. Before the lock is taken, stderr is the lever's (the waiting line); after it, stderr
+# is joined to stdout, the codex log, as before. The single quotes keep the Perl source for Perl, never this shell.
+# shellcheck disable=SC2016
+login_lock_take='
+use strict;
+use warnings;
+use Fcntl qw(:DEFAULT :flock F_SETFD);
+my ($lock, $seconds, $mark) = splice(@ARGV, 0, 3);
+sub stop {
+    my ($reason) = @_;
+    if (open(my $out, ">", $mark)) { print {$out} "$reason\n"; close($out); }
+    else { print STDERR "pr-audit.sh: $reason\n"; }
+    exit 1;
+}
+sysopen(my $fh, $lock, O_RDWR | O_CREAT | O_NOFOLLOW, 0600)
+    or stop("cannot open the Codex login lock $lock: $!; no codex ran");
+-f $fh or stop("the Codex login lock $lock is not a regular file; no codex ran");
+fcntl($fh, F_SETFD, 0) or stop("cannot keep the Codex login lock $lock open across exec (fcntl: $!); no codex ran");
+unless (flock($fh, LOCK_EX | LOCK_NB)) {
+    $!{EWOULDBLOCK} or $!{EAGAIN} or stop("cannot lock the Codex login lock $lock: $!; no codex ran");
+    print STDERR "pr-audit.sh: waiting for the Codex login lock $lock (another audit holds it)\n";
+    local $SIG{ALRM} = sub {
+        stop("the Codex login lock $lock was not released within $seconds seconds (PR_AUDIT_LOCK_TIMEOUT); no codex ran");
+    };
+    alarm $seconds;
+    flock($fh, LOCK_EX) or stop("cannot lock the Codex login lock $lock: $!; no codex ran");
+    alarm 0;
+}
+open(STDERR, ">&", \*STDOUT) or stop("cannot join stderr to the codex log under the Codex login lock $lock: $!; no codex ran");
+exec @ARGV or stop("cannot exec $ARGV[0] under the Codex login lock $lock: $!; no codex ran");
+'
+
 # @description Run codex as the audit sees it, from the empty scratch cwd: the scratch HOME, CODEX_HOME and TMPDIR,
-#   no XDG base directories, under the supervisor bounded by $1 seconds; a supervisor that failed (status 125 with a
+#   no XDG base directories, under the supervisor bounded by $1 seconds, which holds the Codex login lock (U642; a
+#   lock not taken is exit 1 naming it, before anything is launched); a supervisor that failed (status 125 with a
 #   mark) is a refusal (exit 2). The supervisor runs as a background job and the shell waits for it, so the INT, TERM
 #   and HUP traps of the lever run while it is running; they find it in the job table (`jobs -p`), which holds it from
 #   the moment it is launched until `wait` has reaped it, so no pid variable opens a window.
@@ -645,17 +713,24 @@ os._exit(exit_code)
 # @arg $3 path The file that gets codex's stdout and stderr.
 # @arg $@ string The codex arguments.
 codex_scratch() {
-    local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark reason
+    local seconds=$1 input=$2 output=$3 status=0 mark=${work}/group-mark lock_mark=${work}/lock-mark reason
     shift 3
-    rm -f -- "${mark}" "${mark}.survivors" || fail "cannot remove ${mark}"
+    rm -f -- "${mark}" "${mark}.survivors" "${lock_mark}" || fail "cannot remove ${mark} and ${lock_mark}"
     (
         unset XDG_CONFIG_HOME XDG_DATA_HOME XDG_STATE_HOME XDG_CACHE_HOME
         cd "${work}/cwd" || exit 1
         HOME=${work}/home CODEX_HOME=${codex_home} TMPDIR=${work}/scratch-tmpdir \
-            exec "${python}" -I -S -c "${codex_supervisor}" "${seconds}" "${mark}" "$$" codex "$@" \
-            < "${input}" > "${output}" 2>&1
+            exec perl -e "${login_lock_take}" "${login_lock}" "${lock_timeout}" "${lock_mark}" \
+            "${python}" -I -S -c "${codex_supervisor}" "${seconds}" "${mark}" "$$" codex "$@" \
+            < "${input}" > "${output}"
     ) &
     wait "$!" || status=$?
+    # The lock's perl marks its reason and launches nothing (U642): the failure is the lever's, exit 1 naming the lock.
+    if [[ -s ${lock_mark} ]]; then
+        reason=''
+        read_file "${lock_mark}" reason || fail "cannot read ${lock_mark}"
+        fail "${reason%$'\n'}"
+    fi
     report_survivors
     # A failed supervisor marks its reason; a status of 125 without the mark is codex's own.
     if ((status == 125)) && [[ -s ${mark} ]]; then
@@ -884,9 +959,9 @@ if [[ -n ${records} ]]; then
     records=${canonical}
     [[ -f ${records}/ledger.tsv ]] || refuse "the store ${records} is not a directory holding ledger.tsv"
 fi
-for value in "${gh_timeout}" "${audit_timeout}" "${probe_timeout}" "${wait_tries}"; do
+for value in "${gh_timeout}" "${audit_timeout}" "${probe_timeout}" "${lock_timeout}" "${wait_tries}"; do
     [[ ${value} =~ ^[1-9][0-9]*$ ]] ||
-        refuse 'PR_LEVER_GH_TIMEOUT, PR_AUDIT_TIMEOUT, PR_AUDIT_PROBE_TIMEOUT and PR_AUDIT_WAIT_TRIES must be positive integers'
+        refuse 'PR_LEVER_GH_TIMEOUT, PR_AUDIT_TIMEOUT, PR_AUDIT_PROBE_TIMEOUT, PR_AUDIT_LOCK_TIMEOUT and PR_AUDIT_WAIT_TRIES must be positive integers'
 done
 [[ ${wait_seconds} =~ ^[0-9]+$ ]] || refuse 'PR_AUDIT_WAIT_SECONDS must be a non-negative integer'
 command -v codex > /dev/null || refuse 'no codex on PATH'
@@ -899,6 +974,14 @@ login=${login_home}/auth.json
     refuse "the Codex login ${login} is missing or not a readable regular file (run codex login as the operator)"
 login_real=$(physical "${login}") ||
     refuse "cannot resolve the Codex login ${login}"
+# The login lock (regime-cutover U642): the file beside the login that every codex call of every run holds `LOCK_EX`
+# on (codex_scratch). It must be a regular file or absent; a symlink is refused here and again at the open
+# (`O_NOFOLLOW`), since a link placed there would make the lock a lock on some other file and two runs could race.
+login_lock=${login_home}/auth.json.lock
+[[ ! -L ${login_lock} ]] ||
+    refuse "the Codex login lock ${login_lock} is a symbolic link; it must be a regular file or absent"
+[[ ! -e ${login_lock} || -f ${login_lock} ]] ||
+    refuse "the Codex login lock ${login_lock} is not a regular file; it must be a regular file or absent"
 
 # The one config source, generated from codex.audit: it must select the `audit` profile and name no sandbox mode. It
 # is read once, whole, with the read's status checked (U71b audit round 1: a read error inside a `while read` loop

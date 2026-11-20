@@ -573,7 +573,7 @@
       "target": ".local/bin/common/program-status.py",
       "kind": "file",
       "executable": true,
-      "sha256": "28d4e82370463863eb63f4726c4fee4be1eaeb53dd30ef20e64b03271f5e7c76"
+      "sha256": "ad07ef7c6a047d30fdad7a92fc53aa09d21745468607f75dc7bd32ed4f4d6936"
     },
     {
       "source": "home/dot_local/bin/common/executable_read-lib.sh",
@@ -714,6 +714,13 @@
       "kind": "file",
       "executable": true,
       "sha256": "4b2889fb20d87140f4541a63931533cc6bc09c7aab706d0447f1e800ed513293"
+    },
+    {
+      "source": "home/dot_local/bin/common/handout-check.py",
+      "target": ".local/bin/common/handout-check.py",
+      "kind": "file",
+      "executable": false,
+      "sha256": "383a9c5db58716416a5a9c51b69d66a9ce4f1a40660d117fdf83a7880979a8a2"
     },
     {
       "source": "home/dot_local/bin/common/ledger.py",
@@ -885,6 +892,11 @@
       "source": "home/dot_local/bin/common",
       "target": ".local/bin/common",
       "glob": "git-isolated.sh"
+    },
+    {
+      "source": "home/dot_local/bin/common",
+      "target": ".local/bin/common",
+      "glob": "handout-check.py"
     },
     {
       "source": "home/dot_local/bin/common",

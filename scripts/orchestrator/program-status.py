@@ -3,13 +3,20 @@
 
 The operator asked (2026-11-12 JST, order 57) whether the program is moving or stopped and could not tell from the
 coordinator's prose. This lever answers from the store's tables alone: `program-status.py <store> [--ja]
-[--now <ts>] [--progress-root <dir>]` prints one word of state and its reason, one signal line per goal element, the
-operator's acts, the decisions only the operator can make, and what the agent runs; the coordinator's reply quotes
-this output instead of composing it. Plain text, five headings, at most one line per item, no table, no colour, no
+[--now <ts>] [--progress-root <dir>]` prints the goal sentence, one word of state and its reason, one signal line per
+goal element, the operator's acts, the decisions only the operator can make, and what the agent runs; the
+coordinator's reply quotes this output from its first line instead of composing it. Plain text, the goal line, five
+headings, at most one line per item, no table, no colour, no
 chronology, no commit hash, and no unit id outside the running-work section (order 56). Every input is a store file
 with a fixed header, read by one reader each and refused on any other shape (order 21); nothing is written.
 
 The report, line by line:
+- `goal: <sentence>` (standing order 61, U649): the sentence is the first Markdown quote line (`> ...`) of
+  `<store>/handoff/08-purpose-and-goal.md`, read whole and stripped of its `> ` prefix, so no status report can omit
+  the purpose and goal the operator fixed; a missing file, a file without a quote line, and a quote line that is
+  empty, holds a tab, a control character or a line separator, or is more than 1024 bytes long are refusals naming
+  the file (order 21). `handout-check.py` beside this lever reads the same sentence the same way and refuses a plan
+  or status handout that lacks it.
 - `state: <word>: <reason>, last record <age> min ago`. The word is `done` when every tests table is green;
   `stopped` when no unit is in flight and an open decision or a pending operator act exists, or when a stall check
   beside this lever reports every in-flight unit `stalled` or `no-file`; otherwise `moving`. The reason is the first
@@ -50,8 +57,9 @@ The report, line by line:
   an age of another shape, a unit named twice, a time limit of 120 seconds or a start that fails is a refusal too,
   the row ones naming the line. Without the file beside this one the column reads `progress: unknown`. Rows of units
   not in flight print nothing.
-A section with no item prints `none`. `--ja` prints the five headings and the state word in the operator's forms
-(状態 / 要素 / 操作者の作業 / 操作者の判断 / agent が動かしているもの; 進んでいる / 止まっている / 完了) and translates nothing else.
+A section with no item prints `none`. `--ja` prints the goal label, the five headings and the state word in the
+operator's forms (ゴール; 状態 / 要素 / 操作者の作業 / 操作者の判断 / agent が動かしているもの; 進んでいる / 止まっている / 完了) and
+translates nothing else.
 
 Exit 0 when the report printed. Exit 2 with one stderr line, `program-status.py: refused: <reason>`, and nothing on
 stdout for every refusal: the self pin (below), a store that is no directory, `--now` not exactly
@@ -122,6 +130,13 @@ WORDS = {
     "en": {"moving": "moving", "stopped": "stopped", "done": "done"},
     "ja": {"moving": "進んでいる", "stopped": "止まっている", "done": "完了"},
 }
+# The goal line's label (standing order 61, U649) and its source: the first Markdown quote line of the handoff file,
+# held to one line of at most GOAL_MAX_BYTES bytes with no tab, control character or line separator.
+GOAL_LABEL = {"en": "goal", "ja": "ゴール"}
+GOAL_FILE = os.path.join("handoff", "08-purpose-and-goal.md")
+GOAL_MAX_BYTES = 1024
+GOAL_WHY = "the goal sentence is read from its first Markdown quote line"
+CONTROL = re.compile(r"[\x00-\x1f\x7f-\x9f\u2028\u2029]")
 
 
 def one_line(text):
@@ -212,18 +227,44 @@ def manifest_levers(lines, manifest):
 lever_self_check()
 
 
-def read_text(path):
+def read_text(path, why="the report is read from the store's tables"):
     """The whole file as strict UTF-8, byte-exact (`newline=""`: no CRLF or CR is turned into a newline, so a carriage
-    return reaches the row checks; U497c); a file that is missing, unreadable or not UTF-8 is a refusal naming it."""
+    return reaches the row checks; U497c); a file that is missing, unreadable or not UTF-8 is a refusal naming it, the
+    missing one with `why` it is read."""
     try:
         with open(path, encoding="utf-8", newline="") as handle:
             return handle.read()
     except FileNotFoundError:
-        refuse(f"{path} is missing; the report is read from the store's tables")
+        refuse(f"{path} is missing; {why}")
     except OSError as error:
         refuse(f"cannot read {path}: {error.strerror}")
     except UnicodeDecodeError as error:
         refuse(f"{path} is not UTF-8: {error.reason}")
+
+
+def goal_sentence(store):
+    """The goal sentence (standing order 61, U649): the first Markdown quote line (`> ...`) of
+    `<store>/handoff/08-purpose-and-goal.md`, read whole and stripped of its `> ` prefix (a `>` alone opens the line;
+    one space after it is the prefix's and goes). A missing, unreadable or non-UTF-8 file, a file with no quote line,
+    and a quote line that is empty, holds a tab, a control character or a line separator, or is more than 1024 bytes
+    long are refusals naming the file and the line (order 21), so the goal line is always one line of bounded length
+    and the sentence a handout check can hold a file to."""
+    path = os.path.join(store, GOAL_FILE)
+    for number, line in enumerate(read_text(path, GOAL_WHY).split("\n"), 1):
+        if not line.startswith(">"):
+            continue
+        sentence = line[1:].removeprefix(" ")
+        if "\t" in sentence:
+            refuse(f"line {number} of {path}, the goal sentence, holds a tab")
+        if CONTROL.search(sentence):
+            refuse(f"line {number} of {path}, the goal sentence, holds a control character")
+        if not sentence:
+            refuse(f"line {number} of {path} is an empty quote line; {GOAL_WHY}")
+        size = len(sentence.encode("utf-8"))
+        if size > GOAL_MAX_BYTES:
+            refuse(f"line {number} of {path}, the goal sentence, is {size} bytes, more than {GOAL_MAX_BYTES}")
+        return sentence
+    refuse(f"{path} holds no Markdown quote line (`> ...`); {GOAL_WHY}")
 
 
 def read_tsv(path, header):
@@ -463,6 +504,7 @@ def section(lines, heading, items):
 def report(store, here, args):
     language = "ja" if args.ja else "en"
     now = timestamp(args.now, "--now") if args.now is not None else datetime.now(timezone.utc)
+    goal = goal_sentence(store)
     signals, acts = elements(store)
     opened = open_gates(store)
     running = in_flight(store)
@@ -470,7 +512,10 @@ def report(store, here, args):
     rows = stall_rows(here, store, args)
     word, reason = state_word(signals, acts, opened, running, rows)
     headings = HEADINGS[language]
-    lines = [f"{headings[0]}: {WORDS[language][word]}: {reason}, last record {age} min ago"]
+    lines = [
+        f"{GOAL_LABEL[language]}: {goal}",
+        f"{headings[0]}: {WORDS[language][word]}: {reason}, last record {age} min ago",
+    ]
     section(
         lines,
         headings[1],

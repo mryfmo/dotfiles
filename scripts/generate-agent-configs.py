@@ -107,8 +107,10 @@ LEVER_PIN_LINE = re.compile(r"^(      )([A-Za-z0-9][A-Za-z0-9_.-]*): ([0-9a-f]{6
 # prefix, so chezmoi installs it at mode 0644 under ~/.local/bin/common beside the lever that reads it; each is pinned
 # like every lever, so the generator holds the copy byte-identical to the checkout's file and the pin is the digest
 # pr-merge.sh holds its copy to (U597 round 11 corrected this comment, which had claimed the writer's importer held
-# the reader to the pin as well).
-LEVER_MODULES = frozenset({"ledger.py", "sweep-scope.py"})
+# the reader to the pin as well). `handout-check.py` (U649) is the coordinator's check of a plan or status handout for
+# the goal sentence, run as `python3 -I -S ~/.local/bin/common/handout-check.py <store> [<file>...]`, never by path:
+# installed the same way under its bare name and pinned, and it hashes itself against that pin before it reads.
+LEVER_MODULES = frozenset({"ledger.py", "sweep-scope.py", "handout-check.py"})
 
 
 def lever_install_name(name: str) -> str:

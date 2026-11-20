@@ -8,9 +8,19 @@ ENV TZ=Asia/Tokyo
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 
 # python3 runs the chezmoi modify scripts of the Codex and Claude configs and scripts/check-agent-runtime.py
-# (make apply-check).
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
+# (make apply-check). The apt step carries two bounds (U610). apt's own options, the bounds the runner's apt gets
+# (scripts/ci/drop-azure-apt-mirror.py, tests/unit/test_apt_mirror.py), are idle bounds: a connection or read silent
+# for 15 s is given up and retried three times, so a stalled archive.ubuntu.com fails the layer fast. A mirror that
+# keeps trickling bytes never trips them (runs 44475635634 and 44497689181: 105 MB at under 100 KB/s, the job
+# cancelled at its 15 minutes), so the whole step also runs under coreutils timeout, a total bound of 600 s, inside
+# the timeout-minutes of .github/workflows/apply-check.yml: the layer fails and the job's rerun or the cached layer
+# takes over, instead of the job being cancelled. APT_WEEK is the ISO week of the build (date -u +%G-W%V, passed by
+# make docker-image and printed by make docker-build-args), declared right before the step: every RUN after an ARG
+# uses it implicitly (Docker Docs, ARG, impact on build caching), so the layer's cache key changes weekly and a
+# cached apt layer carries packages at most a week older than a cold build's.
+ARG APT_WEEK
+RUN timeout 600 sh -c 'apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 update && \
+    apt-get -o Acquire::http::Timeout=15 -o Acquire::Retries=3 install -y --no-install-recommends \
     curl \
     git \
     sudo \
@@ -18,7 +28,7 @@ RUN apt-get update && \
     parallel \
     build-essential \
     ca-certificates \
-    python3
+    python3'
 
 RUN existing_group="$(getent group "$USER_GID" | cut -d: -f1)" \
     && if [ -n "$existing_group" ]; then groupmod --new-name "$USERNAME" "$existing_group"; else groupadd --gid "$USER_GID" "$USERNAME"; fi \

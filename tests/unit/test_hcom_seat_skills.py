@@ -193,6 +193,45 @@ CHECKOUT_GUARD = (
     "`~/.local/bin/common/checkout-guard.sh check <checkout>` reports it), so a worker that reaches for the "
     "checkout is sent to the worker-tree lever by the tool, not by a sentence (U129)."
 )
+# U621 (standing orders 57 and 59; round 2 after verdict U621-942e9a16, round 3 after verdict U621-b368fced, round 4
+# after verdict U621-4edab4b0): step 1 states the delegated worker's progress-file contract, the convention
+# stall-check.py reads, and the coordinator's use of the stall watcher as a background job under `--until-stall` whose
+# exit is the wake (a background job's output reaches the coordinator only when the job exits, so no printed line wakes
+# anything); the coordinator reads the exit: 1 is a stall and every row on stdout is one worker to stop, reset (one
+# transaction: the progress file archived, then the markers removed) and replace with a fresh worker under the same
+# consolidated brief, dispatched only after the reset's exit 0 and its archive line (on exit 3 the stderr line names the
+# step to finish by hand before a second reset), before the lever is started again; 3 is the watcher's own failure and
+# no worker is touched; 2 is a refusal of the arguments.
+WORKER_CONTRACT = (
+    "A delegated worker (a Task subagent dispatched into a worker tree) writes `<store>/progress/<unit>-progress.txt`: "
+    "one `YYYY-MM-DDTHH:MM:SSZ <text>` line after each item of its brief and the bare `done, head=<sha>` line at the "
+    "end, the convention `stall-check.py` reads; the coordinator sets the unit's `units.tsv` state `in-flight` at "
+    "dispatch and runs `~/.local/bin/common/stall-watch.sh <store> --until-stall` as a background job for the program "
+    "(every 60 seconds it runs `stall-check.py` with a 25-minute deadline over that directory, counts a unit without a "
+    "file from the first tick that saw it in flight, and exits 1 at the end of the first tick that records a new "
+    "`stalled` or `no-file` unit as a `decisions.tsv` row of phase `stall`, or 3 when the checker or the record "
+    "failed): the job's exit is the wake, not a printed line, since a background job's output reaches you only when "
+    "the job exits; the line is on its stdout."
+)
+STALL_ACTION = (
+    "Read the job's exit before anything. Exit 1 is a stall: the tick that recorded it recorded every new stall it "
+    "found in that tick, each with its marker and its row, and printed every row on stdout, so each printed row is one "
+    "stalled worker to replace; for each row, stop that worker, run the lever's `reset <unit>` (one transaction ordered "
+    "to fail safe: it reads the clock, moves the unit's progress file aside to `<unit>-progress.<ts>.txt`, a rename "
+    "that keeps the previous worker's lines, and only then removes the unit's `seen` and `stalled` markers, printing "
+    "each removed marker and the archive line only after every step succeeded, so the replacement starts with no file "
+    "and its own silence is a new stall), and dispatch a fresh worker with the same consolidated brief only after the "
+    "reset exited 0 and printed the archive line (or no file existed, so there was no line to print); on exit 3 the "
+    "reset printed nothing on stdout and one stderr line naming the step that failed and what was already done before "
+    "it: read that line, finish the named step by hand or fix the store, run the reset again, and dispatch only after "
+    "an exit 0, since a replacement dispatched beside the old progress file is judged stalled at once; start the lever "
+    "again only after every row's unit was reset. Exit 3 is the watcher's own failure (the checker or the record), "
+    "named on its stderr, "
+    "and nothing about any worker is known from it (a row on its stdout beside the failure is a stall that tick did "
+    "record, handled as under exit 1): fix the store or the checker and start the lever again without touching a "
+    "worker that has no row. Exit 2 is a refusal of the arguments, named on its stderr: fix the line and start the "
+    "lever again. The lever itself kills and restarts nothing (standing orders 57 and 59; U621)."
+)
 # U624 (standing orders 59 and 60): step 6 names the round-advance lever as the way a round advances after a worker
 # commit, the twelve hand-run commands as one, with the body and the sweep brief left to the coordinator.
 ROUND_ADVANCE = (
@@ -399,6 +438,66 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertLess(brief.index("the check refuses a brief without one."), brief.index(SPLIT_BRIEF))
         self.assertLess(brief.index(SPLIT_BRIEF), brief.index("Add the `units.tsv` row"))
         self.assertIn(CHECKOUT_GUARD, brief)
+
+    def test_step_one_states_the_delegated_worker_contract_and_the_stall_watcher(self):
+        brief = step(ORCHESTRATION.read_text(), "The loop", 1)
+        self.assertIn(WORKER_CONTRACT, brief)
+        self.assertIn(STALL_ACTION, brief)
+        self.assertEqual(brief.count("stall-watch.sh"), 1)
+        # Round 2: the wake is the background job's exit, the row on its stdout; no sentence says a printed line wakes
+        # the coordinator's wait (verdict U621-942e9a16, f5 s7), and the re-dispatch sentence names `reset <unit>`.
+        self.assertIn("the job's exit is the wake, not a printed line", brief)
+        self.assertIn("the line is on its stdout.", brief)
+        self.assertNotIn("wakes on", brief)
+        self.assertEqual(brief.count("`reset <unit>`"), 1)
+        self.assertEqual(brief.count("--until-stall"), 1)
+        # Round 3: the coordinator reads the exit (verdict U621-b368fced, f4 s6): exit 1 is a stall and every printed
+        # row is one worker to replace, reset before the restart (f3 s6); exit 3 is the watcher's failure, no worker
+        # touched; the earlier sentence that replaced a worker on every exit is gone.
+        self.assertIn("Read the job's exit before anything. Exit 1 is a stall:", brief)
+        self.assertIn("each printed row is one stalled worker to replace", brief)
+        self.assertIn("start the lever again only after every row's unit was reset.", brief)
+        self.assertIn(
+            "Exit 3 is the watcher's own failure (the checker or the record), named on its stderr, and nothing about "
+            "any worker is known from it",
+            brief,
+        )
+        self.assertIn("start the lever again without touching a worker that has no row.", brief)
+        self.assertIn("Exit 2 is a refusal of the arguments", brief)
+        self.assertIn("moves the unit's progress file aside to `<unit>-progress.<ts>.txt`", brief)
+        self.assertNotIn("On that exit, stop the worker", brief)
+        self.assertLess(brief.index("Exit 1 is a stall"), brief.index("Exit 3 is the watcher's own failure"))
+        self.assertLess(brief.index("`reset <unit>`"), brief.index("only after every row's unit was reset"))
+        # Round 4: the dispatch depends on the reset's exit (verdict U621-4edab4b0 P1 at SKILL:26, f2 s7): the
+        # replacement is dispatched only after `reset` exited 0 and printed the archive line (or no file existed); on
+        # exit 3 the stderr line names the step, the coordinator finishes it by hand or fixes the store, runs the
+        # reset again and dispatches only after an exit 0.
+        self.assertIn(
+            "one transaction ordered to fail safe: it reads the clock, moves the unit's progress file aside", brief
+        )
+        self.assertIn("and only then removes the unit's `seen` and `stalled` markers", brief)
+        self.assertIn(
+            "dispatch a fresh worker with the same consolidated brief only after the reset exited 0 and printed the "
+            "archive line (or no file existed, so there was no line to print)",
+            brief,
+        )
+        self.assertIn(
+            "on exit 3 the reset printed nothing on stdout and one stderr line naming the step that failed and what was "
+            "already done before it: read that line, finish the named step by hand or fix the store, run the reset "
+            "again, and dispatch only after an exit 0",
+            brief,
+        )
+        self.assertNotIn("and start a fresh worker with the same consolidated brief;", brief)
+        self.assertLess(brief.index("`reset <unit>`"), brief.index("only after the reset exited 0"))
+        self.assertLess(brief.index("only after the reset exited 0"), brief.index("dispatch only after an exit 0"))
+        self.assertLess(
+            brief.index("dispatch only after an exit 0"), brief.index("only after every row's unit was reset")
+        )
+        # after the release of the worker's tree, before the checkout guard
+        release = "run it before any successor is dispatched on the same tree."
+        self.assertLess(brief.index(release), brief.index(WORKER_CONTRACT))
+        self.assertLess(brief.index(WORKER_CONTRACT), brief.index(STALL_ACTION))
+        self.assertLess(brief.index(STALL_ACTION), brief.index(CHECKOUT_GUARD))
 
     def test_the_gates_state_the_round_cap_and_the_two_strikes_the_check_counts(self):
         gates = section(ORCHESTRATION.read_text(), "Gates")

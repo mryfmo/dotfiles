@@ -280,6 +280,7 @@ LEVERS = (
     "seat-settings-render.sh",
     "seat-token-place",
     "stall-check.py",
+    "stall-watch.sh",
     "sweep-scope.py",
     "ticket-unit.py",
     "units-row.py",

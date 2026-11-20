@@ -47,6 +47,7 @@ LEVERS = (
     "router-gh",
     "router-settings-apply",
     "router-settings-apply.py",
+    "stall-watch.sh",
     "round-advance.sh",
 )
 # The levers whose self-check is Python (hashlib and its own manifest read, no PATH tool): a sed or hash tool planted

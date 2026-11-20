@@ -13,6 +13,13 @@ plan, deterministic from discovery), and part K is every N-th shard from the K-t
 without overlap and each gets its share of the long shards. CI runs the parts as matrix rows. `--dry-run` prints the
 plan (one line per shard, `  <name>: <n> tests`) and exits 0 without running anything.
 
+`--modules <file>` (regime-cutover U623) restricts the plan to the test modules the file lists, one per line, each a
+module file name (`test_x.py`) or its path under the start directory (`tests/unit/test_x.py`), as
+scripts/ci/affected-tests.py prints them for a pull request; a line naming no test module under the start directory
+is a refusal (exit 1), never a silent narrowing. `--shard K/N` then partitions the restricted plan. A listing that
+names no module, or a part of the restricted plan that holds no shard, is nothing to run: one line says so and the
+exit is 0, since a selection that reaches no module is the selection's answer, not a failure of the run.
+
 Every shard runs with tests/unit/scratch_git.py's settings in its environment (regime-cutover U100), so no git a test
 runs in a scratch repository starts background maintenance (`git maintenance run --auto`, detached and holding
 maintenance.lock since git 2.55), however the test made the repository.
@@ -145,6 +152,28 @@ def plan(shards: list[Shard], part: tuple[int, int] | None) -> list[Shard]:
     return order[part[0] - 1 :: part[1]]
 
 
+def restrict(shards: list[Shard], listing: Path, start: Path, pattern: str) -> list[Shard]:
+    """The shards of the modules `listing` names, one per line (a module file name, or a path to a file under
+    `start`; blank lines are skipped), in the plan's order. ValueError names a listing that cannot be read or an
+    entry that is no test module under `start`: a module absent from the tree is a refusal."""
+    try:
+        lines = listing.read_text().splitlines()
+    except OSError as error:
+        raise ValueError(f"cannot read {listing}: {error.strerror}") from error
+    present = {path.name for path in start.rglob("*.py") if path.is_file() and fnmatch.fnmatch(path.name, pattern)}
+    names: set[str] = set()
+    for line in lines:
+        entry = line.strip()
+        if not entry:
+            continue
+        listed = Path(entry)
+        under = listed.name == entry or (listed.is_file() and listed.resolve().is_relative_to(start.resolve()))
+        if listed.name not in present or not under:
+            raise ValueError(f"{listing} names {entry}, which is no test module under {start}")
+        names.add(listed.name)
+    return [shard for shard in shards if shard.file in names]  # lint-comparisons: allow a module file name, no path
+
+
 def run_shard(start: Path, shard: Shard) -> Result:
     result = Result(shard=shard)
     command = [sys.executable, "-m", "unittest", "discover", "-s", str(start), "-p", shard.file, "-v"]
@@ -180,6 +209,7 @@ def main(argv: list[str]) -> int:
     parser.add_argument("--jobs", default=0, type=int, help="shards at a time; 0 is the CPU count")
     parser.add_argument("--split", default=50, type=int, help="split a module of more tests; 0 never splits")
     parser.add_argument("--shard", type=shard_part, metavar="K/N", help="run part K of N of the plan (K in 1..N)")
+    parser.add_argument("--modules", type=Path, metavar="FILE", help="run the test modules FILE lists, one per line")
     parser.add_argument("--dry-run", action="store_true", help="print the plan and exit 0 without running a test")
     args = parser.parse_args(argv)
     jobs = args.jobs or os.cpu_count() or 1
@@ -196,9 +226,26 @@ def main(argv: list[str]) -> int:
     if not found:
         print(f"unittest-shards: discovery found no test modules under {args.start}", file=sys.stderr)
         return 1
+    whole = len({shard.file for shard in found})
+    restricted = ""
+    if args.modules is not None:
+        try:
+            found = restrict(found, args.modules, args.start, args.pattern)
+        except ValueError as error:
+            print(f"unittest-shards: {error}", file=sys.stderr)
+            return 1
+        restricted = f", {len({shard.file for shard in found})} of {whole} modules listed in {args.modules}"
+        if not found:
+            print(f"unittest-shards: nothing to run: {args.modules} lists no module of the {whole} under {args.start}")
+            return 0
     # The biggest shards start first, so a long one does not begin last and set the wall time alone; with --shard,
     # this process's part of that order (shard_part, plan).
     order = plan(found, args.shard)
+    if not order and args.modules is not None:
+        print(
+            f"unittest-shards: nothing to run: shard {args.shard[0]}/{args.shard[1]} of {len(found)}{restricted} is empty"
+        )
+        return 0
     if not order:
         print(f"unittest-shards: shard {args.shard[0]}/{args.shard[1]} of {len(found)} is empty", file=sys.stderr)
         return 1
@@ -206,8 +253,8 @@ def main(argv: list[str]) -> int:
     total = sum(shard.expected for shard in order)
     modules = len({shard.file for shard in order})
     print(
-        f"unittest-shards: {total} tests in {modules} modules, {len(order)} shards under {args.start}{part}, "
-        f"{jobs} at a time",
+        f"unittest-shards: {total} tests in {modules} modules, {len(order)} shards under {args.start}{part}"
+        f"{restricted}, {jobs} at a time",
         flush=True,
     )
     if args.dry_run:

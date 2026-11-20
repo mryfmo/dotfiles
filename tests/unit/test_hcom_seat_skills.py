@@ -168,7 +168,11 @@ MOVED_MAIN = (
 # ledger-row.py carried, the merge gate's carried row and its sweep read at the earlier head) had no step that said
 # when to use it. Step 6 runs the digest lever on the new head after the fetch the lever needs (measured: a head the
 # checkout has not fetched is its exit 2, `not our ref`), writes the carried row on the carried line and runs no
-# fresh audit and no fresh sweep then; a refusal keeps today's fresh audit and sweep.
+# fresh audit and no fresh sweep then; a refusal keeps today's fresh audit and sweep. Round 2 (verdict U620-82b81b5f):
+# the carry sentences were followed on the same line by the merge-lever sentences that still required a `correct` row
+# and a verdict file at the moved head, so the step is now one rule (the per-head verdict rule) with two paths, the
+# carry first and the fresh audit second, and the merge-lever sentences name the carried row and the audited head's
+# verdict file beside the `correct` row; the unconditional sentences are pinned absent.
 CARRY_FETCH = (
     "fetch the moved refs into your checkout first, `git fetch origin main <branch>` (`audit-carry.py` reads the heads "
     "from the checkout alone and opens no transport, so a head the checkout has not fetched is its exit 2, `git "
@@ -185,8 +189,30 @@ CARRY_ROW = (
     "green on the new head as for every head."
 )
 CARRY_REFUSED = (
-    "When it refuses (exit 1 naming the differing path, or no earlier audited head), the new head gets the fresh audit "
-    "and the sweep of step 4 as today; exit 2 is a git or store failure to repair first."
+    "When it refuses (exit 1 naming the differing path, or no earlier audited head), the second path is the new head's "
+    "own: the fresh audit of step 4, its verdict file copied to `verdicts/U<n>-<head8>.md`, its `correct` row and its "
+    "sweep, as any head gets them; exit 2 is a git or store failure to repair first."
+)
+CARRY_RULE = (
+    "GitHub's merge commit of `main` into the branch. One rule holds for that head, the per-head verdict rule of "
+    '"Gates": it merges only with a `ledger.tsv` row of its own, and the row comes by one of two paths, the carry first '
+    "and the fresh audit second (standing orders 59 and 60, U620). The carry: the new head's diff against `main` is "
+    "the audited commit's byte for byte unless the branch gained a commit or `main` moved on a file the branch changed, "
+    "so " + CARRY_FETCH
+)
+CARRY_JOIN = (
+    "From here the two paths are one. With the head's row written, `correct` for the full head sha or `carried` naming "
+    "it, run `~/.local/bin/common/pr-threads-check.sh <n> --head <head sha> --records "
+    ".orchestration/orchestrate/<program>` first"
+)
+CARRY_MERGE_ROW = (
+    "it refuses unless the newest `ledger.tsv` row for the pull request at the full head sha is `correct`, or `carried` "
+    "from an earlier head whose newest row is `correct`, and every check on that head passed"
+)
+CARRY_VERDICT_FILE = (
+    "It also opens the store's `verdicts/U<n>-<sha8>.md` of the audited head (required; the head itself under a "
+    "`correct` row, the earlier head a `carried` row names, so a carried head needs no verdict file of its own) and "
+    "refuses"
 )
 CARRY_PER_HEAD = (
     "A head that `pr-update-branch.sh` moved has no row of its own until its `carried` row (above) or its fresh "
@@ -296,7 +322,7 @@ ROUND_CAP_UNITS = (
 # U71: the merge lever does the re-read and the orchestrator never runs it twice.
 MERGE_ERROR = (
     "the lever re-reads `gh pr view <n> --json state,mergeCommit,baseRefName,headRefOid`; `MERGED` into `main` at the "
-    "audited head means the merge happened and its `mergeCommit` is the sha to record, so never run the lever twice "
+    "head you merged means the merge happened and its `mergeCommit` is the sha to record, so never run the lever twice "
     "for one head (exit 1 with both shas named means GitHub merged another head or base: tell the operator); the "
     "ledger row names the commit that carries the diff (verify with `git diff <parent> <sha> --stat` non-empty)."
 )
@@ -460,17 +486,35 @@ class HcomSeatSkillsTest(unittest.TestCase):
         sweep on a refusal; the fetch comes before the lever (the lever reads the checkout alone, and the coordinator
         measured `not our ref` without it). The per-head sentence of the step names the carried row as the moved head's
         own row, step 5's voiding sentence points at the carry, and the Gates bullet admits the carried row beside the
-        fresh audit's; the old sentence that sent every moved head to a fresh audit is gone."""
+        fresh audit's; the old sentence that sent every moved head to a fresh audit is gone. Round 2 (verdict
+        U620-82b81b5f): the step is one rule with two paths, and the merge-lever sentences that follow the carry admit
+        the carried row and read the verdict file at the audited head; the sentences that required a `correct` row or
+        a verdict file at the moved head unconditionally are gone."""
         text = ORCHESTRATION.read_text()
         merge = step(text, "The loop", 6)
-        self.assertIn(CARRY_FETCH + ". " + CARRY_ROW + " " + CARRY_REFUSED + " With a `correct` verdict row", merge)
-        self.assertLess(merge.index("never `gh pr update-branch`. "), merge.index(CARRY_FETCH))
+        self.assertIn(CARRY_RULE + ". " + CARRY_ROW + " " + CARRY_REFUSED + " " + CARRY_JOIN, merge)
+        self.assertLess(merge.index("never `gh pr update-branch`. "), merge.index(CARRY_RULE))
         self.assertLess(merge.index("git fetch origin main <branch>"), merge.index("audit-carry.py <store>"))
         self.assertEqual(merge.count("audit-carry.py <store>"), 1)
         self.assertEqual(merge.count("ledger-row.py <store> carried"), 1)
         self.assertIn(CARRY_PER_HEAD, merge)
         self.assertLess(merge.index(CARRY_REFUSED), merge.index(CARRY_PER_HEAD))
+        self.assertIn(CARRY_MERGE_ROW, merge)
+        self.assertIn(CARRY_VERDICT_FILE, merge)
+        self.assertLess(merge.index(CARRY_JOIN), merge.index(CARRY_MERGE_ROW))
+        self.assertLess(merge.index(CARRY_MERGE_ROW), merge.index(CARRY_VERDICT_FILE))
         self.assertNotIn("so it gets a fresh audit before the merge", merge)
+        for gone in (
+            "the new head gets the fresh audit and the sweep of step 4 as today",
+            "With a `correct` verdict row for the full head sha",
+            "is `correct` and every check on that head passed",
+            "for that head (required)",
+            "at the audited head means the merge happened",
+            "instead of auditing and sweeping it again",
+        ):
+            self.assertNotIn(
+                gone, merge, "a sentence that sends the moved head back to a fresh audit, verdict file or correct row"
+            )
         self.assertIn(
             "step 6 carries the earlier verdict and sweep to that merge head through `audit-carry.py` when its diff "
             "against `main` is unchanged, and it is audited afresh otherwise.",

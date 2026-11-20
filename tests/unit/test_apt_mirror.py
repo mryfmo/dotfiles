@@ -5077,6 +5077,73 @@ class ReaderCensusTest(unittest.TestCase):
                     self.assertIsNotNone(error)
 
 
+class DockerfileAptBoundTest(unittest.TestCase):
+    """U610: the image `make apply-check` builds (Dockerfile) runs apt against its own sources, never the runner's
+    mirror list, so the drop and the form's `sudo /usr/bin/timeout` do not apply there; apt's own bounds of the form
+    do. Every apt-get of the Dockerfile carries the form's two Acquire options, in the form's order, before its verb.
+    Round 3 (verdict of 1c416678, P1): those are idle bounds, and a mirror that keeps trickling bytes never trips
+    them (105 MB at under 100 KB/s ran the layer past the job's 15 minutes), so the whole apt step also runs under
+    coreutils `timeout <seconds>`, a total bound under the job's timeout-minutes of apply-check.yml."""
+
+    OPTIONS = FORM_WORDS[5:]  # -o Acquire::http::Timeout=15 -o Acquire::Retries=3
+
+    @staticmethod
+    def calls(text: str) -> list[list[str]]:
+        """Each apt-get call of a Dockerfile as its words, from `apt-get` to the next operator, on the logical line."""
+        return [call.split() for call in re.findall(r"\bapt-get\b[^&|;]*", text.replace("\\\n", " "))]
+
+    def test_every_apt_get_of_the_dockerfile_carries_the_forms_acquire_options(self) -> None:
+        calls = self.calls((ROOT / "Dockerfile").read_text())
+        self.assertEqual(2, len(calls), calls)
+        for words in calls:
+            with self.subTest(call=" ".join(words[:6])):
+                self.assertEqual(["apt-get", *self.OPTIONS], words[:5])
+                self.assertIn(words[5], VERBS)
+                reopened = [word for word in words[6:] if word.lower().startswith(tuple(APT_REOPEN_PREFIXES))]
+                self.assertEqual([], reopened)
+
+    def test_the_scan_sees_the_dockerfile_before_the_bounds(self) -> None:
+        calls = self.calls("RUN apt-get update && \\\n    apt-get install -y --no-install-recommends \\\n    curl\n")
+        self.assertEqual(
+            [["apt-get", "update"], ["apt-get", "install", "-y", "--no-install-recommends", "curl"]], calls
+        )
+        self.assertFalse([words for words in calls if words[1:5] == list(self.OPTIONS)])
+
+    @staticmethod
+    def apt_run(text: str) -> str:
+        """The one RUN instruction of a Dockerfile that calls apt-get, on its logical line."""
+        instructions = [line.strip() for line in text.replace("\\\n", " ").splitlines() if line.startswith("RUN ")]
+        (run,) = [line for line in instructions if re.search(r"\bapt-get\b", line)]
+        return run
+
+    def test_the_apt_step_runs_under_a_total_bound_inside_the_jobs_timeout(self) -> None:
+        # The bound and the job's timeout-minutes are both read from their files: the job through the reader the
+        # step check uses (CI's interpreter has no YAML parser), the seconds from the RUN's own first words.
+        run = self.apt_run((ROOT / "Dockerfile").read_text())
+        match = re.fullmatch(r"RUN timeout ([0-9]+) sh -c '([^']*)'", run)
+        self.assertIsNotNone(match, run)
+        seconds = int(match.group(1))
+        job = jobs(WORKFLOWS / "apply-check.yml")["apply-container"]
+        job_seconds = int(job["keys"]["timeout-minutes"]) * 60
+        self.assertLess(seconds, job_seconds)
+        # No shorter than the form's floor for one apt call on the runner: a total bound under it would end a normal
+        # cold build (about five minutes with build-essential) rather than a trickling mirror.
+        self.assertGreaterEqual(seconds, MIN_APT_BOUND)
+        # The two bounded calls are the ones inside the command; apt-get is not called outside it.
+        self.assertEqual(2, len(self.calls(match.group(2))))
+        self.assertEqual(2, len(self.calls(run)))
+
+    def test_the_scan_sees_the_apt_step_before_the_total_bound(self) -> None:
+        # The instrument shows the failure it detects: round 1's RUN, apt's idle bounds and no total bound.
+        form = " ".join(self.OPTIONS)
+        before = (
+            f"RUN apt-get {form} update && \\\n    apt-get {form} install -y --no-install-recommends \\\n    curl\n"
+        )
+        run = self.apt_run(before)
+        self.assertIsNone(re.fullmatch(r"RUN timeout ([0-9]+) sh -c '([^']*)'", run))
+        self.assertEqual(2, len(self.calls(run)))
+
+
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--script"]:  # the walker's own entry, as the other walkers over shfmt's JSON have one
         sys.exit(tree_main(sys.argv[1:]))

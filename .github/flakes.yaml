@@ -3,9 +3,12 @@
 # cancelled matches one of these: `job` against the job name and `log_regex`
 # against its log (`gh run view --log-failed`, or the whole `--log` of a
 # timed-out or cancelled job), both extended regular expressions (grep -E). A
-# job with no log matches nothing. Add a signature only with the log line of a
-# measured failed run beside it in the task's records, and its sample in
-# tests/unit/test_ci_rerun.py.
+# job with no log matches nothing. An aggregator job (test (<os>, <system>) of
+# .github/workflows/test.yaml, since U622) fails as a consequence of its shard
+# rows, so its one line is a signature only beside the failed shard's own:
+# the shard that matched no signature still answers `real failure`. Add a
+# signature only with the log line of a measured failed run beside it in the
+# task's records, and its sample in tests/unit/test_ci_rerun.py.
 - id: snapcraft-assertion-timeout
   job: '^public-bootstrap \(ubuntu-'
   log_regex: 'cannot fetch assertion: got unexpected HTTP status code (408|5[0-9][0-9]) via GET to "https://api\.snapcraft\.io/'
@@ -14,3 +17,11 @@
   job: '^test \('
   log_regex: 'FAIL: test_(a_generic_rule_scans_a_padded_line_in_linear_time|the_report_of_many_findings_in_one_file_is_linear_in_the_findings) \('
   note: the two wall-time linearity tests of tests/unit/test_validate_agent_assets.py failed healthy runners on runner jitter alone, code unchanged (2026-11-04, run 41759432402 test (macos-15, client), 32,000 findings reported in 2.318 s against the 2.0 s cap; run 41761193225 test (ubuntu-26.04, client), 0.1051 s at 8,000 findings to 0.9372 s at 32,000, 8.9x per 4x step against the growth bound of 8; run 41762642788 test (ubuntu-24.04, server) is the third run of that day's record, and its log shows both tests passing); U165 widened the report test to the least of five runs, a growth bound of 12 and a 20 s hang cap, and the padded-line test's cap to 20 s.
+- id: descriptor-probe-unattributed-reader
+  job: '^test(-shard)? \('
+  log_regex: 'FAIL: test_metadata_reads_and_other_files_are_not_reads_of_the_input \(test_trusted_exec_contract\.'
+  note: the worker-root probe of tests/unit/test_trusted_exec_contract.py saw its FIFO opened by a process this user cannot name on GitHub's Ubuntu runners, code unchanged (2026-11-19, run 44592923853 job 135803454438 test (ubuntu-24.04, server), `ledger.tsv opened for reading by no process whose descriptors this user can read (155 unreadable)`; the rerun passed), the ninth record between 2026-10-28 and 2026-11-19; U625's five rounds of attributing the open (by /proc, by a sampled and by a latched control FIFO) were withdrawn (decisions.tsv 2026-11-19), so the rerun lever carries it. The job expression covers the test-shard rows of U622 and the test (<os>, <system>) jobs of the runs before them.
+- id: aggregator-of-a-known-flaky-shard
+  job: '^test \('
+  log_regex: 'the test-shard rows ended (failure|cancelled|timed_out); see the test-shard \('
+  note: the aggregator step of .github/workflows/test.yaml prints this one line from `needs.test.result` when a shard row fails, so the three test (<os>, <system>) jobs redden with the row (2026-11-19, run 44624354466, test-shard (ubuntu-24.04, server, 2/2) failed on the descriptor probe and job 135930097232 test (ubuntu-24.04, client) ended `the test-shard rows ended failure; see the test-shard (ubuntu-24.04, client, K/2) checks`). The entry is sound because ci-rerun.sh reruns only when every failed job matches, so the failed shard row must still match its own signature; an aggregator over a real shard failure leaves that shard unmatched and the answer stays `real failure`.

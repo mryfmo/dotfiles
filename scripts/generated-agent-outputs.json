@@ -419,7 +419,7 @@
       "target": ".local/bin/common/body-check.py",
       "kind": "file",
       "executable": false,
-      "sha256": "ec8ccde229353fb48abc7c28130e995c034f5f85596be086c64428a0b24b4268"
+      "sha256": "a2f20c093d949f75f8f1422a97cd86941a040a1594f95ed6f47cd218c9b83b1b"
     },
     {
       "source": "home/dot_local/bin/common/executable_acp-broker",
@@ -524,7 +524,7 @@
       "target": ".local/bin/common/pr-body-edit.sh",
       "kind": "file",
       "executable": true,
-      "sha256": "92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d"
+      "sha256": "cadc836a0d70975fbabc82012eb3d682b5c2e488a01a64363066caced8f12a39"
     },
     {
       "source": "home/dot_local/bin/common/executable_pr-close.sh",

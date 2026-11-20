@@ -7,7 +7,10 @@ out of date), each costing a round or a disposition row. AGENTS.md's Audit secti
 `row | risk | status | evidence`, one row per changed path, one per non-path control, one per orchestrator effect; a
 `closed` row's evidence names the test selector that fails without the fix; `residual` names the control;
 `out-of-scope` names the unit. The gate levers read the one body line `Program-Unit: <program>/U<n>`. This module is
-the check that runs on the body file before every `gh pr create` and `gh pr edit` (hcom-orchestration SKILL, step 3).
+the check that runs on the body file before every `gh pr create` and `gh pr edit`: the worker runs it before its
+`gh pr create` (hcom-worker SKILL, step 4), `pr-body-edit.sh` runs the copy beside it before its one `gh pr edit`
+write and refuses the body the check refuses, and the coordinator runs it on the RESULT's body as the second read
+(hcom-orchestration SKILL, step 3; round 2 of U619, after verdict U619-ddfde55f P1).
 
 CLI: `python3 -I -S body-check.py <body.md> --base <sha> --head <sha> [--repo <dir>]` reads the body and the changed
 paths of `git diff --name-only <base>..<head>` in the repository at `--repo` (default the current directory), the
@@ -15,15 +18,20 @@ status of every git read checked (a diff or a grep that fails is exit 2 with one
 standing order 21), and refuses with exit 1, one line per fault on stderr and nothing on stdout, when: the body lacks
 `## Summary`, `## Contract` with the three sentences starting `Guaranteed:`, `Left out:` and `Trusted:`, or
 `## Threat table`; it holds other than exactly one `Program-Unit: <program>/U<n>` line (pr-body-edit.sh's grammar);
-the table's header is not `| row | risk | status | evidence |`; a row has other than four cells (an unescaped `|`
-inside a cell splits it, as GitHub renders it; `\\|` is the escape); a changed path has no row whose `row` cell is that
-path in backticks (a row covers one path; a row whose cell is not a changed path is a non-path row); a row's status is
-not `closed`, `residual` or `out-of-scope`; a `closed` row's evidence names no test selector that exists in the
-repository at `<head>` (a selector is `test_<name>` or `<Class>Test`, found by `git grep -l -F -w` at the head under
-`tests/`, or `tests.unit.<module>`, the file `tests/unit/<module>.py` in the head's tree; the row may name several and
-one must exist, so a selector that exists only at the base is refused); a `residual` row names no control (its
-evidence is empty); an `out-of-scope` row names no `U<n>`. Exit 0 prints one stdout line
-`body-check: <n> paths, <m> rows, ok` when every rule holds (`<m>` the table's rows below the header).
+the table's header is not `| row | risk | status | evidence |`; the line after the header is not the separator row
+of four cells (`| --- | --- | --- | --- |`; without it GitHub renders no table, round 2 P2); a row has other than four
+cells (an unescaped `|` inside a cell splits it, as GitHub renders it; `\\|` is the escape); a changed path has no row
+whose `row` cell is that path in backticks (a row covers one path; a row whose cell is not a changed path is a
+non-path row); a row's status is not `closed`, `residual` or `out-of-scope`; a `closed` row's evidence names no test
+selector that exists in the repository at `<head>` (a selector is `test_<name>` or `<Class>Test`, found by
+`git grep -l -F -w` at the head under `tests/`, or `tests.unit.<module>`, the file `tests/unit/<module>.py` in the
+head's tree; the row may name several and one must exist, so a selector that exists only at the base is refused); a
+`closed` row whose `row` cell is a path under `tests/` names no selector that exists in a test module other than that
+file (a test file's row that names the module itself, or a test inside it, does not close `a test loosened to pass`:
+such a row is `residual` naming the control, the auditor's diff read, or `closed` by a selector elsewhere; round 2
+P2); a `residual` row names no control (its evidence is empty); an `out-of-scope` row names no `U<n>`. Exit 0 prints
+one stdout line `body-check: <n> paths, <m> rows, ok` when every rule holds (`<m>` the table's rows below the
+header).
 
 Every rule is one function over the parsed body and the repository's reads, and RULES is the table that maps each
 rule to the message its faults print (Model the Domain): a rule is added by one row. The lever reads no network, no
@@ -43,8 +51,10 @@ USAGE = "usage: body-check.py <body.md> --base <sha> --head <sha> [--repo <dir>]
 PREFIX = "body-check"
 SUMMARY = "Summary"
 CONTRACT = "Contract"
-THREAT_TABLE = "Threat table"
-SECTIONS = (SUMMARY, CONTRACT, THREAT_TABLE)
+# The `## ` section the table lives in; its name is spelled here alone (the identifier avoids the retired token the
+# `scripts/retired-terms.tsv` lint refuses, the old task-file schema's).
+TABLE_SECTION = "Threat table"
+SECTIONS = (SUMMARY, CONTRACT, TABLE_SECTION)
 CONTRACT_SENTENCES = ("Guaranteed:", "Left out:", "Trusted:")
 HEADER = ("row", "risk", "status", "evidence")
 CLOSED = "closed"
@@ -112,10 +122,11 @@ class Body:
         self.program_unit_lines = [line for line in self.lines if line.startswith(PROGRAM_UNIT_PREFIX)]
         self.header: tuple[str, ...] | None = None
         self.header_line = ""
+        self.separator: int | None = None
         self.rows: list[Row] = []
-        table = self.sections.get(THREAT_TABLE)
+        table = self.sections.get(TABLE_SECTION)
         if table is not None:
-            self.header, self.header_line, self.rows = threat_table(self.lines, *table)
+            self.header, self.header_line, self.separator, self.rows = parse_table(self.lines, *table)
 
     def contract_sentences(self) -> list[str]:
         """The first word of every line of `## Contract` that starts one of CONTRACT_SENTENCES."""
@@ -159,28 +170,30 @@ def cells(line: str) -> list[str]:
     return [part.strip().replace("\\|", "|") for part in parts]
 
 
-def threat_table(lines: list[str], start: int, end: int) -> tuple[tuple[str, ...] | None, str, list[Row]]:
+def parse_table(lines: list[str], start: int, end: int) -> tuple[tuple[str, ...] | None, str, int | None, list[Row]]:
     """The first table of the section: its header cells (None when the section holds no table line), the header
-    line as written, and the rows after the separator line, each table line a line starting with `|`."""
+    line as written, the cell count of the separator row on the line after the header (None when that line is no
+    separator row: GitHub renders a table only with one), and the rows after it, each table line a line starting
+    with `|`."""
     number = start
     while number < end and not lines[number].lstrip().startswith("|"):
         number += 1
     if number >= end:
-        return None, "", []
+        return None, "", None, []
     header_line = lines[number].strip()
     header = tuple(cells(header_line))
     number += 1
-    if (
-        number < end
-        and lines[number].lstrip().startswith("|")
-        and all(SEPARATOR_CELL.match(c) for c in cells(lines[number]))
-    ):
-        number += 1
+    separator: int | None = None
+    if number < end and lines[number].lstrip().startswith("|"):
+        parts = cells(lines[number])
+        if all(SEPARATOR_CELL.match(part) for part in parts):
+            separator = len(parts)
+            number += 1
     rows: list[Row] = []
     while number < end and lines[number].lstrip().startswith("|"):
         rows.append(Row(number + 1, cells(lines[number])))
         number += 1
-    return header, header_line, rows
+    return header, header_line, separator, rows
 
 
 def selectors(evidence: str) -> list[str]:
@@ -201,8 +214,8 @@ def selectors(evidence: str) -> list[str]:
 
 
 class Repository:
-    """The repository's reads at two fixed shas: the changed paths of `<base>..<head>`, and whether a selector exists
-    at `<head>` under `tests/`. Every read's status is checked; a failure is Unreadable."""
+    """The repository's reads at two fixed shas: the changed paths of `<base>..<head>`, and the test files under
+    `tests/` at `<head>` that hold a selector. Every read's status is checked; a failure is Unreadable."""
 
     def __init__(self, directory: str, base: str, head: str) -> None:
         for rev in (base, head):
@@ -213,7 +226,7 @@ class Repository:
         self.directory = directory
         self.base = base
         self.head = head
-        self._found: dict[str, bool] = {}
+        self._found: dict[str, frozenset[str]] = {}
         self._test_files: set[str] | None = None
 
     def git(self, *args: str, what: str) -> tuple[int, bytes, str]:
@@ -257,29 +270,39 @@ class Repository:
             self._test_files = {entry for entry in stdout.decode(errors="replace").split("\0") if entry}
         return self._test_files
 
-    def selector_exists(self, selector: str) -> bool:
-        """Whether the selector exists at the head: a module as its file under `tests/unit/`, a function or a class as
-        a whole word `git grep -l -F -w` finds under `tests/`."""
+    def selector_files(self, selector: str) -> frozenset[str]:
+        """The files under `tests/` at the head that hold the selector: a module's own file under `tests/unit/` when
+        the head's tree holds it, a function or a class the files `git grep -l -F -w` finds it in as a whole word;
+        empty when the selector exists nowhere at the head."""
         if selector in self._found:
             return self._found[selector]
         module = MODULE_SELECTOR.fullmatch(selector)
         if module:
-            exists = (
-                f"{TEST_MODULE_DIR}{module[1]}.py" in self.test_files()
-            )  # lint-comparisons: allow a tree listing's entries, the set git ls-tree printed
+            path = f"{TEST_MODULE_DIR}{module[1]}.py"
+            found = path in self.test_files()  # lint-comparisons: allow an entry of git ls-tree's listing
+            files = frozenset({path}) if found else frozenset()
         else:
             what = f"git grep -l -F -w -e {selector} {self.head} -- {TESTS_DIR}"
-            status, _, detail = self.git(
-                "grep", "-I", "-l", "-F", "-w", "-e", selector, self.head, "--", TESTS_DIR, what=what
+            status, stdout, detail = self.git(
+                "grep", "-I", "-l", "-z", "-F", "-w", "-e", selector, self.head, "--", TESTS_DIR, what=what
             )
             if status == 0:
-                exists = True
+                # each entry is `<head>:<path>`; the path is what the rows are compared with
+                files = frozenset(
+                    entry.partition(":")[2] for entry in stdout.decode(errors="replace").split("\0") if entry
+                )
+                if not files:
+                    raise Unreadable(f"{what} exited 0 but listed no file")
             elif status == 1:
-                exists = False
+                files = frozenset()
             else:
                 raise Unreadable(f"{what} exited {status}: {detail}")
-        self._found[selector] = exists
-        return exists
+        self._found[selector] = files
+        return files
+
+    def selector_exists(self, selector: str) -> bool:
+        """Whether the selector exists at the head in any test file."""
+        return bool(self.selector_files(selector))
 
 
 # A fault is the fields its message names; each rule yields its faults as dicts and RULES pairs it with its message.
@@ -311,8 +334,19 @@ def rule_program_unit(body: Body, repo: Repository, paths: list[str]) -> Iterato
 
 
 def rule_header(body: Body, repo: Repository, paths: list[str]) -> Iterator[Fault]:
-    if THREAT_TABLE in body.sections and body.header != HEADER:
+    if TABLE_SECTION in body.sections and body.header != HEADER:
         yield {"header": body.header_line or "missing (the section holds no table line)"}
+
+
+def rule_separator(body: Body, repo: Repository, paths: list[str]) -> Iterator[Fault]:
+    """The line after the header is the separator row of the header's cell count; GitHub renders no table without it,
+    so a body that passes every row rule would still show no table (round 2, verdict U619-ddfde55f P2)."""
+    if body.header != HEADER or body.separator == len(HEADER):
+        return
+    if body.separator is None:
+        yield {"found": "no separator row"}
+    else:
+        yield {"found": f"a separator row of {body.separator} cells"}
 
 
 def rule_cells(body: Body, repo: Repository, paths: list[str]) -> Iterator[Fault]:
@@ -347,6 +381,25 @@ def rule_closed(body: Body, repo: Repository, paths: list[str]) -> Iterator[Faul
             yield {"number": row.number, "row": row.row, "named": ", ".join(named) or "none named"}
 
 
+def rule_closed_test_path(body: Body, repo: Repository, paths: list[str]) -> Iterator[Fault]:
+    """A `closed` row whose `row` cell is a path under `tests/` names a selector that exists in another test module:
+    the module itself, or a test inside it, passes however its assertions are loosened, so it closes nothing about
+    the file (round 2, verdict U619-ddfde55f P2). Read only when rule_closed holds for the row (one of its selectors
+    exists), so a row names one fault."""
+    for row in body.table_rows:
+        path = row.path
+        if row.status != CLOSED or path is None:
+            continue
+        if not path.startswith(TESTS_DIR):  # lint-comparisons: allow the cell against the `tests/` prefix git lists
+            continue
+        named = selectors(row.evidence)
+        files = [repo.selector_files(selector) for selector in named]
+        if not any(files):
+            continue
+        if not any(found - {path} for found in files):
+            yield {"number": row.number, "row": row.row, "named": ", ".join(named)}
+
+
 def rule_residual(body: Body, repo: Repository, paths: list[str]) -> Iterator[Fault]:
     for row in body.table_rows:
         if row.status == RESIDUAL and not row.evidence:
@@ -366,6 +419,13 @@ RULES: tuple[tuple[Rule, str], ...] = (
     (rule_program_unit, "the body holds {count} `Program-Unit:` lines, not exactly one `Program-Unit: <program>/U<n>`"),
     (rule_header, "the threat table's header is `{header}`, not `| row | risk | status | evidence |`"),
     (
+        rule_separator,
+        (
+            "the line after the threat table's header is {found}, not the separator row `| --- | --- | --- | --- |`"
+            " (GitHub renders no table without it)"
+        ),
+    ),
+    (
         rule_cells,
         (
             "threat-table row at line {number} has {count} cells, not 4 (an unescaped `|` inside a cell splits it as"
@@ -382,6 +442,14 @@ RULES: tuple[tuple[Rule, str], ...] = (
         (
             "threat-table row at line {number} ({row}) is closed but its evidence names no test selector that exists at"
             " the head (`test_<name>`, `<Class>Test` or `tests.unit.<module>`; named: {named})"
+        ),
+    ),
+    (
+        rule_closed_test_path,
+        (
+            "threat-table row at line {number} ({row}) is a test file's row marked closed, but no selector it names"
+            " ({named}) exists in another test module; name a selector of another module, or mark the row residual"
+            " naming the control (the auditor's diff read)"
         ),
     ),
     (

@@ -7,6 +7,7 @@ from the checkout's own bytes; nothing reads the real `~/.agents` or `~/.local/b
 """
 
 import hashlib
+import importlib.util
 import os
 import re
 import shutil
@@ -56,9 +57,13 @@ PYTHON_LEVERS = ("brief-check.py", "router-settings-apply.py")
 # The pinned modules (regime-cutover U418, U597 round 8, U619): files no seat runs by path, installed under their bare
 # names (mode 0644, no `executable_` prefix) and pinned like every lever; `ledger.py` is imported by ledger-row.py
 # from beside it, both are run by pr-merge.sh from private copies it hashes against these pins first, and
-# `body-check.py` is run by the coordinator as `python3 -I -S` on the body file before `gh pr create` and `gh pr edit`,
-# so they carry no self-check of their own and the pin is the whole hold.
+# `body-check.py` is run as `python3 -I -S` on the body file before `gh pr create` (the worker), before `gh pr edit`
+# (pr-body-edit.sh, from a private copy hashed against its pin, U619 round 2) and by the coordinator as the second
+# read, so they carry no self-check of their own and the pin is the whole hold. The generator's LEVER_MODULES is the
+# same set (test_the_readme_names_every_pinned_module_the_generator_lists).
 MODULES = ("ledger.py", "sweep-scope.py", "body-check.py")
+README = ROOT / "scripts/orchestrator/README.md"
+GENERATOR = ROOT / "scripts/generate-agent-configs.py"
 MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 
 
@@ -136,6 +141,22 @@ class LeverSelfCheckTest(unittest.TestCase):
                 )
                 # the installed copy of the deployed manifest carries the same line
                 self.assertIn(f"\n      {name}: {pins[0]}\n", (self.home / ".agents/agent-config.yaml").read_text())
+
+    def test_the_readme_names_every_pinned_module_the_generator_lists(self):
+        """U619 round 2 (verdict U619-ddfde55f P2 at scripts/orchestrator/README.md:120): the round-1 body closed the
+        README row on this module, which never read the README. This test does: every module of the generator's
+        `LEVER_MODULES` (the set that renders a pinned module's twin) is named in the README in backticks, and
+        MODULES above is that set, so a module added to the generator without its README entry or its row here fails
+        here."""
+        spec = importlib.util.spec_from_file_location("generate_agent_configs", GENERATOR)
+        generator = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(generator)
+        self.assertEqual(sorted(generator.LEVER_MODULES), sorted(MODULES))
+        readme = README.read_text()
+        for name in sorted(generator.LEVER_MODULES):
+            with self.subTest(module=name):
+                self.assertIn(f"`{name}`", readme, f"the README names no `{name}`")
+        self.assertIn("## `body-check.py`: ", readme, "the lever has its own section")
 
     def test_a_rewritten_installed_lever_refuses_to_run(self):
         for name in LEVERS:

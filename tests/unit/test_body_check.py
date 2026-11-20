@@ -29,13 +29,15 @@ MANIFEST = ROOT / "home/dot_agents/agent-config.yaml"
 OUTPUTS = ROOT / "scripts/generated-agent-outputs.json"
 README = ROOT / "scripts/orchestrator/README.md"
 SKILL = ROOT / "home/dot_agents/skills/hcom-orchestration/SKILL.md"
+WORKER_SKILL = ROOT / "home/dot_agents/skills/hcom-worker/SKILL.md"
+PR_BODY_EDIT = ROOT / "scripts/orchestrator/pr-body-edit.sh"
 IDENTITY = {"GIT_AUTHOR_NAME": "t", "GIT_AUTHOR_EMAIL": "t@t", "GIT_COMMITTER_NAME": "t", "GIT_COMMITTER_EMAIL": "t@t"}
 PREFIX = "body-check: "
 # The paths `git diff --name-only <base>..<head>` lists for the fixture: one removed, one added, one changed, one new.
 CHANGED = ("docs/note.md", "scripts/thing.py", "tests/unit/test_new.py", "tests/unit/test_old.py")
-# The body that holds: the three sections, the three Contract sentences, one Program-Unit line, the header, a row per
-# changed path (each `closed` row naming one selector form that exists at the head), a residual control row and an
-# out-of-scope row.
+# The body that holds: the three sections, the three Contract sentences, one Program-Unit line, the header and its
+# separator row, a row per changed path (each `closed` row naming one selector form that exists at the head; the test
+# file's rows name selectors of other modules, round 2), a residual control row and an out-of-scope row.
 PASSING = """## Summary
 
 A fixture body for the check.
@@ -56,7 +58,7 @@ Trusted: git's listing at two shas.
 | --- | --- | --- | --- |
 | `docs/note.md` | a stale sentence | out-of-scope | U620 owns the docs |
 | `scripts/thing.py` | the thing breaks | closed | `test_new_thing` fails without the fix |
-| `tests/unit/test_new.py` | a test loosened | closed | `NewThingTest` holds the cases |
+| `tests/unit/test_new.py` | a test loosened | closed | `KeptThingTest` holds the cases |
 | `tests/unit/test_old.py` | a test dropped | closed | `tests.unit.test_new` carries its cases |
 | the fixture's one control | the control fails | residual | the control is read at the head |
 """
@@ -65,6 +67,8 @@ ROW_THING = "| `scripts/thing.py` | the thing breaks | closed | `test_new_thing`
 ROW_CONTROL = "| the fixture's one control | the control fails | residual | the control is read at the head |"
 ROW_DOCS = "| `docs/note.md` | a stale sentence | out-of-scope | U620 owns the docs |"
 HEADER = "| row | risk | status | evidence |"
+SEPARATOR = "| --- | --- | --- | --- |"
+ROW_TEST_NEW = "| `tests/unit/test_new.py` | a test loosened | closed | `KeptThingTest` holds the cases |"
 
 
 def load_lever():
@@ -84,7 +88,7 @@ class BodyCheckTest(unittest.TestCase):
         cls.repo = Path(cls.temp.name) / "repo"
         git_init(cls.repo, env=cls.env)
         cls.write("tests/unit/test_old.py", "def test_old_thing():\n    pass\n\n\nclass OldThingTest:\n    pass\n")
-        cls.write("tests/unit/test_kept.py", "def test_kept_thing():\n    pass\n")
+        cls.write("tests/unit/test_kept.py", "def test_kept_thing():\n    pass\n\n\nclass KeptThingTest:\n    pass\n")
         cls.write("scripts/thing.py", "print(1)\n")
         cls.git("add", "-A")
         cls.git("commit", "-q", "-m", "base")
@@ -252,7 +256,7 @@ class BodyCheckTest(unittest.TestCase):
             ),
             (
                 "a closed row naming a class that does not exist",
-                self.replaced("`NewThingTest` holds", "`MissingThingTest` holds"),
+                self.replaced("`KeptThingTest` holds", "`MissingThingTest` holds"),
                 "(`tests/unit/test_new.py`) is closed but its evidence names no test selector",
             ),
             (
@@ -336,11 +340,87 @@ class BodyCheckTest(unittest.TestCase):
         run = self.run_lever(body)
         self.assertEqual((run.returncode, run.stdout, run.stderr), (0, OK_LINE, ""))
 
+    def test_the_separator_row_under_the_header_is_required(self):
+        """Round 2 (verdict U619-ddfde55f P2 at body-check.py:173): without `| --- | --- | --- | --- |` on the line after
+        the header GitHub renders no table, and the round-1 lever passed such a body since every row rule still held."""
+        self.assertIn(SEPARATOR + "\n", PASSING)
+        faults = self.assert_refused(
+            self.run_lever(self.replaced(SEPARATOR + "\n", "")),
+            (
+                "the line after the threat table's header is no separator row, not the separator row"
+                " `| --- | --- | --- | --- |` (GitHub renders no table without it)"
+            ),
+        )
+        self.assertEqual(len(faults), 1, "the rows after the header are still read and hold")
+        faults = self.assert_refused(
+            self.run_lever(self.replaced(SEPARATOR, "| --- | --- |")),
+            "the line after the threat table's header is a separator row of 2 cells, not the separator row",
+        )
+        self.assertEqual(len(faults), 1, faults)
+        # a separator row placed after a row is that row's fault and the missing separator's, not a separator
+        faults = self.assert_refused(
+            self.run_lever(self.replaced(SEPARATOR + "\n" + ROW_DOCS, ROW_DOCS + "\n" + SEPARATOR)),
+            "is no separator row",
+            "has the status `---`",
+        )
+        self.assertEqual(len(faults), 2, faults)
+        # the alignment forms GitHub accepts are separators
+        for form in ("|:---|---:|:---:|---|", "| :-- | --: | :-: | - |", "|---|---|---|---|"):
+            with self.subTest(form):
+                run = self.run_lever(self.replaced(SEPARATOR, form))
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, OK_LINE, ""))
+
+    def test_a_test_file_s_closed_row_names_a_selector_of_another_module(self):
+        """Round 2 (verdict U619-ddfde55f P2 at tests/unit/test_body_check.py:1): a `closed` row for a file under
+        `tests/` whose evidence names the module itself, or a test inside it, passes however its assertions are
+        loosened, so it closes nothing; the row names a selector of another module, or is `residual` naming the
+        control (the auditor's diff read)."""
+        self.assertIn(ROW_TEST_NEW, PASSING)
+        message = (
+            "threat-table row at line 21 (`tests/unit/test_new.py`) is a test file's row marked closed, but no selector"
+            " it names ({named}) exists in another test module; name a selector of another module, or mark the row"
+            " residual naming the control (the auditor's diff read)"
+        )
+        for evidence, named in (
+            ("`tests.unit.test_new` 1 test per rule", "tests.unit.test_new"),
+            ("`test_new_thing` fails without the fix", "test_new_thing"),
+            ("`NewThingTest` holds the cases", "NewThingTest"),
+            (  # the module forms are listed first, then the shorter forms, as `selectors` reads them
+                "`tests.unit.test_new` and `NewThingTest`, `test_missing_thing`",
+                "tests.unit.test_new, test_missing_thing, NewThingTest",
+            ),
+        ):
+            with self.subTest(evidence):
+                body = self.replaced(ROW_TEST_NEW, ROW_TEST_NEW.replace("`KeptThingTest` holds the cases", evidence))
+                faults = self.assert_refused(self.run_lever(body), message.format(named=named))
+                self.assertEqual(len(faults), 1, faults)
+        # a selector that exists nowhere is the closed rule's one fault, not this rule's as well
+        body = self.replaced(ROW_TEST_NEW, ROW_TEST_NEW.replace("`KeptThingTest`", "`MissingThingTest`"))
+        faults = self.assert_refused(self.run_lever(body), "is closed but its evidence names no test selector")
+        self.assertEqual(len(faults), 1, faults)
+        # one selector of another module beside its own closes the row; so does `residual` naming the control
+        for replacement in (
+            ROW_TEST_NEW.replace("`KeptThingTest` holds the cases", "`NewThingTest` and `test_kept_thing`"),
+            ROW_TEST_NEW.replace("`KeptThingTest` holds the cases", "`tests.unit.test_new`, `tests.unit.test_kept`"),
+            "| `tests/unit/test_new.py` | a test loosened | residual | the auditor's diff read |",
+        ):
+            with self.subTest(replacement):
+                run = self.run_lever(self.replaced(ROW_TEST_NEW, replacement))
+                self.assertEqual((run.returncode, run.stdout, run.stderr), (0, OK_LINE, ""))
+        # a row whose path is not under `tests/` names a selector wherever it lives (`scripts/thing.py` names a
+        # test of the changed `tests/unit/test_new.py`), and a test file's row with an empty residual is still the
+        # residual rule's fault
+        faults = self.assert_refused(
+            self.run_lever(self.replaced(ROW_TEST_NEW, "| `tests/unit/test_new.py` | a test loosened | residual | |")),
+            "(`tests/unit/test_new.py`) is residual but names no control",
+        )
+        self.assertEqual(len(faults), 1, faults)
+
     def test_every_fault_of_a_body_is_listed_in_one_run(self):
         body = self.replaced("## Summary", "## Overview")
         body = self.replaced("Trusted:", "Trusts:", body)
         body = self.replaced(ROW_THING + "\n", "", body)
-        body = self.replaced("`NewThingTest` holds", "`MissingThingTest` holds", body)
+        body = self.replaced("`KeptThingTest` holds", "`MissingThingTest` holds", body)
         faults = self.assert_refused(
             self.run_lever(body),
             "no `## Summary` section",
@@ -412,7 +492,7 @@ class BodyCheckTest(unittest.TestCase):
         """Model the Domain: every rule is one function paired with the message its faults print, and the parsed body
         is read through the same functions the CLI runs, so a rule is added by one row."""
         lever = load_lever()
-        self.assertEqual(len(lever.RULES), 10)
+        self.assertEqual(len(lever.RULES), 12)
         for rule, message in lever.RULES:
             with self.subTest(rule.__name__):
                 self.assertTrue(callable(rule))
@@ -437,6 +517,7 @@ class BodyCheckTest(unittest.TestCase):
         self.assertEqual(lever.cells("| a | `b || c` | d |"), ["a", "`b", "", "c`", "d"])
         body = lever.Body(PASSING)
         self.assertEqual(body.header, lever.HEADER)
+        self.assertEqual(body.separator, 4)
         self.assertEqual([row.path for row in body.rows], [*CHANGED, None])
         self.assertEqual(body.contract_sentences(), list(lever.CONTRACT_SENTENCES))
         self.assertEqual(body.program_unit_lines, ["Program-Unit: regime-cutover/U619"])
@@ -482,9 +563,21 @@ class BodyCheckTest(unittest.TestCase):
         skill = SKILL.read_text()
         step = re.search(r"^3\. RESULT\..*$", skill, re.MULTILINE)[0]
         self.assertIn(
-            "`python3 -I -S ~/.local/bin/common/body-check.py <body file> --base <main tip> --head <head sha>`", step
+            "`python3 -I -S ~/.local/bin/common/body-check.py <body file> --base <merge base of the head and main>"
+            " --head <head sha>`",
+            step,
         )
         self.assertIn("before every `gh pr create` and `gh pr edit`", step.lower())
+        # round 2 (verdict U619-ddfde55f P1): the worker's step runs the check before its `gh pr create`, the lever
+        # before its first `gh` read, and the coordinator's run is the second read
+        self.assertIn("the second read, never the first", step)
+        work = re.search(r"^## Work\n(.*?)(?=^## |\Z)", WORKER_SKILL.read_text(), re.MULTILINE | re.DOTALL)[1]
+        create = re.search(r"^4\. .*$", work, re.MULTILINE)[0]
+        self.assertIn("`python3 -I -S ~/.local/bin/common/body-check.py <file> --base", create)
+        self.assertLess(create.index("body-check.py"), create.index("gh pr create --title"))
+        lever = PR_BODY_EDIT.read_text()
+        self.assertIn('body_check "${body_path}"', lever)
+        self.assertLess(lever.index('body_check "${body_path}"'), lever.index("gh_bounded pr view --json number"))
 
 
 if __name__ == "__main__":

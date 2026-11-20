@@ -1,5 +1,6 @@
 """The CI critical path (U39): the sharded unit-test runner, its matrix rows and aggregators (regime-cutover U622), the
-per-pull-request selection of its modules (regime-cutover U623), and the render-only subtrees the bootstrap may skip."""
+per-pull-request selection of its modules (regime-cutover U623), the render-only subtrees the bootstrap may skip, and the
+apply-check image's cached build (U610)."""
 
 from __future__ import annotations
 
@@ -14,6 +15,9 @@ import textwrap
 import unittest
 from pathlib import Path
 
+sys.path.insert(0, str(Path(__file__).resolve().parent))  # dotted runs too; discover -s tests/unit already has it
+from workflow_lock import load_yaml, lockfile  # noqa: E402
+
 ROOT = Path(__file__).resolve().parents[2]
 SHARDS = ROOT / "scripts/ci/unittest-shards.py"
 SELECTOR = ROOT / "scripts/ci/affected-tests.py"
@@ -21,6 +25,25 @@ SELECTOR = ROOT / "scripts/ci/affected-tests.py"
 SELECT_STEP = "Select the test modules the diff reaches"
 REMOTE = ROOT / ".github/workflows/remote.yaml"
 TEST = ROOT / ".github/workflows/test.yaml"
+APPLY_CHECK = ROOT / ".github/workflows/apply-check.yml"
+DOCKERFILE = ROOT / "Dockerfile"
+MAKEFILE = ROOT / "Makefile"
+MAKE = shutil.which("make")
+# U610: the bounds the runner's own apt gets (scripts/ci/drop-azure-apt-mirror.py; test_apt_mirror.py FORM_WORDS), on
+# every apt-get of the image build too, so a stalled archive.ubuntu.com fails the layer fast.
+APT_BOUNDS = "-o Acquire::http::Timeout=15 -o Acquire::Retries=3"
+# The two buildx actions, pinned as the kit pins every action: a full semver tag in the workflow and one entry of
+# .github/workflows/actions.lock (test_workflow_security.py) whose commit is the tag's sha and whose ids are the docker
+# organisation's and the repository's, the identity the runner verifies at run time.
+DOCKER_OWNER_ID = 5429470
+BUILDX_ACTIONS = {"docker/setup-buildx-action": 288485773, "docker/build-push-action": 241092383}
+# The build arguments make docker-image passes, in its order; make docker-build-args prints each as `NAME=value`.
+# APT_WEEK (round 3, verdict of 1c416678 P2): the ISO week of the build, `date -u +%G-W%V`, the apt layer's cache key.
+BUILD_ARGS = ("USERNAME", "APT_WEEK", "DOCKERFILE_ID", "CHEZMOI_VERSION", "CHEZMOI_SHA256")
+# make docker-build-args prints the five in that order; the two resolved on the host without a fetch come first.
+PRINTED = "printf 'USERNAME=%s\\nAPT_WEEK=%s\\nDOCKERFILE_ID=%s\\nCHEZMOI_VERSION=%s\\nCHEZMOI_SHA256=%s\\n'"
+# The ISO week as the Makefile reads it, checked (a `$(…)` read without its status is a defect, AGENTS.md Audit).
+WEEK_READ = 'apt_week="$(date -u +%G-W%V)" || {'
 # The three required status contexts of the main ruleset (read 2026-11-19 through the rulesets API; the constant
 # scripts/orchestrator/pr-merge.sh REQUIRED_CHECKS holds the same names), kept by the aggregator jobs of test.yaml
 # since U622 split each pair into shard rows.
@@ -1217,6 +1240,174 @@ class RenderOnlySubtreesTest(unittest.TestCase):
                     reader = Path(temp) / f"{name}.sh"
                     reader.write_text(text)
                     self.assertEqual(found, bool(render_only_reads([reader])))
+
+
+class ApplyCheckImageCacheTest(unittest.TestCase):
+    """U610 (runs 44475635634 and 44497689181, cancelled at the job's 15-minute timeout inside the image's apt-get):
+    the apply-container job builds the image with buildx against the Actions cache, with build arguments from
+    `make docker-build-args`, so `make apply-check` after it reuses the image; the Dockerfile's apt-get is bounded."""
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.job = load_yaml(APPLY_CHECK)["jobs"]["apply-container"]
+        cls.steps = cls.job["steps"]
+        cls.lock = lockfile()
+
+    def step_using(self, action: str) -> dict:
+        found = [step for step in self.steps if str(step.get("uses", "")).startswith(f"{action}@")]
+        self.assertEqual(1, len(found), f"one step uses {action}: {found}")
+        return found[0]
+
+    def test_the_image_is_built_with_buildx_against_the_actions_cache(self) -> None:
+        build = self.step_using("docker/build-push-action")["with"]
+        self.assertEqual("type=gha", build["cache-from"])
+        self.assertEqual("type=gha,mode=max", build["cache-to"])
+        # The checked-out tree and its Dockerfile, loaded into the daemon under the name make docker-image inspects.
+        self.assertEqual((".", "Dockerfile", True), (build["context"], build["file"], build["load"]))
+        self.assertEqual("dotfiles", build["tags"])
+        self.assertIn("DOCKER_IMAGE_NAME=dotfiles\n", MAKEFILE.read_text())
+        # A plain single-platform image, as `docker build` makes it: no attestation manifest around it.
+        self.assertIs(False, build["provenance"])
+        self.assertEqual(
+            [f"{name}=${{{{ steps.image.outputs.{name} }}}}" for name in BUILD_ARGS], build["build-args"].splitlines()
+        )
+
+    def test_the_steps_run_in_the_order_the_cache_needs(self) -> None:
+        # Checkout, the arguments, the builder, the build, then make apply-check; nothing conditional in between.
+        names = [str(step["uses"]).split("@", 1)[0] if "uses" in step else str(step["run"]) for step in self.steps]
+        self.assertEqual(
+            [
+                "actions/checkout",
+                'make docker-build-args >> "${GITHUB_OUTPUT}"',
+                "docker/setup-buildx-action",
+                "docker/build-push-action",
+                "make apply-check",
+            ],
+            names,
+        )
+        self.assertEqual("image", self.steps[1]["id"])
+        self.assertFalse([step for step in self.steps if "if" in step or "continue-on-error" in step])
+
+    def test_the_build_arguments_come_from_make_docker_build_args(self) -> None:
+        # The resolve step holds the one credential the host side needs; the build step gets none.
+        resolve, build = self.steps[1], self.step_using("docker/build-push-action")
+        self.assertEqual(["GITHUB_TOKEN"], list(resolve["env"]))
+        self.assertNotIn("env", build)
+        text = MAKEFILE.read_text()
+        # The target prints exactly the names the workflow reads, and make docker-image passes the same five.
+        self.assertIn(PRINTED, text)
+        self.assertIn(f'{PRINTED} "$${{username}}" "$${{apt_week}}"', text)
+        (build_line,) = [line for line in text.splitlines() if '" build -t $(DOCKER_IMAGE_NAME)' in line]
+        self.assertEqual(list(BUILD_ARGS), re.findall(r"--build-arg ([A-Z0-9_]+)=", build_line))
+
+    @unittest.skipUnless(MAKE, "make is not installed")
+    def test_make_docker_build_args_verifies_before_it_prints(self) -> None:
+        # The dry run shows the recipe's shell: the same resolution and host-side verification as docker-image
+        # (test_github_release.py runs both with stubs), then the four lines, and no build.
+        result = subprocess.run(
+            [MAKE, "-n", "CONTAINER_ENGINE=docker", "docker-build-args"],
+            cwd=ROOT,
+            text=True,
+            capture_output=True,
+            check=False,
+        )
+        self.assertEqual(0, result.returncode, result.stderr)
+        shell = result.stdout
+        for needle in (
+            "github_release_tag twpayne/chezmoi",
+            "github_release_verified_sha256 twpayne/chezmoi",
+            WEEK_READ,
+            f'{PRINTED} "${{username}}" "${{apt_week}}"',
+        ):
+            self.assertIn(needle, shell)
+        self.assertNotIn(" build ", shell)
+        self.assertLess(shell.index("github_release_verified_sha256"), shell.index("printf 'USERNAME="))
+
+    def test_the_buildx_actions_are_pinned_as_the_kit_pins_every_action(self) -> None:
+        row = self.lock["workflows"][".github/workflows/apply-check.yml"]
+        for action, repo_id in BUILDX_ACTIONS.items():
+            with self.subTest(action=action):
+                reference = self.step_using(action)["uses"]
+                tag = reference.split("@", 1)[1]
+                self.assertRegex(tag, r"\Av\d+\.\d+\.\d+\Z")
+                entry = self.lock["dependencies"][reference]
+                self.assertEqual(tag, entry["ref"])
+                self.assertRegex(entry["commit"], r"\Asha1-[0-9a-f]{40}\Z")
+                self.assertEqual((DOCKER_OWNER_ID, repo_id), (entry["owner_id"], entry["repo_id"]))
+                self.assertNotIn("uses", entry)  # both are node actions with no transitive action
+                self.assertIn(reference, row)
+
+    def test_the_job_timeout_stays_at_fifteen_minutes(self) -> None:
+        self.assertEqual(15, self.job["timeout-minutes"])
+
+    def test_every_apt_get_of_the_dockerfile_carries_the_runner_bounds(self) -> None:
+        # Each call, from its name to the next operator, on the logical line (continuations joined as the shell
+        # joins them): the two options first, then the verb, and no second option that could reopen them.
+        logical = DOCKERFILE.read_text().replace("\\\n", " ")
+        calls = [call.strip() for call in re.findall(r"\bapt-get\b[^&|;]*", logical)]
+        self.assertEqual(2, len(calls), calls)
+        for call in calls:
+            with self.subTest(call=call):
+                words = call.split()
+                self.assertEqual(["apt-get", *APT_BOUNDS.split()], words[:5])
+                self.assertIn(words[5], ("update", "install"))
+                self.assertFalse([word for word in words[6:] if word.startswith(("-o", "-c", "--option", "--config"))])
+
+    def test_the_scan_sees_an_unbounded_apt_get(self) -> None:
+        # The instrument shows the failure it detects: the Dockerfile before U610.
+        before = DOCKERFILE.read_text().replace(f"apt-get {APT_BOUNDS} ", "apt-get ")
+        self.assertNotIn(APT_BOUNDS, before)
+        calls = re.findall(r"\bapt-get\b[^&|;]*", before.replace("\\\n", " "))
+        self.assertEqual(2, len(calls))
+        self.assertFalse([call for call in calls if call.split()[1:5] == APT_BOUNDS.split()])
+
+    def dockerfile_instructions(self) -> tuple[list[str], int]:
+        """The Dockerfile's instructions on their logical lines (continuations joined as the parser joins them,
+        comments and blank lines left out), and the index of the one RUN that calls apt-get."""
+        logical = DOCKERFILE.read_text().replace("\\\n", " ")
+        instructions = [line.strip() for line in logical.splitlines() if line.strip() and not line.startswith("#")]
+        (index,) = [i for i, line in enumerate(instructions) if re.search(r"\bapt-get\b", line)]
+        return instructions, index
+
+    def test_the_apt_step_ends_under_a_wall_clock_bound_inside_the_jobs_timeout(self) -> None:
+        # Round 3 (verdict of 1c416678, P1 at Dockerfile:15): Acquire::http::Timeout bounds the silence between bytes,
+        # not the transfer, so a mirror trickling 105 MB at under 100 KB/s ran the layer past the job's 15 minutes.
+        # coreutils timeout (in ubuntu:24.04) bounds the whole step, under the job's timeout-minutes; both numbers
+        # are read from their files, none copied here.
+        instructions, index = self.dockerfile_instructions()
+        match = re.fullmatch(r"RUN timeout (\d+) sh -c '([^']*)'", instructions[index])
+        self.assertIsNotNone(match, instructions[index])
+        seconds, command = int(match.group(1)), match.group(2)
+        self.assertLess(seconds, self.job["timeout-minutes"] * 60)
+        # Both calls, the update and the install, run inside the bounded command, nothing after it on the line.
+        self.assertEqual(2, len(re.findall(r"\bapt-get\b", command)))
+        self.assertRegex(command, r"\Aapt-get .* update &&\s+apt-get .* install -y --no-install-recommends\s.*\S\Z")
+
+    def test_the_scan_sees_the_apt_step_without_the_wall_clock_bound(self) -> None:
+        # The instrument shows the failure it detects: the Dockerfile of round 1 (1c416678), apt's idle bounds alone.
+        instructions, index = self.dockerfile_instructions()
+        before = re.sub(r"\ARUN timeout \d+ sh -c '([^']*)'\Z", r"RUN \1", instructions[index])
+        self.assertTrue(before.startswith("RUN apt-get "), before)
+        self.assertIsNone(re.fullmatch(r"RUN timeout (\d+) sh -c '([^']*)'", before))
+
+    def test_the_apt_layer_is_keyed_by_the_iso_week(self) -> None:
+        # Round 3 (verdict of 1c416678, P2 at apply-check.yml:64): a cached apt layer kept its build day's packages for
+        # as long as the Dockerfile was unchanged. ARG APT_WEEK right before the apt RUN puts the week into the
+        # layer's cache key (every RUN after an ARG uses it implicitly); the workflow passes it from make
+        # docker-build-args, and make docker-image passes the same value, so a local build keys the same way.
+        instructions, index = self.dockerfile_instructions()
+        self.assertEqual("ARG APT_WEEK", instructions[index - 1])
+        self.assertEqual([index - 1], [i for i, line in enumerate(instructions) if "APT_WEEK" in line])
+        build = self.step_using("docker/build-push-action")["with"]
+        self.assertIn("APT_WEEK=${{ steps.image.outputs.APT_WEEK }}", build["build-args"].splitlines())
+        text = MAKEFILE.read_text()
+        self.assertIn(WEEK_READ.replace("$", "$$"), text)
+        (build_line,) = [line for line in text.splitlines() if '" build -t $(DOCKER_IMAGE_NAME)' in line]
+        self.assertIn('--build-arg APT_WEEK="$${apt_week}"', build_line)
+        self.assertIn("APT_WEEK=%s\\n", text)
+        # The format is the ISO week: the ISO year, a W, the two-digit week (2026-W47 on the day of this round).
+        week = subprocess.run(["date", "-u", "+%G-W%V"], text=True, capture_output=True, check=True).stdout.strip()
+        self.assertRegex(week, r"\A\d{4}-W(0[1-9]|[1-4]\d|5[0-3])\Z")
 
 
 if __name__ == "__main__":

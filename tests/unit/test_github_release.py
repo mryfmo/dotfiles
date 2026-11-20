@@ -8,6 +8,7 @@ import datetime
 import hashlib
 import json
 import os
+import pwd
 import shutil
 import subprocess
 import tarfile
@@ -37,6 +38,11 @@ def release(tag: str, published: str | None, *, draft: bool = False, prerelease:
         "published_at": published,
         "assets": [{"name": f"tool-{tag}.tar.gz", "created_at": hours_ago(1)}],
     }
+
+
+def utc_week() -> str:
+    """The ISO week as make docker-build-args prints it (`date -u +%G-W%V`): the ISO year, W, the two-digit week."""
+    return datetime.datetime.now(datetime.timezone.utc).strftime("%G-W%V")
 
 
 class GithubReleaseTest(unittest.TestCase):
@@ -541,6 +547,148 @@ class GithubReleaseTest(unittest.TestCase):
                     self.assertIn("failed its checksum or release attestation; nothing was built", result.stderr)
         # The downloads lived in a private directory that is gone afterwards.
         self.assertEqual([], list(self.temp_dir.glob("github-release.*")))
+
+    def test_make_docker_build_args_prints_the_verified_arguments_and_builds_nothing(self) -> None:
+        # U610: apply-check.yml appends these lines to GITHUB_OUTPUT for its cached buildx build. The target runs the
+        # same host-side verification as make docker; a refused attestation prints nothing and fails.
+        archive = "chezmoi_2.73.0_linux_amd64.tar.gz"
+        payload = b"chezmoi archive\n"
+        digest = hashlib.sha256(payload).hexdigest()
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v2.73.0", hours_ago(100))], indent=2) + "\n")
+        (self.temp_dir / "payload").write_bytes(payload)
+        self.executable(
+            "curl",
+            f"""
+            printf 'curl %s\\n' "$*" >> "{self.log}"
+            out=""; url=""
+            while [ "$#" -gt 0 ]; do case "$1" in -o) out="$2"; shift ;; https://*) url="$1" ;; esac; shift; done
+            case "$url" in
+                https://api.github.com/*) cat "{page}" ;;
+                */{archive}) cp "{self.temp_dir}/payload" "$out" ;;
+                */chezmoi_2.73.0_checksums.txt) printf '%s  {archive}\\n' "{digest}" > "$out" ;;
+                *) exit 22 ;;
+            esac
+            """,
+        )
+        self.executable(
+            "gh",
+            f"""
+            [ "$1" = --version ] && {{ printf 'gh version 2.93.0 (2026-10-01)\\n'; exit 0; }}
+            [ "$*" = "auth status --hostname github.com" ] && exit 0
+            if [ "$1 $2" = "release verify-asset" ]; then
+                printf 'Calculated digest for %s: sha256:%s\\n' "$(basename "$4")" "{digest}"
+                [ "${{GH_VERIFY:-0}}" -ne 0 ] || printf '✓ Verification succeeded! %s is present in release %s\\n' "$(basename "$4")" "$3"
+                exit "${{GH_VERIFY:-0}}"
+            fi
+            exit 1
+            """,
+        )
+        self.executable(
+            "docker",
+            f"""
+            printf 'docker %s\\n' "$*" >> "{self.log}"
+            case "$1" in version) printf 'amd64\\n' ;; esac
+            exit 0
+            """,
+        )
+        dockerfile_id = subprocess.run(
+            ["git", "hash-object", "Dockerfile"], cwd=ROOT, text=True, capture_output=True, check=True
+        ).stdout.strip()
+        self.link("mktemp", "rm", "cp", "sha256sum", "shasum", "basename", "whoami", "git", "bash", "make")
+        env = {"PATH": f"{self.bin_dir}:/usr/bin:/bin", "HOME": str(self.temp_dir), "TMPDIR": str(self.temp_dir)}
+        for case, extra, verified in (("verified", {}, True), ("attestation refused", {"GH_VERIFY": "1"}, False)):
+            with self.subTest(case=case):
+                self.log.unlink(missing_ok=True)
+
+                weeks = {utc_week()}
+                result = subprocess.run(
+                    ["make", "docker-build-args"],
+                    cwd=ROOT,
+                    env=env | extra,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+                weeks.add(utc_week())  # the run may have crossed into a new ISO week
+
+                log = self.log.read_text()
+                self.assertNotIn("docker build", log)
+                self.assertNotIn("docker inspect", log)
+                if verified:
+                    self.assertEqual(0, result.returncode, result.stderr)
+                    # Round 3: APT_WEEK, the ISO week the Dockerfile keys its apt layer by, second as docker-image
+                    # passes it, the host-resolved values before the fetched ones.
+                    self.assertIn(
+                        result.stdout,
+                        {
+                            f"USERNAME={pwd.getpwuid(os.getuid()).pw_name}\nAPT_WEEK={week}\n"
+                            f"DOCKERFILE_ID={dockerfile_id}\nCHEZMOI_VERSION=2.73.0\nCHEZMOI_SHA256={digest}\n"
+                            for week in weeks
+                        },
+                    )
+                else:
+                    self.assertNotEqual(0, result.returncode)
+                    self.assertEqual("", result.stdout)
+                    self.assertIn("failed its checksum or release attestation; nothing was built", result.stderr)
+
+    def test_make_docker_build_args_stops_when_a_producer_fails_or_prints_nothing(self) -> None:
+        # Round 3 (verdict of 1c416678, P3 at Makefile:23 and :67; AGENTS.md Audit: every `$(…)` read checks its
+        # producer's exit status and tells a failed read from an empty one). The release tag is read once in
+        # DOCKER_IMAGE_PREPARE, the user and the week once in DOCKER_BUILD_IDENTITY; a producer that fails, or a tag
+        # read that prints nothing, stops the target before any download or verification, prints no argument and
+        # names the failed read. The release page is served, so the user and week reads are reached.
+        page = self.temp_dir / "releases.json"
+        page.write_text(json.dumps([release("v2.73.0", hours_ago(100))], indent=2) + "\n")
+        self.executable("docker", f'printf \'docker %s\\n\' "$*" >> "{self.log}"; exit 0')
+        self.executable(
+            "curl",
+            f"""
+            printf 'curl %s\\n' "$*" >> "{self.log}"
+            case "$*" in *https://api.github.com/*) cat "{page}" ;; *) exit 22 ;; esac
+            """,
+        )
+        self.executable("gh", f'printf \'gh %s\\n\' "$*" >> "{self.log}"; exit 1')
+        linked = ("mktemp", "rm", "cp", "sha256sum", "shasum", "basename", "whoami", "git", "bash", "make")
+        env = {"PATH": f"{self.bin_dir}:/usr/bin:/bin", "HOME": str(self.temp_dir), "TMPDIR": str(self.temp_dir)}
+        failing = "printf '%s: injected failure\\n' \"$0\" >&2; exit 7"
+        # github-release.sh reads date too (the 72-hour window), so only the week read's own call fails.
+        week_fails = f'[ "$*" = "-u +%G-W%V" ] && {{ {failing}; }}; exec "{shutil.which("date")}" "$@"'
+        for case, tool, body, message, reached_engine in (
+            ("bash fails", "bash", failing, "github_release_tag twpayne/chezmoi failed; the chezmoi", False),
+            ("bash prints no tag", "bash", "exit 0", "github_release_tag twpayne/chezmoi printed no tag; the", False),
+            ("whoami fails", "whoami", failing, "whoami failed; the user the image runs as is unknown", True),
+            ("date fails", "date", week_fails, "date -u +%G-W%V failed; the apt layer's week is unknown", True),
+        ):
+            with self.subTest(case=case):
+                self.log.unlink(missing_ok=True)
+                for name in (*linked, "date"):
+                    (self.bin_dir / name).unlink(missing_ok=True)
+                self.executable(tool, body)
+                self.link(*linked, "date")  # every other tool is real; link() leaves the stub in place
+
+                result = subprocess.run(
+                    ["make", "docker-build-args"],
+                    cwd=ROOT,
+                    env=env,
+                    text=True,
+                    capture_output=True,
+                    check=False,
+                )
+
+                self.assertNotEqual(0, result.returncode)
+                self.assertEqual("", result.stdout)
+                self.assertIn(message, result.stderr)
+                # Before the tag is read nothing else runs; after it the tag's own reads (gh auth token, the release
+                # page) and the engine's reachability. No archive or checksum was downloaded, nothing was verified,
+                # nothing was built.
+                log = self.log.read_text() if self.log.exists() else ""
+                if not reached_engine:
+                    self.assertEqual("", log)
+                docker_lines = [line for line in log.splitlines() if "docker" in line]
+                self.assertEqual(["docker info"] if reached_engine else [], docker_lines)
+                self.assertNotIn("verify-asset", log)
+                self.assertNotIn("chezmoi_2.73.0", log)
 
     def mise_bootstrap(
         self,

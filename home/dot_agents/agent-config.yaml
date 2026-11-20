@@ -1006,7 +1006,7 @@ claude:
       pr-thread-resolve.sh: efd650ad68b47654483e5cb67de7ae5b165e7e0a7a48bd3e00c6cf35aa564c0b
       pr-update-branch.sh: c5a2d4ffcc6ffc238082e8074cda81aab85cc798317688175c2aa97c2eb276ae
       pr-close.sh: 7e9778c493949cde1a7773ed439f502ca687d84d3de9bbf9be0f00b915b20233
-      pr-body-edit.sh: 92b1c56f1acd0f069c7b1bea7cb0bb27f72634d0ef21f8d88b782a478236c28d
+      pr-body-edit.sh: cadc836a0d70975fbabc82012eb3d682b5c2e488a01a64363066caced8f12a39
       pr-threads-check.sh: 984a00a30822ce400e2acabf7eb1695625c8bc1fad15be144ca993b31c9fcf8c
       records-sync.sh: c7e32bfdff7f50a6b9caa62aad7e5fafa607a63ebe8ea6b1bc112729744fbd24
       pr-merge.sh: acebc450d965b2a054d48d00a5ab335890b3786d577e7b525a32f5c0f45766a5
@@ -1016,6 +1016,7 @@ claude:
       ledger-row.py: e78ff46f057ef7e7e748ca757dcf83506478722c78f94e22a93df57602c9fe08
       ledger.py: c9e13988b6dc1e5ce934964cacd48d538c542402cd9d0154fc713d21562e4431
       sweep-scope.py: 8c74ade57c6dfe1f977fa77735a30a2933deff449eeafbb5a4ed6044401839be
+      body-check.py: a2f20c093d949f75f8f1422a97cd86941a040a1594f95ed6f47cd218c9b83b1b
       profile-config-place.py: 5bb158baeb864a26b9e3c23e815030f039cc25ce989be0bc6477bb9ebebda014
       read-lib.sh: 485ec1b4be922e3c15def681547d2d71d60b7c1e7237ff0da37ff0c9d772ca28
       acp-broker: 70d1e3cbe87fae92fc675399b2c0ba8688a7f7759adc4b6356f6e0b63b6f241a

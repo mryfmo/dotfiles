@@ -820,11 +820,30 @@ os.execv({real!r}, [{real!r}, *{args!r}, *sys.argv[1:]])
 
 class PrBodyEditTest(PrLeverTestCase):
     CURRENT = f"## Summary\n\ntext\n\n## Threat table\n\n| a | b |\n\nProgram-Unit: regime-cutover/U41b\n\n{FOOTER}\n"
-    NEW = f"## Summary\n\nnew text\n\n## Threat table\n\n| a | b |\n\n## Added\n\nProgram-Unit: regime-cutover/U41\n\n{FOOTER}\n"
+    # The new body holds for body-check.py (U619 round 2: the lever runs the check beside it before its first `gh`
+    # read): the three sections, the header and its separator, a `closed` row for the changed `scripts/x.py` naming
+    # `test_x_thing` of the changed `tests/unit/test_x.py`, and that test file's row `residual` naming the control.
+    SEPARATOR = "| --- | --- | --- | --- |"
+    ROW_X = "| `scripts/x.py` | the change breaks | closed | `test_x_thing` fails without the fix |"
+    ROW_TEST_X = "| `tests/unit/test_x.py` | a test loosened to pass | residual | the auditor's diff read |"
+    NEW = (
+        "## Summary\n\nnew text\n\n## Contract\n\nGuaranteed: the fixture holds.\n\nLeft out: nothing.\n\n"
+        "Trusted: git's listing at two shas.\n\n## Threat table\n\n| row | risk | status | evidence |\n"
+        f"{SEPARATOR}\n{ROW_X}\n{ROW_TEST_X}\n\n## Added\n\nProgram-Unit: regime-cutover/U41\n\n{FOOTER}\n"
+    )
+    OK_LINE = "body-check: 2 paths, 2 rows, ok"
 
     def setUp(self):
         super().setUp()
+        # origin/main at the initial commit, the branch one commit ahead of it: the diff body-check.py reads
+        self.git("update-ref", "refs/remotes/origin/main", "main")
         self.git("switch", "-q", "-c", "feat/x")
+        (self.repo / "scripts").mkdir()
+        (self.repo / "scripts/x.py").write_text("print(1)\n")
+        (self.repo / "tests/unit").mkdir(parents=True)
+        (self.repo / "tests/unit/test_x.py").write_text("def test_x_thing():\n    pass\n")
+        self.git("add", "-A")
+        self.git("commit", "-q", "-m", "the change")
         for program in ("regime-cutover", "other-program"):  # the program stores the checkout holds (U71)
             store = self.repo / ".orchestration/orchestrate" / program
             store.mkdir(parents=True)
@@ -849,6 +868,8 @@ class PrBodyEditTest(PrLeverTestCase):
             run.stdout, r"^edited pr=9 branch=feat/x program=regime-cutover unit=U41 sha256=[0-9a-f]{64}\n$"
         )
         self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]])
+        # the check's one stdout line goes to stderr, so the receipt stays the one stdout line (U619 round 2)
+        self.assertIn(self.OK_LINE, run.stderr)
 
     def hash_fake(self, where, name):
         """A fake `name` (sha256sum or shasum) under where, HASH_FAKE over the real tool; None when the host has
@@ -976,6 +997,76 @@ class PrBodyEditTest(PrLeverTestCase):
             self.run_lever("pr-body-edit.sh", "--body-file", str(self.body(self.NEW.replace(FOOTER, "")))),
             "drops the line of the current body: " + FOOTER,
         )
+
+    def test_a_body_the_check_refuses_is_refused_before_any_gh_call(self):
+        """U619 round 2 (verdict U619-ddfde55f P1 at hcom-orchestration/SKILL.md:28): the worker's body edits reach
+        GitHub through this lever, so the lever runs body-check.py beside it, from a copy held to its pin, against
+        the merge base of HEAD and origin/main before its first `gh` read; the check's lines pass through and the
+        refusal names its status."""
+        self.github()
+        cases = (
+            (self.NEW.replace(self.ROW_X + "\n", ""), "the changed path `scripts/x.py` has no threat-table row"),
+            (
+                self.NEW.replace(self.SEPARATOR + "\n", ""),
+                "the line after the threat table's header is no separator row",
+            ),
+            (self.NEW.replace("## Contract", "## Terms"), "the body has no `## Contract` section"),
+            (
+                self.NEW.replace("`test_x_thing`", "`test_missing_thing`"),
+                "is closed but its evidence names no test selector that exists at the head",
+            ),
+            (
+                self.NEW.replace(
+                    self.ROW_TEST_X,
+                    self.ROW_TEST_X.replace("residual | the auditor's diff read", "closed | `test_x_thing`"),
+                ),
+                "is a test file's row marked closed, but no selector it names (test_x_thing) exists in another test module",
+            ),
+        )
+        for body, line in cases:
+            with self.subTest(line):
+                run = self.run_lever("pr-body-edit.sh", "--body-file", str(self.body(body)))
+                self.assert_refused(run, "body-check.py exited 1 on ")
+                self.assertTrue(run.stderr.startswith("body-check: "), "the check's lines pass through first")
+                self.assertIn(line, run.stderr)
+                self.assertNotIn(self.OK_LINE, run.stderr)
+                self.assertEqual(self.gh_calls(), [])
+
+    def test_a_missing_or_rewritten_body_check_or_an_unreadable_merge_base_is_a_refusal(self):
+        """Standing order 21: the module beside the lever, its pin and the merge base are read before the check runs,
+        and each failure is a refusal naming it before any `gh` call, never a pass to the edit. The lever runs from a
+        checkout-shaped copy (lever_checkout) so the module beside it can be absent, rewritten or unpinned."""
+        self.github()
+        body = self.body(self.NEW)
+        lever = self.lever_checkout("pr-body-edit.sh", "git-isolated.sh", "read-lib.sh")
+        module = lever.parent / "body-check.py"
+        run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
+        self.assert_refused(run, f"no body-check.py beside this lever ({module})")
+        shutil.copy2(LEVERS / "body-check.py", module)
+        with module.open("a") as rewritten:
+            rewritten.write('print("rewritten")\n')
+        run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
+        self.assert_refused(run, f"of {module} (hashed as its copy ")
+        self.assertIn("differs from the pin", run.stderr)
+        self.assertNotIn("rewritten", run.stdout + run.stderr)
+        shutil.copy2(LEVERS / "body-check.py", module)
+        self.pin_reader("body-check.py", None)
+        run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
+        self.assert_refused(run, "no single sha256 pin for body-check.py in ")
+        shutil.copy2(MANIFEST, self.manifest)
+        self.assertEqual(self.gh_calls(), [], "no gh call before the module holds")
+        run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
+        self.assertEqual(run.returncode, 0, run.stderr)
+        self.assertIn(self.OK_LINE, run.stderr)
+        self.assertEqual(self.writes(), [["pr", "edit", "9", "--body-file", str(body)]])
+        # the merge base: no origin/main to read against is a refusal naming it, not a check against nothing
+        self.calls.unlink(missing_ok=True)
+        self.git("update-ref", "-d", "refs/remotes/origin/main")
+        run = self.run_lever("pr-body-edit.sh", "--body-file", str(body))
+        self.assert_refused(run, "cannot read the merge base of HEAD and origin/main")
+        self.assertEqual(self.gh_calls(), [])
+        # the copy of the module is removed with the lever's exit
+        self.assertEqual([path for path in self.tmp.iterdir() if path.name.startswith("pr-body-edit.")], [])
 
 
 class PrThreadsCheckTest(ThreadsFixture):

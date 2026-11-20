@@ -50,6 +50,33 @@ PRE_AUDIT_GATE = (
     "self-check (threat table, fail closed, destructive scope, migration, local runs)"
 )
 GATE_FIX_FIRST = "one that fails a check gets a `U<n>b` TASK naming the gap before any audit"
+# U619 (standing orders 59 and 60): the body is checked by the lever before every `gh pr create` and `gh pr edit`, said
+# once in step 3, where the RESULT's body is first read by the coordinator. Round 2 (verdict U619-ddfde55f P1): the
+# worker creates the pull request and edits its body before RESULT, so the step says whose read comes first.
+BODY_CHECK = (
+    "Before every `gh pr create` and `gh pr edit`, whoever sends the body runs `python3 -I -S "
+    "~/.local/bin/common/body-check.py <body file> --base <merge base of the head and main> --head <head sha>` from "
+    "the checkout on the body file (U619; standing orders 59 and 60): the worker runs it before its `gh pr create` "
+    "(the `hcom-worker` SKILL, step 4) and `pr-body-edit.sh` runs the pinned copy beside it before its edit, so your "
+    "run on the RESULT's body is the second read, never the first (round 2); exit 0 prints `body-check: <n> paths, "
+    "<m> rows, ok`; exit 1 lists one fault per stderr line (a missing `## Summary`, `## Contract` sentence, "
+    "`## Threat table` or `Program-Unit:` line, the separator row missing under the table's header, a changed path of "
+    "`<base>..<head>` without its threat-table row, a `closed` row whose evidence names no test selector that exists "
+    "at the head, a test file's `closed` row naming no selector of another module, a `residual` row without its "
+    "control, an `out-of-scope` row without its unit), each fixed in the file before the body is sent; exit 2 is a "
+    "failed git read, never a pass."
+)
+# The worker's own reads (round 2): the check before `gh pr create` in step 4, and the lever's check in step 6.
+WORKER_BODY_CHECK = (
+    "Before `gh pr create`, run `python3 -I -S ~/.local/bin/common/body-check.py <file> --base "
+    '"$(git merge-base HEAD origin/main)" --head HEAD` from your clone on the body file (U619; standing orders 59 '
+    "and 60)"
+)
+WORKER_BODY_EDIT_CHECK = (
+    "it runs the pinned `body-check.py` beside it on the file against the merge base of `HEAD` and `origin/main` "
+    "before its edit, so a body the check refuses is refused (exit 2, the check's lines on stderr) before any `gh` "
+    "call; run the check yourself first, as in step 4"
+)
 
 # U119 round 3 (audit of 8d442d49, P1): the audit route is the Codex lever, and the file the merge gate parses for its
 # `## Findings` list is that lever's verdict.md copied into the store; the retired omp-run route wrote no such heading.
@@ -316,6 +343,24 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(PRE_AUDIT_GATE, gate)
         self.assertIn(GATE_FIX_FIRST, gate)
         self.assertIn("held with a HOLD line", gate)
+
+    def test_step_three_runs_the_body_check_before_every_pull_request_body_is_sent(self):
+        text = ORCHESTRATION.read_text()
+        gate = step(text, "The loop", 3)
+        self.assertIn(BODY_CHECK, gate)
+        self.assertEqual(text.count("body-check.py"), 1, "the lever is named once, in step 3")
+        self.assertLess(gate.index(GATE_FIX_FIRST), gate.index(BODY_CHECK), "after the pre-audit gate")
+
+    def test_the_worker_runs_the_body_check_before_gh_pr_create_and_the_lever_before_its_edit(self):
+        """U619 round 2 (verdict U619-ddfde55f P1 at hcom-orchestration/SKILL.md:28): the worker creates the pull
+        request and edits its body before the coordinator's RESULT step, so the first reads are the worker's and the
+        lever's, and step 3 says the coordinator's is the second."""
+        text = WORKER.read_text()
+        create = step(text, "Work", 4)
+        self.assertIn(WORKER_BODY_CHECK, create)
+        self.assertLess(create.index("body-check.py"), create.index("gh pr create --title"), "before the create")
+        self.assertIn(WORKER_BODY_EDIT_CHECK, step(text, "Work", 6))
+        self.assertIn("the second read, never the first", step(ORCHESTRATION.read_text(), "The loop", 3))
 
     def test_the_audit_route_is_the_codex_lever_whose_verdict_file_the_merge_gate_reads(self):
         text = ORCHESTRATION.read_text()

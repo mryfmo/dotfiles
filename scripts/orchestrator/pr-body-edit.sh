@@ -15,15 +15,22 @@
 #   `preferences.md` standing order 24); when the current body already carries one such line, the program and the
 #   unit must stay the same, so an edit fixes the line or the text but never moves a pull request to another
 #   program or unit. Every `## ` heading line and the `Generated with [Claude Code]` footer line of
-#   the current body must still be in the new body, so sections are added or rewritten, never dropped. The one
-#   write is `gh pr edit <n> --body-file <file>`. Each `gh` call is bounded by PR_LEVER_GH_TIMEOUT seconds (perl
-#   `alarm`).
+#   the current body must still be in the new body, so sections are added or rewritten, never dropped. Before the
+#   first `gh` read, `body-check.py` beside this lever (the installed module `~/.local/bin/common/body-check.py`, or
+#   the checkout's `scripts/orchestrator/body-check.py`), read into a private copy that is hashed against its
+#   `claude.levers.sha256.body-check.py` pin in the manifest the self-check read and run as `python3 -I -S`, must
+#   accept the body against the paths changed from the merge base of `HEAD` and `origin/main` to `HEAD` (regime-cutover
+#   U619 round 2, standing orders 59 and 60): its stderr lines pass through and its non-zero exit is this lever's
+#   refusal, as are a missing module, a pin or a digest that does not hold, a python3 that is not found and a merge
+#   base that cannot be read, never a pass. The one write is `gh pr edit <n> --body-file <file>`. Each `gh` call is
+#   bounded by PR_LEVER_GH_TIMEOUT seconds (perl `alarm`).
 # @option --body-file <file> The new body.
 # @env PR_LEVER_GH_TIMEOUT Seconds per `gh` call (default 60).
 # @stdout One receipt line: `edited pr=<n> branch=<b> program=<program> unit=U<n> sha256=<body sha256>`.
 # @exitcode 0 The body was replaced.
 # @exitcode 1 A `git` or `gh` read, or the edit, failed.
-# @exitcode 2 Refused: usage, the branch, the pull request's state, the body file, or the body's content.
+# @exitcode 2 Refused: usage, the branch, the pull request's state, the body file, or the body's content (the lines
+#   `body-check.py` prints included).
 # @example
 #   ~/.local/bin/common/pr-body-edit.sh --body-file "$TMPDIR/body.md"
 set -euo pipefail
@@ -162,6 +169,42 @@ lines_matching() {
     LINES_RE=$1 awk '{ sub(/\r$/, "") } $0 ~ ENVIRON["LINES_RE"]' "$2"
 }
 
+# @description Refuse unless `body-check.py` beside this lever accepts the body against the diff from the merge base of
+#   HEAD and origin/main to HEAD (U619 round 2). The module is read into the private copy `check_copy`, the copy is
+#   hashed against its `claude.levers.sha256.body-check.py` pin in LEVER_MANIFEST with the readers lever_self_check
+#   uses (pr-merge.sh's reader_copy idiom: what is hashed is what runs) and run as `python3 -I -S`; its stderr lines
+#   pass through, its one stdout line goes to stderr, and a non-zero exit is this lever's refusal naming the status.
+#   A missing module, a python3 that is not found, a copy that cannot be made or hashed, a pin that is missing or
+#   doubled, a digest that differs and a merge base that cannot be read are refusals naming them, never a pass
+#   (standing order 21).
+# @arg $1 path The body file, its real path.
+body_check() {
+    local body=$1 module python pin digest base
+    module=${LEVER_DIR}/body-check.py
+    [[ -f ${module} ]] || refuse "no body-check.py beside this lever (${module}); the body is checked through it before the edit"
+    python=$(command -v python3) || refuse 'no python3 found (it runs body-check.py on the body)'
+    (umask 077 && cat -- "${module}" > "${check_copy}") ||
+        refuse "cannot copy ${module} into ${check_copy}; the check runs from a copy held to its pin alone"
+    pin=$(sed -n -E 's/^      body-check\.py: ([0-9a-f]{64})$/\1/p' "${LEVER_MANIFEST}") ||
+        refuse "cannot read ${LEVER_MANIFEST} for the pin of body-check.py"
+    [[ ${pin} =~ ^[0-9a-f]{64}$ ]] ||
+        refuse "no single sha256 pin for body-check.py in ${LEVER_MANIFEST} (claude.levers.sha256.body-check.py); the body is checked only through the pinned module"
+    if command -v sha256sum > /dev/null; then
+        digest=$(sha256sum < "${check_copy}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    else
+        digest=$(shasum -a 256 < "${check_copy}") || digest='' # producer-status: allow the regex test below refuses an empty digest
+    fi
+    digest=${digest%% *}
+    [[ ${digest} =~ ^[0-9a-f]{64}$ ]] || refuse "cannot hash ${module} (its copy ${check_copy})"
+    [[ ${digest} == "${pin}" ]] ||
+        refuse "sha256 ${digest} of ${module} (hashed as its copy ${check_copy}) differs from the pin ${pin} of claude.levers.sha256.body-check.py in ${LEVER_MANIFEST}; the check is not the pinned one, so the body is not edited"
+    base=$(git_isolated merge-base HEAD origin/main) ||
+        refuse 'cannot read the merge base of HEAD and origin/main (git merge-base); the body is checked against the paths changed from it'
+    [[ ${base} =~ ^[0-9a-f]{40,64}$ ]] || refuse "git merge-base HEAD origin/main printed no commit: ${base}"
+    "${python}" -I -S "${check_copy}" "${body}" --base "${base}" --head HEAD --repo "${toplevel}" >&2 ||
+        refuse "body-check.py exited $? on ${body}; fix the lines above before the edit"
+}
+
 [[ $# -eq 2 && $1 == --body-file ]] || refuse "${usage}"
 [[ ${gh_timeout} =~ ^[1-9][0-9]*$ ]] || refuse 'PR_LEVER_GH_TIMEOUT must be a positive integer'
 toplevel=$(git_isolated rev-parse --show-toplevel 2> /dev/null) || refuse 'not in a git checkout'
@@ -177,6 +220,9 @@ program=${marker%/*}
 unit=${marker##*/}
 [[ -f ${toplevel}/.orchestration/orchestrate/${program}/units.tsv ]] ||
     refuse "the Program-Unit line names ${program}, but the checkout holds no .orchestration/orchestrate/${program}/units.tsv"
+check_copy=$(mktemp "${TMPDIR:-/tmp}/pr-body-edit.XXXXXX") || fail 'mktemp failed'
+trap 'rm -f "${check_copy}"' EXIT
+body_check "${body_path}"
 
 view=$(gh_bounded pr view --json number,headRefName,state --jq '[(.number | tostring), .headRefName, .state] | @tsv') ||
     fail "cannot read the pull request of ${branch}"
@@ -186,7 +232,7 @@ IFS=$'\t' read -r number head state <<< "${view}"
 [[ ${state} == OPEN ]] || refuse "pull request ${number} is ${state}, not OPEN"
 
 current=$(mktemp "${TMPDIR:-/tmp}/pr-body-edit.XXXXXX") || fail 'mktemp failed'
-trap 'rm -f "${current}"' EXIT
+trap 'rm -f "${check_copy}" "${current}"' EXIT
 gh_bounded pr view "${number}" --json body --jq .body > "${current}" || fail "cannot read the body of pull request ${number}"
 old_markers=$(lines_matching "${unit_line}" "${current}") || fail "cannot read ${current}"
 if [[ -n ${old_markers} && ${old_markers} != *$'\n'* && ${old_markers#Program-Unit: } != "${marker}" ]]; then

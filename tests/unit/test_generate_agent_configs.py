@@ -245,6 +245,7 @@ LEVERS = (
     "acp-record-place.py",
     "acp-relay.py",
     "acp-seat",
+    "body-check.py",
     "brief-check.py",
     "bus-history.sh",
     "checkout-guard.sh",
@@ -1163,6 +1164,28 @@ class GenerateAgentConfigsTest(unittest.TestCase):
         self.assertIn(f"\n      sweep-scope.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
         self.assertEqual(
             installed, next(path for path in self.module.lever_pins(manifest) if path.name == "sweep-scope.py")
+        )
+
+    def test_the_body_check_installs_as_a_pinned_module_like_the_sweep_scope_reader(self) -> None:
+        """U619: `body-check.py`, the check of a pull request body before `gh pr create` and `gh pr edit`, is run by
+        the coordinator as `python3 -I -S` on its installed copy, so it takes the module form: a twin
+        `home/dot_local/bin/common/body-check.py` byte-identical to the checkout's file, no `executable_` prefix, and
+        the pin `claude.levers.sha256.body-check.py` the generator refreshes."""
+        self.module.ROOT = ROOT
+        source = ROOT / "scripts/orchestrator/body-check.py"
+        installed = ROOT / "home/dot_local/bin/common/body-check.py"
+        self.assertIn("body-check.py", self.module.LEVER_MODULES)
+        self.assertEqual(self.module.lever_install_name("body-check.py"), "body-check.py")
+        self.assertTrue(installed.is_file(), f"{installed.relative_to(ROOT)} is missing")
+        self.assertEqual(installed.read_bytes(), source.read_bytes())
+        self.assertFalse((ROOT / "home/dot_local/bin/common/executable_body-check.py").exists())
+        self.assertFalse(os.access(installed, os.X_OK), "a module, run as python3 -I -S, never by path")
+        manifest = load_manifest_fixture(self.temp_dir)
+        pin = hashlib.sha256(source.read_bytes()).hexdigest()
+        self.assertEqual(manifest["claude"]["levers"]["sha256"].get("body-check.py"), pin)
+        self.assertIn(f"\n      body-check.py: {pin}\n", (ROOT / "home/dot_agents/agent-config.yaml").read_text())
+        self.assertEqual(
+            installed, next(path for path in self.module.lever_pins(manifest) if path.name == "body-check.py")
         )
 
     def test_check_reports_a_stale_lever_pin_and_a_run_refreshes_it(self) -> None:

@@ -48,6 +48,7 @@ LEVERS = (
     "router-settings-apply",
     "router-settings-apply.py",
     "stall-watch.sh",
+    "round-advance.sh",
 )
 # The levers whose self-check is Python (hashlib and its own manifest read, no PATH tool): a sed or hash tool planted
 # on the caller's PATH is never consulted by them (brief-check.py, U104 round 3; router-settings-apply.py, the Python

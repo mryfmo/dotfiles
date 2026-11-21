@@ -232,6 +232,17 @@ STALL_ACTION = (
     "worker that has no row. Exit 2 is a refusal of the arguments, named on its stderr: fix the line and start the "
     "lever again. The lever itself kills and restarts nothing (standing orders 57 and 59; U621)."
 )
+# U624 (standing orders 59 and 60): step 6 names the round-advance lever as the way a round advances after a worker
+# commit, the twelve hand-run commands as one, with the body and the sweep brief left to the coordinator.
+ROUND_ADVANCE = (
+    "After each worker commit the round advances with `~/.local/bin/common/round-advance.sh <store> U<n> <pr> --tree "
+    "<worker tree> (--sweep-brief <file> --sweep-seat <seat> --sweep-to <hcom name> | --no-sweep)`, one command for the "
+    "round's mechanics (the GitHub branch fetched into the worker tree and merged when it moved, the push, "
+    "`pr-update-branch.sh` with the new head read back, the carry decision and its `carried` row, the units row, the "
+    "sweep seat positioned and the sweep TASK, `pr-audit.sh` and the CI watch started to files under `<store>/audits/`, "
+    "one decisions row of phase `round`), one receipt line per step and a stop at the first failure naming the step and "
+    "what was done; the pull request body and the sweep brief stay yours, written before the lever runs."
+)
 
 # U120 (standing order 36): the Gates paragraph names the thresholds rounds-check.py counts (the third audit free, the
 # fourth behind a mechanism-change row, two further `incorrect` rows of one class behind another), that the strikes are
@@ -499,6 +510,15 @@ class HcomSeatSkillsTest(unittest.TestCase):
         self.assertIn(MERGE_ERROR, merge)
         # The re-read comes before the MERGED line is sent.
         self.assertLess(merge.index(MERGE_ERROR), merge.index("Then `MERGED v1"))
+
+    def test_step_six_names_the_round_advance_lever_as_the_way_a_round_advances(self):
+        """U624: the lever runs the round's mechanics; the step names it once, before the verdict and the merge, and
+        keeps `pr-update-branch.sh` as the update route the lever calls."""
+        merge = step(ORCHESTRATION.read_text(), "The loop", 6)
+        self.assertIn(ROUND_ADVANCE, merge)
+        self.assertEqual(merge.count("round-advance.sh"), 1)
+        self.assertLess(merge.index(ROUND_ADVANCE), merge.index("With a `correct` verdict row"))
+        self.assertIn("`~/.local/bin/common/pr-update-branch.sh <n>`, never `gh pr update-branch`", merge)
 
     def test_the_skills_name_the_line_kinds_without_the_retired_prefix_or_pane_argument(self):
         for skill in (WORKER, ORCHESTRATION):

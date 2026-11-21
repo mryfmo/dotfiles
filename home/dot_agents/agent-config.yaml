@@ -985,6 +985,19 @@ claude:
   # same way; run by the operator alone outside every seat, with no allow rule
   # and no seat policy row (every seat's sandbox denies the file for read and
   # for write).
+  # round-advance.sh (U624, standing orders 59 and 60) runs one round's
+  # mechanics after a worker commit in one command: the GitHub branch fetched
+  # into the worker tree and merged when it moved, the push through the
+  # credential route, pr-update-branch.sh with the new head read back, the
+  # carry decision (audit-carry.py in the checkout, the carried row through
+  # ledger-row.py), the unit's units.tsv row, the sweep seat positioned and the
+  # sweep TASK through hcom-dispatch, pr-audit.sh and the CI watch started in
+  # the background to files under <store>/audits/, and one decisions.tsv row of
+  # phase `round`; one receipt line per step, the sequence stopped at the first
+  # failure naming the step and what was done. It merges no pull request, edits
+  # no body and kills no process. Run by the coordinator outside every seat from
+  # the main checkout; installed and pinned the same way, with no allow rule and
+  # no seat policy row.
   levers:
     sha256:
       hcom-seat: f3a092a1fa17dac2016a7f9adda6e53c25488f3b2b4bbf99b2e925da495fa1d3
@@ -1032,6 +1045,7 @@ claude:
       units-row.py: 6abd6b9e7c5350ed72107651b773960d86f648b6729fa1dc5b23e438d21d4c6e
       stall-check.py: 35266c7c6fd7e3e7d3f457d7fac5d25092602b5d8ed86a08b42b9df28549f25d
       stall-watch.sh: 5385935fdf27fe5b75c8ae445b86be0e0f638063de4bbde82d7cd037be5b6c5c
+      round-advance.sh: eb353bf8a349f15cac2ddf9ba73b2dd86e59b91406a48eaaaf8c06659efc9c1a
     # The only extension directories `hcom-seat` passes with `-e`, by default or
     # through `--ext`: the pi-claude-bridge, the openai-siwc extension, and the
     # stop gate's directory, which every launch loads (regime-cutover U33c).
